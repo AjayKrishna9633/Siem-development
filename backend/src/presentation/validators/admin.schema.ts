@@ -8,7 +8,7 @@ export const registerSuperAdminSchema = z.object({
   password: z
     .string()
     .min(12, 'Password must be at least 12 characters')
-    .refine((p) => byteLength(p) <= 72, 'Password too long (exceeds 72 bytes)'), // bcrypt ignores bytes after 72
+    .refine((p) => byteLength(p) <= 72, 'Password too long (exceeds 72 bytes)'),
 });
 
 export type RegisterSuperAdminInput = z.infer<typeof registerSuperAdminSchema>;

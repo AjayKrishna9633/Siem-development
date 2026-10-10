@@ -7,7 +7,7 @@ import { registerSuperAdminSchema } from '../validators/admin.schema.js';
 export function adminRoutes(controller: AdminController): Router {
   const router = Router();
 
- 
+
   const limiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: 5,
@@ -23,9 +23,9 @@ export function adminRoutes(controller: AdminController): Router {
 
 
   router.post(
-    '/register-super-admin', 
-    limiter, 
-    validate(registerSuperAdminSchema), 
+    '/register-super-admin',
+    limiter,
+    validate(registerSuperAdminSchema),
     controller.createSuperAdmin
   );
 

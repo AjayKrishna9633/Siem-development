@@ -1,8 +1,5 @@
-export const USER_ROLES = ['super_admin', 'org_admin', 'analyst'] as const;
-export type UserRole = (typeof USER_ROLES)[number];
-
-export const USER_STATUSES = ['invited', 'active', 'disabled'] as const;
-export type UserStatus = (typeof USER_STATUSES)[number];
+import type { UserRole } from '../enums/UserRole.js';
+import type { UserStatus } from '../enums/UserStatus.js';
 
 export interface UserProps {
   id: string;

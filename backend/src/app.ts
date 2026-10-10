@@ -1,12 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { AppDataSource } from './infrasturcture/database/data-source.js';
-import { TypeOrmuUserRepository } from './infrasturcture/database/repositories/user.repositories.js';
-import { BcryptHashService } from './infrasturcture/service/bycrpt-hash.service.js';
-import { RegisterSuperAdminUseCase } from './application/use-case/admin/create-super-admin.usecase.js';
-import { AdminController } from './presentation/controllers/admin.controller.js';
+import { AppDataSource } from './infrastructure/database/data-source.js';
+import { di } from './infrastructure/di/index.js';
 import { adminRoutes } from './presentation/routes/admin.routes.js';
+import { authRoutes } from './presentation/routes/auth.routes.js';
 import { errorHandler } from './presentation/middleware/errorHandler.js';
 
 const app = express();
@@ -14,11 +12,7 @@ app.use(helmet());
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json({ limit: '100kb' }));
 
-// Dependencies
-const userRepo = new TypeOrmuUserRepository(AppDataSource);
-const hasher = new BcryptHashService();
-const registerSuperAdminUseCase = new RegisterSuperAdminUseCase(userRepo, hasher);
-const adminController = new AdminController(registerSuperAdminUseCase);
+
 
 app.get('/health', async (_req, res) => {
   try {
@@ -29,7 +23,8 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-app.use('/api/admin', adminRoutes(adminController));
+app.use('/api/admin', adminRoutes(di.adminController));
+app.use('/api/auth', authRoutes(di.authController));
 
 app.use(errorHandler);
 

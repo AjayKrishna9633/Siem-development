@@ -1,40 +1,40 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { ApplicationError } from '../../domain/errors/ApplicationError.js';
-import type { ApplicationErrorCode } from '../../domain/types/error-types.js';
+import { AppError } from '../../domain/errors/AppError.js';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.js';
 import { DomainError } from '../../domain/errors/DomainError.js';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.js';
+import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.js';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.js';
 
-const statusByCode: Record<ApplicationErrorCode, number> = {
-  SETUP_DISABLED: 404,
-  INVALID_SETUP_TOKEN: 401,
-  SETUP_ALREADY_DONE: 409,
+const statusByCode: Record<AppErrorCode, number> = {
+  [AppErrorCode.SETUP_DISABLED]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.INVALID_SETUP_TOKEN]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.SETUP_ALREADY_DONE]: HttpStatusCode.CONFLICT,
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {
-  
+
   if (err instanceof ZodError) {
     const errorMessages = err.issues.map(e => ({
       field: e.path.join('.'),
       message: e.message
     }));
-    res.status(400).json(new ApiResponse(400, errorMessages, 'Validation Error'));
+    res.status(HttpStatusCode.BAD_REQUEST).json(new ApiResponse(HttpStatusCode.BAD_REQUEST, errorMessages, ErrorMessage.VALIDATION_ERROR));
     return;
   }
 
-  
-  if (err instanceof ApplicationError) {
-    const statusCode = statusByCode[err.code] || 400;
+  if (err instanceof AppError) {
+    const statusCode = statusByCode[err.code] || HttpStatusCode.BAD_REQUEST;
     res.status(statusCode).json(new ApiResponse(statusCode, null, err.message));
     return;
   }
 
   if (err instanceof DomainError) {
-    res.status(422).json(new ApiResponse(422, null, err.message));
+    res.status(HttpStatusCode.UNPROCESSABLE_ENTITY).json(new ApiResponse(HttpStatusCode.UNPROCESSABLE_ENTITY, null, err.message));
     return;
   }
 
- 
   console.error('[Unhandled Exception]:', err);
-  res.status(500).json(new ApiResponse(500, null, 'Internal Server Error'));
+  res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json(new ApiResponse(HttpStatusCode.INTERNAL_SERVER_ERROR, null, ErrorMessage.INTERNAL_SERVER_ERROR));
 };

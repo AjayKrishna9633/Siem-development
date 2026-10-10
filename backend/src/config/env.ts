@@ -6,6 +6,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
   DATABASE_URL: z.string().startsWith("postgres"),
   JWT_SECRET: z.string().min(32),
+  REDIS_URL: z.string().url(),
+  OTP_EMAIL: z.string().email(),
+  OTP_PASSWORD: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
