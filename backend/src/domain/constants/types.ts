@@ -1,29 +1,26 @@
 const TYPES = {
   // Use Cases
-  RegisterSuperAdminUseCase: Symbol.for("RegisterSuperAdminUseCase"),
-  SendOtpUseCase: Symbol.for("SendOtpUseCase"),
-  GenericUseCase: Symbol.for("GenericUseCase"),
+  RegisterSuperAdminUseCase: Symbol.for('RegisterSuperAdminUseCase'),
+  SendOtpUseCase: Symbol.for('SendOtpUseCase'),
 
   // Repositories
-  UserRepository: Symbol.for("UserRepository"),
-    GenreRepository: Symbol.for("GenreRepository"),
+  UserRepository: Symbol.for('UserRepository'),
 
   // Services
-  CacheService: Symbol.for("CacheService"),
-  EmailService: Symbol.for("EmailService"),
-  HashService: Symbol.for("HashService"),
-  OtpService: Symbol.for("OtpService"),
+  CacheService: Symbol.for('CacheService'),
+  EmailService: Symbol.for('EmailService'),
+  HashService: Symbol.for('HashService'),
+  OtpService: Symbol.for('OtpService'),
 
   // Controllers
-  AdminController: Symbol.for("AdminController"),
-  AuthController: Symbol.for("AuthController"),
-    GenreController: Symbol.for("GenreController"),
+  AdminController: Symbol.for('AdminController'),
+  AuthController: Symbol.for('AuthController'),
 
   // External / Config
-  DataSource: Symbol.for("DataSource"),
-  RedisClient: Symbol.for("RedisClient"),
-  Transporter: Symbol.for("Transporter"),
-  SenderEmail: Symbol.for("SenderEmail"),
+  DataSource: Symbol.for('DataSource'),
+  RedisClient: Symbol.for('RedisClient'),
+  Transporter: Symbol.for('Transporter'),
+  SenderEmail: Symbol.for('SenderEmail'),
 };
 
 export default TYPES;
