@@ -14,13 +14,16 @@ const statusByCode: Record<AppErrorCode, number> = {
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {
-
   if (err instanceof ZodError) {
-    const errorMessages = err.issues.map(e => ({
+    const errorMessages = err.issues.map((e) => ({
       field: e.path.join('.'),
-      message: e.message
+      message: e.message,
     }));
-    res.status(HttpStatusCode.BAD_REQUEST).json(new ApiResponse(HttpStatusCode.BAD_REQUEST, errorMessages, ErrorMessage.VALIDATION_ERROR));
+    res
+      .status(HttpStatusCode.BAD_REQUEST)
+      .json(
+        new ApiResponse(HttpStatusCode.BAD_REQUEST, errorMessages, ErrorMessage.VALIDATION_ERROR),
+      );
     return;
   }
 
@@ -31,10 +34,20 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void =
   }
 
   if (err instanceof DomainError) {
-    res.status(HttpStatusCode.UNPROCESSABLE_ENTITY).json(new ApiResponse(HttpStatusCode.UNPROCESSABLE_ENTITY, null, err.message));
+    res
+      .status(HttpStatusCode.UNPROCESSABLE_ENTITY)
+      .json(new ApiResponse(HttpStatusCode.UNPROCESSABLE_ENTITY, null, err.message));
     return;
   }
 
   console.error('[Unhandled Exception]:', err);
-  res.status(HttpStatusCode.INTERNAL_SERVER_ERROR).json(new ApiResponse(HttpStatusCode.INTERNAL_SERVER_ERROR, null, ErrorMessage.INTERNAL_SERVER_ERROR));
+  res
+    .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
+    .json(
+      new ApiResponse(
+        HttpStatusCode.INTERNAL_SERVER_ERROR,
+        null,
+        ErrorMessage.INTERNAL_SERVER_ERROR,
+      ),
+    );
 };

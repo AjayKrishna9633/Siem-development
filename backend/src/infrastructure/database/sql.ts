@@ -1,5 +1,5 @@
-import pg from "pg";
-import { env } from "../../config/env.js";
+import pg from 'pg';
+import { env } from '../../config/env.config.js';
 
 export const pool = new pg.Pool({
   connectionString: env.DATABASE_URL,
@@ -8,11 +8,11 @@ export const pool = new pg.Pool({
   connectionTimeoutMillis: 10_000,
 });
 
-pool.on("error", (err) => {
-  console.error("Unexpected idle client error", err);
+pool.on('error', (err) => {
+  console.error('Unexpected idle client error', err);
 });
 
 export async function checkDbConnection(): Promise<void> {
-  const { rows } = await pool.query<{ now: Date }>("SELECT now()");
+  const { rows } = await pool.query<{ now: Date }>('SELECT now()');
   console.log(`Database connected at ${rows[0]?.now.toISOString()}`);
 }

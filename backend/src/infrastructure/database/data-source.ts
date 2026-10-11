@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { env } from '../../config/env.js';
+import { env } from '../../config/env.config.js';
 import { UserModel } from './models/user.model.js';
 
 export const AppDataSource = new DataSource({

@@ -11,7 +11,7 @@ import { OtpCryptoService } from '../services/otp.Crypto.service.js';
 import { createRedisClient } from '../redis/redis.client.js';
 import { RedisCacheService } from '../redis/redis-cache.service.js';
 import { createTransporter } from '../../config/mailer.js';
-import { env } from '../../config/env.js';
+import { env } from '../../config/env.config.js';
 import { EmailService } from '../services/email.service.js';
 
 // UseCases
@@ -56,5 +56,5 @@ export const authController = container.get<AuthController>(TYPES.AuthController
 export const di = {
   adminController,
   authController,
-  container
+  container,
 };
