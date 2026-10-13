@@ -1,7 +1,7 @@
-import type { UserRole } from '../enums/UserRole.js';
-import type { UserStatus } from '../enums/UserStatus.js';
+import type { UserRole } from '../enums/UserRole.ts';
+import type { UserStatus } from '../enums/UserStatus.ts';
 
-export interface UserProps {
+export interface IUserProps {
   id: string;
   organizationId: string | null;
   email: string;
@@ -20,3 +20,4 @@ export interface UserProps {
   createdAt: Date;
   updatedAt: Date;
 }
+export type UserProps = IUserProps;

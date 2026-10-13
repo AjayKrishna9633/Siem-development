@@ -6,4 +6,9 @@ export enum ErrorMessage {
   SETUP_ALREADY_DONE = 'A Super Admin is already registered. Registration route locked.',
   SETUP_ALREADY_DONE_RACE = 'Setup already completed due to race condition.',
   CHANNEL_NAME_EXISTS = 'Channel name already exists',
+  OTP_EXPIRED = 'OTP has expired or does not exist',
+  OTP_INVALID = 'Invalid OTP entered',
+  INVALID_CREDENTIALS = 'Invalid email or password',
+  ACCOUNT_LOCKED = 'Account is temporarily locked due to too many failed attempts. Please try again later.',
+  ACCOUNT_INACTIVE = 'Account is inactive or pending invite acceptance',
 }

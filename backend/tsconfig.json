@@ -18,9 +18,10 @@
     "moduleDetection": "force",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    
+
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src"]
 }

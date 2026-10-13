@@ -1,12 +1,14 @@
-export interface BootstrapSuperAdminInput {
+export interface IBootstrapSuperAdminInput {
   setupToken: string;
   email: string;
   username: string;
   password: string;
 }
+export type BootstrapSuperAdminInput = IBootstrapSuperAdminInput;
 
-export interface RegisterSuperAdminInput {
+export interface IRegisterSuperAdminInput {
   email: string;
   username: string;
   password: string;
 }
+export type RegisterSuperAdminInput = IRegisterSuperAdminInput;

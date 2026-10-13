@@ -1,14 +1,15 @@
-import { UserRole } from '../../../../domain/enums/UserRole.js';
+import { UserRole } from '../../../../domain/enums/UserRole.ts';
 
-export interface CreateSuperAdminDTO {
+export interface ICreateSuperAdminDTO {
   id: string;
   email: string;
   username: string;
   passwordHash: string;
   now: Date;
 }
+export type CreateSuperAdminDTO = ICreateSuperAdminDTO;
 
-export interface CreateInvitedDTO {
+export interface ICreateInvitedDTO {
   id: string;
   organizationId: string;
   email: string;
@@ -17,3 +18,4 @@ export interface CreateInvitedDTO {
   invitedById: string;
   now: Date;
 }
+export type CreateInvitedDTO = ICreateInvitedDTO;

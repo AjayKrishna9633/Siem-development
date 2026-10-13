@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError, type ZodSchema } from 'zod';
-import { ApiResponse } from '../http/helpers/implementation/apiResponse.js';
-import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.js';
-import { ErrorMessage } from '../../domain/enums/ErrorMessage.js';
+import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
+import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 export const validate = (schema: ZodSchema) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

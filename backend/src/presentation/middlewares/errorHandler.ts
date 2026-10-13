@@ -1,16 +1,21 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
-import { AppError } from '../../domain/errors/AppError.js';
-import { AppErrorCode } from '../../domain/enums/AppErrorCode.js';
-import { DomainError } from '../../domain/errors/DomainError.js';
-import { ApiResponse } from '../http/helpers/implementation/apiResponse.js';
-import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.js';
-import { ErrorMessage } from '../../domain/enums/ErrorMessage.js';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { DomainError } from '../../domain/errors/DomainError.ts';
+import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
+import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.SETUP_DISABLED]: HttpStatusCode.NOT_FOUND,
   [AppErrorCode.INVALID_SETUP_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.SETUP_ALREADY_DONE]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.OTP_EXPIRED]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.OTP_INVALID]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.ACCOUNT_LOCKED]: HttpStatusCode.FORBIDDEN,
+  [AppErrorCode.ACCOUNT_INACTIVE]: HttpStatusCode.FORBIDDEN,
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {

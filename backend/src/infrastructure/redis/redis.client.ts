@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import { env } from '../../config/env.config.js';
+import { env } from '../../config/env.config.ts';
 
 export const createRedisClient = () => {
   const client = new Redis(env.REDIS_URL);

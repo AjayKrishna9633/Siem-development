@@ -1,10 +1,13 @@
-import { DomainError } from '../errors/DomainError.js';
-import type { UserProps } from '../types/user.types.js';
-import type { CreateSuperAdminDTO, CreateInvitedDTO } from '../../application/dtos/user/request/user-request.dto.js';
-import { UserRole } from '../enums/UserRole.js';
-import { UserStatus } from '../enums/UserStatus.js';
-import { Constants } from '../../shared/constants/app.constants.js';
-import { ErrorMessage } from '../enums/ErrorMessage.js';
+import { DomainError } from '../errors/DomainError.ts';
+import type { UserProps } from '../types/user.types.ts';
+import type {
+  CreateSuperAdminDTO,
+  CreateInvitedDTO,
+} from '../../application/dtos/user/request/user-request.dto.ts';
+import { UserRole } from '../enums/UserRole.ts';
+import { UserStatus } from '../enums/UserStatus.ts';
+import { Constants } from '../../shared/constants/app.constants.ts';
+import { ErrorMessage } from '../enums/ErrorMessage.ts';
 
 export class User {
   private constructor(private props: UserProps) {}
@@ -35,33 +38,50 @@ export class User {
     return new User({ ...props });
   }
 
-  get id() { return this.props.id; }
-  get email() { return this.props.email; }
-  get role() { return this.props.role; }
-  get status() { return this.props.status; }
-  get organizationId() { return this.props.organizationId; }
-  get passwordHash() { return this.props.passwordHash; }
-  get tokenVersion() { return this.props.tokenVersion; }
+  get id() {
+    return this.props.id;
+  }
+  get email() {
+    return this.props.email;
+  }
+  get username() {
+    return this.props.username;
+  }
+  get role() {
+    return this.props.role;
+  }
+  get status() {
+    return this.props.status;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get passwordHash() {
+    return this.props.passwordHash;
+  }
+  get tokenVersion() {
+    return this.props.tokenVersion;
+  }
 
   static createSuperAdmin(input: CreateSuperAdminDTO): User {
     return new User({
-    id: input.id,
-    organizationId: null,
-    email: input.email.trim().toLowerCase(),
-    username: input.username.trim(),
-    passwordHash: input.passwordHash,
-    role: UserRole.SUPER_ADMIN,
-    status: UserStatus.ACTIVE,
-    isEmailVerified: true,
-    tokenVersion: 0,
-    failedLoginAttempts: 0,
-    lockedUntil: null,
-    passwordChangedAt: input.now,
-    lastLoginAt: null,
-    lastLoginIp: null,
-    invitedById: null,
-    createdAt: input.now,
-    updatedAt: input.now,
+      id: input.id,
+      organizationId: null,
+      email: input.email.trim().toLowerCase(),
+      username: input.username.trim(),
+      passwordHash: input.passwordHash,
+      role: UserRole.SUPER_ADMIN,
+      status: UserStatus.ACTIVE,
+      isEmailVerified: true,
+      tokenVersion: 0,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      passwordChangedAt: input.now,
+      lastLoginAt: null,
+      lastLoginIp: null,
+      invitedById: null,
+      createdAt: input.now,
+      updatedAt: input.now,
     });
   }
 
@@ -74,11 +94,16 @@ export class User {
   }
 
   canLogIn(now: Date): boolean {
-    return this.props.status === UserStatus.ACTIVE && this.props.passwordHash !== null && !this.isLocked(now);
+    return (
+      this.props.status === UserStatus.ACTIVE &&
+      this.props.passwordHash !== null &&
+      !this.isLocked(now)
+    );
   }
 
   acceptInvite(passwordHash: string, now: Date): void {
-    if (this.props.status !== UserStatus.INVITED) throw new DomainError(ErrorMessage.INVITE_ALREADY_USED_OR_DISABLED);
+    if (this.props.status !== UserStatus.INVITED)
+      throw new DomainError(ErrorMessage.INVITE_ALREADY_USED_OR_DISABLED);
     this.props.passwordHash = passwordHash;
     this.props.status = UserStatus.ACTIVE;
     this.props.isEmailVerified = true;
@@ -111,7 +136,8 @@ export class User {
   }
 
   changeRole(newRole: Exclude<UserRole, UserRole.SUPER_ADMIN>, now: Date): void {
-    if (this.props.role === UserRole.SUPER_ADMIN) throw new DomainError(ErrorMessage.SUPER_ADMIN_ROLE_CANNOT_BE_CHANGED);
+    if (this.props.role === UserRole.SUPER_ADMIN)
+      throw new DomainError(ErrorMessage.SUPER_ADMIN_ROLE_CANNOT_BE_CHANGED);
     this.props.role = newRole;
     this.props.tokenVersion += 1;
     this.touch(now);

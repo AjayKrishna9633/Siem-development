@@ -1,7 +1,7 @@
-import app from './app.js';
-import { env } from './config/env.config.js';
-import { pool, checkDbConnection } from './infrastructure/database/sql.js';
-import { redisClient } from './infrastructure/di/services.dependency.js';
+import app from './app.ts';
+import { env } from './config/env.config.ts';
+import { pool, checkDbConnection } from './infrastructure/database/sql.ts';
+import { redisClient } from './infrastructure/di/index.ts';
 
 await checkDbConnection();
 

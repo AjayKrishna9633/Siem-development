@@ -2,6 +2,8 @@ const TYPES = {
   // Use Cases
   RegisterSuperAdminUseCase: Symbol.for('RegisterSuperAdminUseCase'),
   SendOtpUseCase: Symbol.for('SendOtpUseCase'),
+  VerifyOtpUseCase: Symbol.for('VerifyOtpUseCase'),
+  LoginUseCase: Symbol.for('LoginUseCase'),
 
   // Repositories
   UserRepository: Symbol.for('UserRepository'),
@@ -11,6 +13,7 @@ const TYPES = {
   EmailService: Symbol.for('EmailService'),
   HashService: Symbol.for('HashService'),
   OtpService: Symbol.for('OtpService'),
+  TokenService: Symbol.for('TokenService'),
 
   // Controllers
   AdminController: Symbol.for('AdminController'),

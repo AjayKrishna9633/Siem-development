@@ -1,4 +1,4 @@
-import type { IApiResponse } from '../IAPIResponse.js';
+import type { IApiResponse } from '../IAPIResponse.ts';
 
 export class ApiResponse<T = any> implements IApiResponse<T> {
   public readonly success: boolean;
@@ -6,7 +6,7 @@ export class ApiResponse<T = any> implements IApiResponse<T> {
   constructor(
     public readonly statusCode: number,
     public readonly data: T | null = null,
-    public readonly message: string = 'Success'
+    public readonly message: string = 'Success',
   ) {
     this.success = this.statusCode >= 200 && this.statusCode < 300;
   }

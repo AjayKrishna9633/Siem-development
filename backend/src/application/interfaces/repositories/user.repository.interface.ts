@@ -1,8 +1,10 @@
-import type { CreateInvitedDTO } from "../../dtos/user/request/user-request.dto.js";
-import { User } from '../../../domain/entities/user.entity.js';
+import type { ICreateInvitedDTO } from '../../dtos/user/request/user-request.dto.ts';
+import type { User } from '../../../domain/entities/user.entity.ts';
 
 export interface IUserRepository {
-    createSuperAdmin(user: User): Promise<"created" | "already_exists">;
-    createInvited(input: CreateInvitedDTO): Promise<void>;
-    countSuperAdmins(): Promise<number>;
+  createSuperAdmin(user: User): Promise<'created' | 'already_exists'>;
+  createInvited(input: ICreateInvitedDTO): Promise<void>;
+  countSuperAdmins(): Promise<number>;
+  findByEmail(email: string): Promise<User | null>;
+  save(user: User): Promise<void>;
 }
