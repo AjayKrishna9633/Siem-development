@@ -4,9 +4,11 @@ const TYPES = {
   SendOtpUseCase: Symbol.for('SendOtpUseCase'),
   VerifyOtpUseCase: Symbol.for('VerifyOtpUseCase'),
   LoginUseCase: Symbol.for('LoginUseCase'),
+  GetCurrentUserUseCase: Symbol.for('GetCurrentUserUseCase'),
 
-  // Repositories
+  // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
+  UserMapper: Symbol.for('UserMapper'),
 
   // Services
   CacheService: Symbol.for('CacheService'),
@@ -14,6 +16,9 @@ const TYPES = {
   HashService: Symbol.for('HashService'),
   OtpService: Symbol.for('OtpService'),
   TokenService: Symbol.for('TokenService'),
+
+  // Middleware
+  AuthMiddleware: Symbol.for('AuthMiddleware'),
 
   // Controllers
   AdminController: Symbol.for('AdminController'),

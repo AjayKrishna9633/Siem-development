@@ -11,4 +11,8 @@ export enum ErrorMessage {
   INVALID_CREDENTIALS = 'Invalid email or password',
   ACCOUNT_LOCKED = 'Account is temporarily locked due to too many failed attempts. Please try again later.',
   ACCOUNT_INACTIVE = 'Account is inactive or pending invite acceptance',
+  UNAUTHORIZED = 'Authentication token is missing or malformed',
+  TOKEN_EXPIRED = 'Authentication token has expired. Please log in again',
+  INVALID_TOKEN = 'Authentication token is invalid',
+  USER_NOT_FOUND = 'User not found or account no longer exists',
 }

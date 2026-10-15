@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { AuthController } from '../controllers/auth.controller.ts';
 import { validate } from '../middlewares/validate.middleware.ts';
 import { sendOtpSchema, verifyOtpSchema, loginSchema } from '../validators/auth.schema.ts';
 
-export function authRoutes(controller: AuthController): Router {
+export function authRoutes(controller: AuthController, authMiddleware: RequestHandler): Router {
   const router = Router();
 
   const otpLimiter = rateLimit({
@@ -51,6 +51,8 @@ export function authRoutes(controller: AuthController): Router {
   router.post('/verify-otp', verifyOtpLimiter, validate(verifyOtpSchema), controller.verifyOtp);
 
   router.post('/login', loginLimiter, validate(loginSchema), controller.login);
+
+  router.get('/me', authMiddleware, controller.getMe);
 
   return router;
 }

@@ -22,7 +22,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.use('/api/admin', adminRoutes(di.adminController));
-app.use('/api/auth', authRoutes(di.authController));
+app.use('/api/auth', authRoutes(di.authController, di.authMiddleware));
 
 app.use(errorHandler);
 

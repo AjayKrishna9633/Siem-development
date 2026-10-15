@@ -29,3 +29,16 @@ export interface ILoginResponse {
   };
 }
 export type LoginResponse = ILoginResponse;
+
+export interface IUserProfileResponse {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+  status: string;
+  organizationId: string | null;
+  isEmailVerified: boolean;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+}
+export type UserProfileResponse = IUserProfileResponse;

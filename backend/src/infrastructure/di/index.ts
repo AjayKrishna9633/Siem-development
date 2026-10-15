@@ -1,8 +1,9 @@
 import { container } from './container.ts';
 import TYPES from '../../domain/constants/types.ts';
 
-// Repositories
+// Repositories & Mappers
 import { TypeOrmuUserRepository } from '../database/repositories/user.repositories.ts';
+import { UserMapper } from '../database/mappers/user.mapper.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
@@ -20,6 +21,9 @@ import { RegisterSuperAdminUseCase } from '../../application/use-cases/admin/cre
 import { SendOtpUseCase } from '../../application/use-cases/auth/send-otp.usecase.ts';
 import { VerifyOtpUseCase } from '../../application/use-cases/auth/verify-otp.usecase.ts';
 import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts';
+import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
+import type { ITokenService } from '../../application/interfaces/services/token.service.interface.ts';
+import { authenticate } from '../../presentation/middlewares/auth.middleware.ts';
 
 // Controllers
 import { AdminController } from '../../presentation/controllers/admin.controller.ts';
@@ -35,7 +39,8 @@ const mailTransporter = createTransporter();
 container.bind(TYPES.Transporter).toConstantValue(mailTransporter);
 container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
 
-// 2. Bind Repositories
+// 2. Bind Repositories & Mappers
+container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmuUserRepository);
 
 // 3. Bind Services
@@ -50,20 +55,25 @@ container.bind(TYPES.RegisterSuperAdminUseCase).to(RegisterSuperAdminUseCase);
 container.bind(TYPES.SendOtpUseCase).to(SendOtpUseCase);
 container.bind(TYPES.VerifyOtpUseCase).to(VerifyOtpUseCase);
 container.bind(TYPES.LoginUseCase).to(LoginUseCase);
+container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
 
 // 5. Bind Controllers
 container.bind(TYPES.AdminController).to(AdminController);
 container.bind(TYPES.AuthController).to(AuthController);
 
-// Resolve the controllers
+// Resolve the controllers & services
 export const adminController = container.get<AdminController>(TYPES.AdminController);
 export const authController = container.get<AuthController>(TYPES.AuthController);
+export const tokenService = container.get<ITokenService>(TYPES.TokenService);
+export const authMiddleware = authenticate(tokenService);
 
 export { redisClient };
 
 export const di = {
   adminController,
   authController,
+  authMiddleware,
+  tokenService,
   redisClient,
   container,
 };

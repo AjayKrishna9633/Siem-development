@@ -16,6 +16,10 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.ACCOUNT_LOCKED]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.ACCOUNT_INACTIVE]: HttpStatusCode.FORBIDDEN,
+  [AppErrorCode.UNAUTHORIZED]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.TOKEN_EXPIRED]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.INVALID_TOKEN]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.USER_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {

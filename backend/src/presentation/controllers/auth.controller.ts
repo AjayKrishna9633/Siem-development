@@ -8,6 +8,10 @@ import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
 import type { ISendOtpUseCase } from '../../application/interfaces/use-cases/send-otp.interface.ts';
 import type { IVerifyOtpUseCase } from '../../application/interfaces/use-cases/verify-otp.interface.ts';
 import type { ILoginUseCase } from '../../application/interfaces/use-cases/login.interface.ts';
+import type { IGetCurrentUserUseCase } from '../../application/interfaces/use-cases/get-current-user.interface.ts';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class AuthController {
@@ -15,6 +19,8 @@ export class AuthController {
     @inject(TYPES.SendOtpUseCase) private readonly sendOtpUseCase: ISendOtpUseCase,
     @inject(TYPES.VerifyOtpUseCase) private readonly verifyOtpUseCase: IVerifyOtpUseCase,
     @inject(TYPES.LoginUseCase) private readonly loginUseCase: ILoginUseCase,
+    @inject(TYPES.GetCurrentUserUseCase)
+    private readonly getCurrentUserUseCase: IGetCurrentUserUseCase,
   ) {}
 
   sendOtp = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -48,5 +54,20 @@ export class AuthController {
     res
       .status(HttpStatusCode.OK)
       .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.LOGIN_SUCCESSFUL));
+  });
+
+  getMe = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw new AppError(AppErrorCode.UNAUTHORIZED, ErrorMessage.UNAUTHORIZED);
+    }
+
+    const profile = await this.getCurrentUserUseCase.execute({
+      userId: req.user.userId,
+      tokenVersion: req.user.tokenVersion,
+    });
+
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, profile, SuccessMessage.USER_PROFILE_FETCHED));
   });
 }

@@ -2,17 +2,27 @@ import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { DataSource } from 'typeorm';
 import type { IUserRepository } from '../../../application/interfaces/repositories/user.repository.interface.ts';
+import type { IMapper } from '../../../application/interfaces/IMapper.ts';
+import { BaseRepository } from './base.repository.ts';
 import { UserModel } from '../models/user.model.ts';
-import { User } from '../../../domain/entities/user.entity.ts';
+import type { User } from '../../../domain/entities/user.entity.ts';
 import type { ICreateInvitedDTO } from '../../../application/dtos/user/request/user-request.dto.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 
 @injectable()
-export class TypeOrmuUserRepository implements IUserRepository {
-  constructor(@inject(TYPES.DataSource) private readonly db: DataSource) {}
+export class TypeOrmuUserRepository
+  extends BaseRepository<User, UserModel>
+  implements IUserRepository
+{
+  constructor(
+    @inject(TYPES.DataSource) db: DataSource,
+    @inject(TYPES.UserMapper) mapper: IMapper<User, UserModel>,
+  ) {
+    super(db, UserModel, mapper);
+  }
 
   countSuperAdmins(): Promise<number> {
-    return this.db.getRepository(UserModel).count({ where: { role: UserRole.SUPER_ADMIN } });
+    return this.repository.count({ where: { role: UserRole.SUPER_ADMIN } });
   }
 
   createSuperAdmin(user: User): Promise<'created' | 'already_exists'> {
@@ -29,38 +39,15 @@ export class TypeOrmuUserRepository implements IUserRepository {
   }
 
   async createInvited(input: ICreateInvitedDTO): Promise<void> {
-    await this.db.getRepository(UserModel).insert(input);
+    await this.repository.insert(input);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const model = await this.db.getRepository(UserModel).findOne({
+    const model = await this.repository.findOne({
       where: { email: email.trim().toLowerCase() },
     });
     if (!model) return null;
 
-    return User.reconstitute({
-      id: model.id,
-      organizationId: model.organizationId,
-      email: model.email,
-      username: model.username,
-      passwordHash: model.passwordHash,
-      role: model.role,
-      status: model.status,
-      isEmailVerified: model.isEmailVerified,
-      tokenVersion: model.tokenVersion,
-      failedLoginAttempts: model.failedLoginAttempts,
-      lockedUntil: model.lockedUntil,
-      passwordChangedAt: model.passwordChangedAt,
-      lastLoginAt: model.lastLoginAt,
-      lastLoginIp: model.lastLoginIp,
-      invitedById: model.invitedById,
-      createdAt: model.createdAt,
-      updatedAt: model.updatedAt,
-    });
-  }
-
-  async save(user: User): Promise<void> {
-    const snapshot = user.toSnapshot();
-    await this.db.getRepository(UserModel).save(snapshot);
+    return this.mapper.toDomain(model);
   }
 }
