@@ -5,6 +5,7 @@ const TYPES = {
   VerifyOtpUseCase: Symbol.for('VerifyOtpUseCase'),
   LoginUseCase: Symbol.for('LoginUseCase'),
   GetCurrentUserUseCase: Symbol.for('GetCurrentUserUseCase'),
+  ResetPasswordUseCase: Symbol.for('ResetPasswordUseCase'),
 
   // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),

@@ -4,5 +4,6 @@ export enum SuccessMessage {
   OTP_VERIFIED = 'OTP verified successfully',
   LOGIN_SUCCESSFUL = 'Login successful',
   USER_PROFILE_FETCHED = 'User profile retrieved successfully',
+  PASSWORD_RESET_SUCCESSFUL = 'Password has been reset successfully',
   CHANNEL_CREATED = 'Channel created successfully',
 }

@@ -20,6 +20,7 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.TOKEN_EXPIRED]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.INVALID_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.USER_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.INVALID_RESET_TOKEN]: HttpStatusCode.BAD_REQUEST,
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {

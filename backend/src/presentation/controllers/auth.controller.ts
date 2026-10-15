@@ -9,6 +9,7 @@ import type { ISendOtpUseCase } from '../../application/interfaces/use-cases/sen
 import type { IVerifyOtpUseCase } from '../../application/interfaces/use-cases/verify-otp.interface.ts';
 import type { ILoginUseCase } from '../../application/interfaces/use-cases/login.interface.ts';
 import type { IGetCurrentUserUseCase } from '../../application/interfaces/use-cases/get-current-user.interface.ts';
+import type { IResetPasswordUseCase } from '../../application/interfaces/use-cases/reset-password.interface.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
@@ -21,6 +22,8 @@ export class AuthController {
     @inject(TYPES.LoginUseCase) private readonly loginUseCase: ILoginUseCase,
     @inject(TYPES.GetCurrentUserUseCase)
     private readonly getCurrentUserUseCase: IGetCurrentUserUseCase,
+    @inject(TYPES.ResetPasswordUseCase)
+    private readonly resetPasswordUseCase: IResetPasswordUseCase,
   ) {}
 
   sendOtp = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -32,11 +35,11 @@ export class AuthController {
   });
 
   verifyOtp = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.verifyOtpUseCase.execute(req.body);
+    const result = await this.verifyOtpUseCase.execute(req.body);
 
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, { verified: true }, SuccessMessage.OTP_VERIFIED));
+      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.OTP_VERIFIED));
   });
 
   login = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -69,5 +72,13 @@ export class AuthController {
     res
       .status(HttpStatusCode.OK)
       .json(new ApiResponse(HttpStatusCode.OK, profile, SuccessMessage.USER_PROFILE_FETCHED));
+  });
+
+  resetPassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    await this.resetPasswordUseCase.execute(req.body);
+
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.PASSWORD_RESET_SUCCESSFUL));
   });
 }

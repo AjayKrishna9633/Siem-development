@@ -22,6 +22,7 @@ import { SendOtpUseCase } from '../../application/use-cases/auth/send-otp.usecas
 import { VerifyOtpUseCase } from '../../application/use-cases/auth/verify-otp.usecase.ts';
 import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts';
 import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
+import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.usecase.ts';
 import type { ITokenService } from '../../application/interfaces/services/token.service.interface.ts';
 import { authenticate } from '../../presentation/middlewares/auth.middleware.ts';
 
@@ -56,6 +57,7 @@ container.bind(TYPES.SendOtpUseCase).to(SendOtpUseCase);
 container.bind(TYPES.VerifyOtpUseCase).to(VerifyOtpUseCase);
 container.bind(TYPES.LoginUseCase).to(LoginUseCase);
 container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
+container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
 
 // 5. Bind Controllers
 container.bind(TYPES.AdminController).to(AdminController);

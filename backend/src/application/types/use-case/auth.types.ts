@@ -11,6 +11,12 @@ export interface IVerifyOtpInput {
 }
 export type VerifyOtpInput = IVerifyOtpInput;
 
+export interface IVerifyOtpResponse {
+  verified: boolean;
+  resetToken?: string;
+}
+export type VerifyOtpResponse = IVerifyOtpResponse;
+
 export interface ILoginInput {
   email: string;
   password: string;
@@ -42,3 +48,10 @@ export interface IUserProfileResponse {
   createdAt: Date;
 }
 export type UserProfileResponse = IUserProfileResponse;
+
+export interface IResetPasswordInput {
+  email: string;
+  resetToken: string;
+  newPassword: string;
+}
+export type ResetPasswordInput = IResetPasswordInput;

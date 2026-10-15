@@ -24,3 +24,16 @@ export const loginSchema = z.object({
 });
 
 export type LoginInputDTO = z.infer<typeof loginSchema>;
+
+const byteLength = (s: string) => new TextEncoder().encode(s).length;
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email().max(255),
+  resetToken: z.string().min(1, 'Reset token is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .refine((p) => byteLength(p) <= 72, 'Password too long (exceeds 72 bytes)'),
+});
+
+export type ResetPasswordInputDTO = z.infer<typeof resetPasswordSchema>;

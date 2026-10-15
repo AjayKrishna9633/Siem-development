@@ -15,4 +15,5 @@ export enum ErrorMessage {
   TOKEN_EXPIRED = 'Authentication token has expired. Please log in again',
   INVALID_TOKEN = 'Authentication token is invalid',
   USER_NOT_FOUND = 'User not found or account no longer exists',
+  INVALID_RESET_TOKEN = 'Password reset token is invalid or has expired',
 }
