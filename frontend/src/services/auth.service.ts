@@ -3,7 +3,6 @@ import type {
   IApiResponse,
   ILoginResponse,
   IUser,
-  IDemoAccount,
   IInviteResponse,
   IVerifyInviteResponse,
   UserRole,
@@ -27,14 +26,6 @@ export const authService = {
       '/admin/register-super-admin',
       data,
     );
-    return res.data.data;
-  },
-
-  async seedDemo(): Promise<{ message: string; accounts: IDemoAccount[] }> {
-    const res =
-      await api.post<IApiResponse<{ message: string; accounts: IDemoAccount[] }>>(
-        '/auth/seed-demo',
-      );
     return res.data.data;
   },
 

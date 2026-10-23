@@ -25,15 +25,6 @@ export interface ILoginResponse {
   user: IUser;
 }
 
-export interface IDemoAccount {
-  role: UserRole;
-  email: string;
-  username: string;
-  password: string;
-  organizationId: string | null;
-  organizationName?: string;
-}
-
 export interface IInviteResponse {
   userId: string;
   email: string;

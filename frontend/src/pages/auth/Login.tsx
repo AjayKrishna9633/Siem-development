@@ -1,37 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Eye, EyeOff, Grip, ShieldAlert, Users, Shield } from 'lucide-react';
+import { Eye, EyeOff, Grip } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
-import type { UserRole } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { cn } from '../../lib/cn.ts';
 import { AuthDivider, AuthError, AuthLayout, authInputClass } from './AuthLayout.tsx';
 
-const demoPersonas: { role: UserRole; label: string; icon: React.ReactNode }[] = [
-  { role: 'super_admin', label: 'Super Admin', icon: <ShieldAlert className="size-3.5" /> },
-  { role: 'org_admin', label: 'Org Admin', icon: <Users className="size-3.5" /> },
-  { role: 'analyst', label: 'Analyst', icon: <Shield className="size-3.5" /> },
-];
-
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loadDemoAccounts, loginAsDemoUser } = useAuthStore();
+  const login = useAuthStore((s) => s.login);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState<UserRole | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ssoNotice, setSsoNotice] = useState(false);
 
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';
-
-  useEffect(() => {
-    loadDemoAccounts().catch(() => {});
-  }, [loadDemoAccounts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,19 +33,6 @@ export const Login: React.FC = () => {
       setError(apiErrorMessage(err, 'Invalid credentials'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemo = async (role: UserRole) => {
-    setError(null);
-    setDemoLoading(role);
-    try {
-      await loginAsDemoUser(role);
-      navigate('/', { replace: true });
-    } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Demo login failed'));
-    } finally {
-      setDemoLoading(null);
     }
   };
 
@@ -143,26 +118,6 @@ export const Login: React.FC = () => {
           {loading ? 'Authenticating…' : 'Login'}
         </button>
       </form>
-
-      <div className="mt-6 rounded border border-line-strong bg-canvas/50 p-3">
-        <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-[1px] text-muted">
-          Demo personas
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {demoPersonas.map((p) => (
-            <button
-              key={p.role}
-              type="button"
-              disabled={demoLoading !== null}
-              onClick={() => handleDemo(p.role)}
-              className="flex h-8 items-center justify-center gap-1.5 rounded border border-line-strong bg-raised text-xs text-ink transition-colors hover:border-accent/50 hover:text-accent disabled:opacity-60"
-            >
-              {p.icon}
-              {demoLoading === p.role ? '…' : p.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </AuthLayout>
   );
 };

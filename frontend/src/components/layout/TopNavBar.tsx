@@ -1,23 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
-import { LogOut, Sparkles, SquareTerminal, UserRound } from 'lucide-react';
+import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
-import type { UserRole } from '../../types/auth.ts';
 import { cn } from '../../lib/cn.ts';
 import { ADMIN_ROLES, roleLabel } from '../../lib/roles.ts';
 import { Avatar } from '../ui/Misc.tsx';
 
-const personas: { role: UserRole; title: string; caption: string }[] = [
-  { role: 'super_admin', title: 'Super Admin', caption: 'Platform owner' },
-  { role: 'org_admin', title: 'Organization Admin', caption: 'Acme Corp lead' },
-  { role: 'analyst', title: 'Security Analyst', caption: 'SOC triage' },
-];
-
 export const TopNavBar: React.FC = () => {
-  const { user, logout, loginAsDemoUser } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [switching, setSwitching] = useState<UserRole | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,19 +24,6 @@ export const TopNavBar: React.FC = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const handleSwitch = async (role: UserRole) => {
-    try {
-      setSwitching(role);
-      await loginAsDemoUser(role);
-      setMenuOpen(false);
-      navigate('/');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSwitching(null);
-    }
   };
 
   const links = [
@@ -112,32 +91,6 @@ export const TopNavBar: React.FC = () => {
                 >
                   Profile
                 </MenuLink>
-
-                <div className="mt-1 border-t border-line pt-1">
-                  <p className="flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.5px] text-subtle">
-                    <Sparkles className="size-3 text-medium" /> Demo persona
-                  </p>
-                  {personas.map((p) => (
-                    <button
-                      key={p.role}
-                      type="button"
-                      disabled={switching !== null}
-                      onClick={() => handleSwitch(p.role)}
-                      className={cn(
-                        'flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-xs hover:bg-raised disabled:opacity-60',
-                        user.role === p.role ? 'text-accent' : 'text-ink',
-                      )}
-                    >
-                      <span>
-                        {p.title}
-                        <span className="ml-1.5 text-subtle">{p.caption}</span>
-                      </span>
-                      {switching === p.role && (
-                        <span className="font-mono text-[10px] text-muted">…</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
 
                 <button
                   type="button"
