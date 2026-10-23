@@ -18,4 +18,11 @@ export interface ICreateInvitedDTO {
   invitedById: string;
   now: Date;
 }
+
+export interface IUpdateProfileDTO {
+  id: string;
+  username?: string;
+  now: Date;
+}
+
 export type CreateInvitedDTO = ICreateInvitedDTO;

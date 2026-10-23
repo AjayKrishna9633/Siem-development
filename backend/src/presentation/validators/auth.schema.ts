@@ -37,3 +37,13 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordInputDTO = z.infer<typeof resetPasswordSchema>;
+
+export const updateProfileSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(2, 'Username must be at least 2 characters')
+    .max(100, 'Username must not exceed 100 characters'),
+});
+
+export type UpdateProfileInputDTO = z.infer<typeof updateProfileSchema>;
