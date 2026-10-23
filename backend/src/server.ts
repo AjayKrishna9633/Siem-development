@@ -1,15 +1,23 @@
 import app from './app.ts';
 import { env } from './config/env.config.ts';
 import { pool, checkDbConnection } from './infrastructure/database/sql.ts';
+import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { redisClient } from './infrastructure/di/index.ts';
 
 await checkDbConnection();
+if (!AppDataSource.isInitialized) {
+  await AppDataSource.initialize();
+  console.log('AppDataSource initialized successfully');
+}
 
 const server = app.listen(env.PORT, () => console.log(`Server running on :${env.PORT}`));
 
 const shutdown = async () => {
   console.log('Shutting down');
   server.close();
+  if (AppDataSource.isInitialized) {
+    await AppDataSource.destroy();
+  }
   await pool.end();
   await redisClient.quit();
   process.exit(0);

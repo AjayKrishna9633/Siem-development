@@ -9,7 +9,8 @@ import type {
 @injectable()
 export class JwtTokenService implements ITokenService {
   private readonly secret = envConfig.JWT_SECRET;
-  private readonly expiresIn = '1h';
+  // Short-lived: the refresh cookie re-issues it, so a leaked token expires quickly
+  private readonly expiresIn = '15m';
 
   generateAccessToken(payload: ITokenPayload): string {
     return jwt.sign(payload, this.secret, { expiresIn: this.expiresIn });

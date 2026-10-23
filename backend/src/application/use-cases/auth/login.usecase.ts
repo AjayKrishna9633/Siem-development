@@ -2,7 +2,9 @@ import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
-import type { ITokenService } from '../../interfaces/services/token.service.interface.ts';
+import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
+import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
+import { assertCompanyActive } from '../shared/access.ts';
 import type { ILoginInput, ILoginResponse } from '../../types/use-case/auth.types.ts';
 import type { ILoginUseCase } from '../../interfaces/use-cases/login.interface.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
@@ -15,7 +17,8 @@ export class LoginUseCase implements ILoginUseCase {
   constructor(
     @inject(TYPES.UserRepository) private readonly users: IUserRepository,
     @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.TokenService) private readonly tokenService: ITokenService,
+    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
+    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
   ) {}
 
   async execute(input: ILoginInput): Promise<ILoginResponse> {
@@ -44,10 +47,13 @@ export class LoginUseCase implements ILoginUseCase {
       throw new AppError(AppErrorCode.INVALID_CREDENTIALS, ErrorMessage.INVALID_CREDENTIALS);
     }
 
+    // Checked after the password so company status is not revealed to guessers
+    await assertCompanyActive(this.companies, user);
+
     user.recordSuccessfulLogin(input.ip ?? null, now);
     await this.users.save(user);
 
-    const accessToken = this.tokenService.generateAccessToken({
+    const { accessToken, refreshToken } = await this.sessions.issue({
       userId: user.id,
       email: user.email,
       role: user.role,
@@ -57,6 +63,7 @@ export class LoginUseCase implements ILoginUseCase {
 
     return {
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,

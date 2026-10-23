@@ -4,4 +4,12 @@ export interface ICacheService {
   delete(key: string): Promise<void>;
 }
 export type CacheKey =
-  `otp:signup:${string}` | `otp:reset:${string}` | `reset-token:${string}` | `rl:login:${string}`;
+  | `otp:signup:${string}`
+  | `otp:reset:${string}`
+  | `reset-token:${string}`
+  | `rl:login:${string}`
+  | `invite:${string}`
+  | `refresh:${string}`
+  | `refresh-family:${string}`
+  | `activation:${string}`
+  | `activation-user:${string}`;

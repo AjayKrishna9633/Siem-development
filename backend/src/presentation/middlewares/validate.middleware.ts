@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { ZodError, type ZodSchema } from 'zod';
+import { ZodError, ZodObject, type ZodSchema } from 'zod';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
@@ -7,11 +7,15 @@ import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 export const validate = (schema: ZodSchema) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await schema.parseAsync({
-        body: req.body,
-        query: req.query,
-        params: req.params,
-      });
+      if (schema instanceof ZodObject && 'body' in schema.shape) {
+        await schema.parseAsync({
+          body: req.body,
+          query: req.query,
+          params: req.params,
+        });
+      } else {
+        await schema.parseAsync(req.body);
+      }
 
       next();
     } catch (error) {

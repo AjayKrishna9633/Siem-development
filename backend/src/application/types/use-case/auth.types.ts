@@ -26,6 +26,8 @@ export type LoginInput = ILoginInput;
 
 export interface ILoginResponse {
   accessToken: string;
+  // Delivered as an httpOnly cookie by the controller, never in the JSON body
+  refreshToken: string;
   user: {
     id: string;
     email: string;
