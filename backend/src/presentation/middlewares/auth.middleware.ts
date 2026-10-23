@@ -4,6 +4,8 @@ import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
+import type { UserRole } from '../../domain/enums/UserRole.ts';
+
 export function authenticate(tokenService: ITokenService) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
@@ -29,5 +31,21 @@ export function authenticate(tokenService: ITokenService) {
       }
       next(new AppError(AppErrorCode.INVALID_TOKEN, ErrorMessage.INVALID_TOKEN));
     }
+  };
+}
+
+export function requireRoles(...allowedRoles: UserRole[]) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(new AppError(AppErrorCode.UNAUTHORIZED, ErrorMessage.UNAUTHORIZED));
+      return;
+    }
+
+    if (!allowedRoles.includes(req.user.role as UserRole)) {
+      next(new AppError(AppErrorCode.FORBIDDEN, ErrorMessage.FORBIDDEN));
+      return;
+    }
+
+    next();
   };
 }

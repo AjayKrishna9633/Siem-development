@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
-import type { DataSource } from 'typeorm';
+import { In, type DataSource } from 'typeorm';
 import type { IUserRepository } from '../../../application/interfaces/repositories/user.repository.interface.ts';
 import type { IMapper } from '../../../application/interfaces/IMapper.ts';
 import { BaseRepository } from './base.repository.ts';
@@ -49,5 +49,31 @@ export class TypeOrmuUserRepository
     if (!model) return null;
 
     return this.mapper.toDomain(model);
+  }
+
+  async findAll(options?: { organizationId?: string }): Promise<User[]> {
+    const where = options?.organizationId ? { organizationId: options.organizationId } : {};
+    const models = await this.repository.find({
+      where,
+      order: { createdAt: 'DESC' },
+    });
+    return models.map((model) => this.mapper.toDomain(model));
+  }
+
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    const models = await this.repository.find({ where: { id: In(ids) } });
+    return models.map((model) => this.mapper.toDomain(model));
+  }
+
+  async countByOrganization(): Promise<Map<string, number>> {
+    const rows = await this.repository
+      .createQueryBuilder('user')
+      .select('user.organization_id', 'organizationId')
+      .addSelect('COUNT(*)', 'count')
+      .where('user.organization_id IS NOT NULL')
+      .groupBy('user.organization_id')
+      .getRawMany<{ organizationId: string; count: string }>();
+    return new Map(rows.map((r) => [r.organizationId, Number(r.count)]));
   }
 }

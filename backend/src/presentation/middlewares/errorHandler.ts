@@ -21,6 +21,16 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.INVALID_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.USER_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
   [AppErrorCode.INVALID_RESET_TOKEN]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.FORBIDDEN]: HttpStatusCode.FORBIDDEN,
+  [AppErrorCode.USER_ALREADY_EXISTS]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.INVALID_INVITE_TOKEN]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.VALIDATION_ERROR]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.INVALID_REFRESH_TOKEN]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.SESSION_REVOKED]: HttpStatusCode.UNAUTHORIZED,
+  [AppErrorCode.COMPANY_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.COMPANY_NAME_TAKEN]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.COMPANY_DEACTIVATED]: HttpStatusCode.FORBIDDEN,
+  [AppErrorCode.INVALID_ACTIVATION]: HttpStatusCode.BAD_REQUEST,
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {

@@ -9,6 +9,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().url(),
   OTP_EMAIL: z.string().email(),
   OTP_PASSWORD: z.string(),
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -7,7 +7,9 @@ import {
   verifyOtpSchema,
   loginSchema,
   resetPasswordSchema,
+  updateProfileSchema,
 } from '../validators/auth.schema.ts';
+import { activateAccountSchema } from '../validators/user-mgmt.schema.ts';
 
 export function authRoutes(controller: AuthController, authMiddleware: RequestHandler): Router {
   const router = Router();
@@ -64,6 +66,20 @@ export function authRoutes(controller: AuthController, authMiddleware: RequestHa
     },
   });
 
+  // Refresh runs on every page load and every ~15 min, so it gets a wider budget
+  const refreshLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 60,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      success: false,
+      statusCode: 429,
+      message: 'Too many session refresh attempts, please try again later.',
+      data: null,
+    },
+  });
+
   router.post('/send-otp', otpLimiter, validate(sendOtpSchema), controller.sendOtp);
 
   router.post('/verify-otp', verifyOtpLimiter, validate(verifyOtpSchema), controller.verifyOtp);
@@ -77,7 +93,29 @@ export function authRoutes(controller: AuthController, authMiddleware: RequestHa
     controller.resetPassword,
   );
 
+  router.post('/refresh', refreshLimiter, controller.refresh);
+  router.post('/logout', controller.logout);
+
   router.get('/me', authMiddleware, controller.getMe);
+  router.put('/profile', authMiddleware, validate(updateProfileSchema), controller.updateProfile);
+
+  // Demo seeder for review presentation
+
+  // Account activation: link ID + email + temporary password + new password
+  const activationLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 20,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      success: false,
+      statusCode: 429,
+      message: 'Too many activation attempts, please try again later.',
+      data: null,
+    },
+  });
+  router.get('/activation', activationLimiter, controller.getActivation);
+  router.post('/activate', activationLimiter, validate(activateAccountSchema), controller.activate);
 
   return router;
 }

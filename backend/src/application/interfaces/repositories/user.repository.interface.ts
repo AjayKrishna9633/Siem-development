@@ -7,4 +7,8 @@ export interface IUserRepository extends IBaseRepository<User> {
   createInvited(input: ICreateInvitedDTO): Promise<void>;
   countSuperAdmins(): Promise<number>;
   findByEmail(email: string): Promise<User | null>;
+  findAll(options?: { organizationId?: string }): Promise<User[]>;
+  findByIds(ids: string[]): Promise<User[]>;
+  // Member count per company, keyed by organization id
+  countByOrganization(): Promise<Map<string, number>>;
 }
