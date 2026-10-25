@@ -1,4 +1,4 @@
-import type { ErrorRequestHandler } from 'express';
+import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
@@ -8,13 +8,9 @@ import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 const statusByCode: Record<AppErrorCode, number> = {
-  [AppErrorCode.SETUP_DISABLED]: HttpStatusCode.NOT_FOUND,
-  [AppErrorCode.INVALID_SETUP_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.SETUP_ALREADY_DONE]: HttpStatusCode.CONFLICT,
-  [AppErrorCode.OTP_EXPIRED]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.OTP_INVALID]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
-  [AppErrorCode.ACCOUNT_LOCKED]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.ACCOUNT_INACTIVE]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.UNAUTHORIZED]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.TOKEN_EXPIRED]: HttpStatusCode.UNAUTHORIZED,
@@ -23,7 +19,6 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.INVALID_RESET_TOKEN]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.FORBIDDEN]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.USER_ALREADY_EXISTS]: HttpStatusCode.CONFLICT,
-  [AppErrorCode.INVALID_INVITE_TOKEN]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.VALIDATION_ERROR]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_REFRESH_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.SESSION_REVOKED]: HttpStatusCode.UNAUTHORIZED,
@@ -31,9 +26,67 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.COMPANY_NAME_TAKEN]: HttpStatusCode.CONFLICT,
   [AppErrorCode.COMPANY_DEACTIVATED]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.INVALID_ACTIVATION]: HttpStatusCode.BAD_REQUEST,
+  // 400 rather than 401: a wrong current password must not look like an expired session
+  [AppErrorCode.INVALID_VERIFICATION_CODE]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.INVALID_CURRENT_PASSWORD]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.SAME_PASSWORD]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.SAME_EMAIL]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.EMAIL_TAKEN]: HttpStatusCode.CONFLICT,
+};
+
+// Postgres error 22P02, e.g. "invalid input syntax for type uuid"
+const PG_INVALID_TEXT_REPRESENTATION = '22P02';
+// Postgres error 23505: a unique index rejected a duplicate
+const PG_UNIQUE_VIOLATION = '23505';
+
+// TypeORM copies the driver's error code onto its QueryFailedError
+const isPostgresError = (err: unknown, code: string): boolean =>
+  typeof err === 'object' && err !== null && 'code' in err && err.code === code;
+
+// Two requests can both pass a "does it exist?" check before either saves; the unique
+// index then rejects the second. The column comes from Postgres's detail text,
+// e.g. "Key (email)=(a@b.co) already exists."
+const duplicateMessage = (err: unknown): string => {
+  const detail =
+    typeof err === 'object' && err !== null && 'detail' in err && typeof err.detail === 'string'
+      ? err.detail
+      : '';
+  const column = /^Key \((\w+)\)/.exec(detail)?.[1];
+  if (column === 'email') return ErrorMessage.USER_ALREADY_EXISTS;
+  if (column === 'name') return ErrorMessage.COMPANY_NAME_TAKEN;
+  return ErrorMessage.DUPLICATE_VALUE;
+};
+
+// express.json() tags its own failures with a `type`
+const bodyParserErrorType = (err: unknown): string | undefined =>
+  typeof err === 'object' && err !== null && 'type' in err && typeof err.type === 'string'
+    ? err.type
+    : undefined;
+
+// Unmatched routes answer in the same JSON shape as every other error
+export const notFoundHandler: RequestHandler = (_req, res): void => {
+  res
+    .status(HttpStatusCode.NOT_FOUND)
+    .json(new ApiResponse(HttpStatusCode.NOT_FOUND, null, ErrorMessage.ROUTE_NOT_FOUND));
 };
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {
+  const parserError = bodyParserErrorType(err);
+  if (parserError === 'entity.parse.failed') {
+    res
+      .status(HttpStatusCode.BAD_REQUEST)
+      .json(new ApiResponse(HttpStatusCode.BAD_REQUEST, null, ErrorMessage.INVALID_JSON));
+    return;
+  }
+  if (parserError === 'entity.too.large') {
+    res
+      .status(HttpStatusCode.PAYLOAD_TOO_LARGE)
+      .json(
+        new ApiResponse(HttpStatusCode.PAYLOAD_TOO_LARGE, null, ErrorMessage.PAYLOAD_TOO_LARGE),
+      );
+    return;
+  }
+
   if (err instanceof ZodError) {
     const errorMessages = err.issues.map((e) => ({
       field: e.path.join('.'),
@@ -57,6 +110,21 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void =
     res
       .status(HttpStatusCode.UNPROCESSABLE_ENTITY)
       .json(new ApiResponse(HttpStatusCode.UNPROCESSABLE_ENTITY, null, err.message));
+    return;
+  }
+
+  // Safety net: a malformed UUID that slipped past request validation reached Postgres
+  if (isPostgresError(err, PG_INVALID_TEXT_REPRESENTATION)) {
+    res
+      .status(HttpStatusCode.BAD_REQUEST)
+      .json(new ApiResponse(HttpStatusCode.BAD_REQUEST, null, ErrorMessage.INVALID_ID));
+    return;
+  }
+
+  if (isPostgresError(err, PG_UNIQUE_VIOLATION)) {
+    res
+      .status(HttpStatusCode.CONFLICT)
+      .json(new ApiResponse(HttpStatusCode.CONFLICT, null, duplicateMessage(err)));
     return;
   }
 

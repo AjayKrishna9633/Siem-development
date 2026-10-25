@@ -1,15 +1,14 @@
 import { z } from 'zod';
-
-const byteLength = (s: string) => new TextEncoder().encode(s).length;
+import { ACTIVATION_ID_PATTERN } from '../../application/interfaces/services/activation.service.interface.ts';
+import { emailField, newPasswordField, secretField } from './common.schema.ts';
 
 const companyName = z.string().trim().min(2, 'Company name must be at least 2 characters').max(150);
 const personName = z.string().trim().min(2, 'Name must be at least 2 characters').max(100);
-const email = z.string().email().max(255);
 
 export const createCompanySchema = z.object({
   name: companyName,
   adminName: personName,
-  adminEmail: email,
+  adminEmail: emailField,
 });
 
 export const updateCompanySchema = z.object({
@@ -18,23 +17,21 @@ export const updateCompanySchema = z.object({
 
 export const replaceCompanyAdminSchema = z.object({
   adminName: personName,
-  adminEmail: email,
+  adminEmail: emailField,
 });
 
 export const addTeamMemberSchema = z.object({
   username: personName,
-  email,
+  email: emailField,
 });
 
+// Only company members activate, so the standard minimum applies
 export const activateAccountSchema = z.object({
-  activationId: z.string().min(1, 'Activation link is required'),
-  email,
-  temporaryPassword: z.string().min(1, 'Temporary password is required').max(128),
-  newPassword: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .refine((p) => byteLength(p) <= 72, 'Password too long (exceeds 72 bytes)'),
+  activationId: z.string().regex(ACTIVATION_ID_PATTERN, 'Activation link is invalid'),
+  newPassword: newPasswordField(),
 });
 
-export type CreateCompanyInputDTO = z.infer<typeof createCompanySchema>;
-export type ActivateAccountInputDTO = z.infer<typeof activateAccountSchema>;
+export const verifyActivationSchema = z.object({
+  email: emailField,
+  temporaryPassword: secretField('Temporary password'),
+});

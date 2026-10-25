@@ -1,14 +1,9 @@
 import { z } from 'zod';
-
-const byteLength = (s: string) => new TextEncoder().encode(s).length;
+import { emailField, newPasswordField } from './common.schema.ts';
+import { SUPER_ADMIN_PASSWORD_MIN_LENGTH } from '../../domain/policies/credentials.policy.ts';
 
 export const registerSuperAdminSchema = z.object({
-  email: z.email().max(255),
-  username: z.string().trim().min(2).max(100),
-  password: z
-    .string()
-    .min(12, 'Password must be at least 12 characters')
-    .refine((p) => byteLength(p) <= 72, 'Password too long (exceeds 72 bytes)'),
+  email: emailField,
+  username: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  password: newPasswordField(SUPER_ADMIN_PASSWORD_MIN_LENGTH),
 });
-
-export type RegisterSuperAdminInput = z.infer<typeof registerSuperAdminSchema>;
