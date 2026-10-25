@@ -46,6 +46,11 @@ export interface IUpdateCompanyInput {
   name: string;
 }
 
+export interface IResendAdminActivationInput {
+  actor: IActor;
+  companyId: string;
+}
+
 export interface ISetCompanyStatusInput {
   actor: IActor;
   companyId: string;

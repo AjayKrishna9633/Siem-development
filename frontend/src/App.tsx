@@ -3,25 +3,32 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from './store/auth.store.ts';
 import { ProtectedRoute } from './components/common/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
-import { ADMIN_ROLES } from './lib/roles.ts';
+import { homePathFor } from './lib/roles.ts';
 import { Login } from './pages/auth/Login.tsx';
 import { SetupSuperAdmin } from './pages/auth/SetupSuperAdmin.tsx';
-import { AcceptInvite } from './pages/auth/AcceptInvite.tsx';
+import { Activate } from './pages/auth/Activate.tsx';
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx';
 import { Unauthorized } from './pages/Unauthorized.tsx';
 import { UserManagement } from './pages/settings/UserManagement.tsx';
 import { AddUser } from './pages/settings/AddUser.tsx';
+import { CompanyManagement } from './pages/settings/CompanyManagement.tsx';
+import { AddCompany } from './pages/settings/AddCompany.tsx';
 import { Profile } from './pages/settings/Profile.tsx';
 
-// Admins land on user management; analysts on their profile
+// Super admins land on companies, company admins on their team, analysts on their profile
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
-  return <Navigate to={ADMIN_ROLES.includes(user.role) ? '/users' : '/profile'} replace />;
+  return <Navigate to={homePathFor(user.role)} replace />;
 };
 
-const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ProtectedRoute allowedRoles={ADMIN_ROLES}>{children}</ProtectedRoute>
+const SuperAdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute allowedRoles={['super_admin']}>{children}</ProtectedRoute>
+);
+
+// The super admin sees companies, not employees, so the team pages are company-admin only
+const OrgAdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute allowedRoles={['org_admin']}>{children}</ProtectedRoute>
 );
 
 export const App: React.FC = () => {
@@ -38,7 +45,8 @@ export const App: React.FC = () => {
         {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/setup-super-admin" element={<SetupSuperAdmin />} />
-        <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route path="/activate" element={<Activate />} />
+        <Route path="/accept-invite" element={<Navigate to="/activate" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Authenticated account pages */}
@@ -53,17 +61,33 @@ export const App: React.FC = () => {
           <Route
             path="/users"
             element={
-              <AdminOnly>
+              <OrgAdminOnly>
                 <UserManagement />
-              </AdminOnly>
+              </OrgAdminOnly>
             }
           />
           <Route
             path="/users/new"
             element={
-              <AdminOnly>
+              <OrgAdminOnly>
                 <AddUser />
-              </AdminOnly>
+              </OrgAdminOnly>
+            }
+          />
+          <Route
+            path="/companies"
+            element={
+              <SuperAdminOnly>
+                <CompanyManagement />
+              </SuperAdminOnly>
+            }
+          />
+          <Route
+            path="/companies/new"
+            element={
+              <SuperAdminOnly>
+                <AddCompany />
+              </SuperAdminOnly>
             }
           />
           <Route path="/unauthorized" element={<Unauthorized />} />

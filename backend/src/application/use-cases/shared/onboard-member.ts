@@ -27,7 +27,7 @@ export const onboardMember = async (
   activations: IActivationService,
   input: IOnboardMemberInput,
 ): Promise<{ user: User; activation: IActivationGrant }> => {
-  const email = input.email.trim().toLowerCase();
+  const { email } = input;
 
   if (await users.findByEmail(email)) {
     throw new AppError(AppErrorCode.USER_ALREADY_EXISTS, ErrorMessage.USER_ALREADY_EXISTS);

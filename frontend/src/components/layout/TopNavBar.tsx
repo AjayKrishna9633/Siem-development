@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router';
 import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { cn } from '../../lib/cn.ts';
-import { ADMIN_ROLES, roleLabel } from '../../lib/roles.ts';
+import { roleLabel } from '../../lib/roles.ts';
 import { Avatar } from '../ui/Misc.tsx';
 
 export const TopNavBar: React.FC = () => {
@@ -27,7 +27,8 @@ export const TopNavBar: React.FC = () => {
   };
 
   const links = [
-    ...(user && ADMIN_ROLES.includes(user.role) ? [{ label: 'Users', to: '/users' }] : []),
+    ...(user?.role === 'super_admin' ? [{ label: 'Companies', to: '/companies' }] : []),
+    ...(user?.role === 'org_admin' ? [{ label: 'Users', to: '/users' }] : []),
     { label: 'Profile', to: '/profile' },
   ];
 

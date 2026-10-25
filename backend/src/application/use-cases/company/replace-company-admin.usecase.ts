@@ -10,6 +10,9 @@ import type {
 } from '../../types/use-case/company.types.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
+import { AppError } from '../../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { assertRole, loadCompany } from '../shared/access.ts';
 import { onboardMember } from '../shared/onboard-member.ts';
 import { summarizeCompany } from '../shared/company-summary.ts';
@@ -27,6 +30,13 @@ export class ReplaceCompanyAdminUseCase implements IReplaceCompanyAdminUseCase {
   async execute(input: IReplaceCompanyAdminInput): Promise<ICompanyWithActivation> {
     assertRole(input.actor, UserRole.SUPER_ADMIN);
     const company = await loadCompany(this.companies, input.companyId);
+    // The new admin could never sign in, so the old one would be locked out for nothing
+    if (!company.isActive) {
+      throw new AppError(
+        AppErrorCode.COMPANY_DEACTIVATED,
+        ErrorMessage.REACTIVATE_BEFORE_ADMIN_CHANGE,
+      );
+    }
     const now = new Date();
 
     const { user: newAdmin, activation } = await onboardMember(this.users, this.activations, {

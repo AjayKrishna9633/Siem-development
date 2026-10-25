@@ -5,7 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { actorFrom, paramFrom } from '../http/actor.ts';
+import { actorFrom, idParamFrom } from '../http/actor.ts';
 import type {
   IAddTeamMemberUseCase,
   IListTeamMembersUseCase,
@@ -45,7 +45,7 @@ export class TeamController {
   resendActivationFor = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.resendActivation.execute({
       actor: actorFrom(req),
-      userId: paramFrom(req, 'userId'),
+      userId: idParamFrom(req, 'userId'),
     });
 
     res

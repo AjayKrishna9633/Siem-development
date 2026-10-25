@@ -26,7 +26,9 @@ export const summarizeCompany = async (
   users: IUserRepository,
   company: Company,
 ): Promise<ICompanySummary> => {
-  const admin = company.adminUserId ? await users.findById(company.adminUserId) : null;
-  const counts = await users.countByOrganization();
-  return toCompanySummary(company, admin, counts.get(company.id) ?? 0);
+  const [admin, userCount] = await Promise.all([
+    company.adminUserId ? users.findById(company.adminUserId) : null,
+    users.countInOrganization(company.id),
+  ]);
+  return toCompanySummary(company, admin, userCount);
 };

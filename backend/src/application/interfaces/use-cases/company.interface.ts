@@ -4,9 +4,11 @@ import type {
   ICreateCompanyInput,
   IActor,
   IReplaceCompanyAdminInput,
+  IResendAdminActivationInput,
   ISetCompanyStatusInput,
   IUpdateCompanyInput,
 } from '../../types/use-case/company.types.ts';
+import type { IActivationGrant } from '../services/activation.service.interface.ts';
 
 export interface ICreateCompanyUseCase {
   execute(input: ICreateCompanyInput): Promise<ICompanyWithActivation>;
@@ -26,4 +28,8 @@ export interface ISetCompanyStatusUseCase {
 
 export interface IReplaceCompanyAdminUseCase {
   execute(input: IReplaceCompanyAdminInput): Promise<ICompanyWithActivation>;
+}
+
+export interface IResendAdminActivationUseCase {
+  execute(input: IResendAdminActivationInput): Promise<IActivationGrant>;
 }

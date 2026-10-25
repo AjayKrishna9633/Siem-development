@@ -5,20 +5,15 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { actorFrom, paramFrom } from '../http/actor.ts';
+import { actorFrom, idParamFrom } from '../http/actor.ts';
 import type {
   ICreateCompanyUseCase,
   IListCompaniesUseCase,
   IReplaceCompanyAdminUseCase,
+  IResendAdminActivationUseCase,
   ISetCompanyStatusUseCase,
   IUpdateCompanyUseCase,
 } from '../../application/interfaces/use-cases/company.interface.ts';
-import type { IResendActivationUseCase } from '../../application/interfaces/use-cases/activation.interface.ts';
-import type { ICompanyRepository } from '../../application/interfaces/repositories/company.repository.interface.ts';
-import { loadCompany } from '../../application/use-cases/shared/access.ts';
-import { AppError } from '../../domain/errors/AppError.ts';
-import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
-import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class CompanyController {
@@ -30,13 +25,18 @@ export class CompanyController {
     private readonly setCompanyStatus: ISetCompanyStatusUseCase,
     @inject(TYPES.ReplaceCompanyAdminUseCase)
     private readonly replaceCompanyAdmin: IReplaceCompanyAdminUseCase,
-    @inject(TYPES.ResendActivationUseCase)
-    private readonly resendActivation: IResendActivationUseCase,
-    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
+    @inject(TYPES.ResendAdminActivationUseCase)
+    private readonly resendAdminActivationUseCase: IResendAdminActivationUseCase,
   ) {}
 
   create = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.createCompany.execute({ actor: actorFrom(req), ...req.body });
+    // Fields are listed explicitly so nothing in the body can replace `actor`
+    const result = await this.createCompany.execute({
+      actor: actorFrom(req),
+      name: req.body.name,
+      adminName: req.body.adminName,
+      adminEmail: req.body.adminEmail,
+    });
 
     res
       .status(HttpStatusCode.CREATED)
@@ -54,7 +54,7 @@ export class CompanyController {
   update = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.updateCompany.execute({
       actor: actorFrom(req),
-      companyId: paramFrom(req, 'companyId'),
+      companyId: idParamFrom(req, 'companyId'),
       name: req.body.name,
     });
 
@@ -66,7 +66,7 @@ export class CompanyController {
   deactivate = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.setCompanyStatus.execute({
       actor: actorFrom(req),
-      companyId: paramFrom(req, 'companyId'),
+      companyId: idParamFrom(req, 'companyId'),
       active: false,
     });
 
@@ -78,7 +78,7 @@ export class CompanyController {
   reactivate = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.setCompanyStatus.execute({
       actor: actorFrom(req),
-      companyId: paramFrom(req, 'companyId'),
+      companyId: idParamFrom(req, 'companyId'),
       active: true,
     });
 
@@ -90,7 +90,7 @@ export class CompanyController {
   replaceAdmin = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.replaceCompanyAdmin.execute({
       actor: actorFrom(req),
-      companyId: paramFrom(req, 'companyId'),
+      companyId: idParamFrom(req, 'companyId'),
       adminName: req.body.adminName,
       adminEmail: req.body.adminEmail,
     });
@@ -101,14 +101,9 @@ export class CompanyController {
   });
 
   resendAdminActivation = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const company = await loadCompany(this.companies, paramFrom(req, 'companyId'));
-    if (!company.adminUserId) {
-      throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
-    }
-
-    const result = await this.resendActivation.execute({
+    const result = await this.resendAdminActivationUseCase.execute({
       actor: actorFrom(req),
-      userId: company.adminUserId,
+      companyId: idParamFrom(req, 'companyId'),
     });
 
     res
