@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import { startSession } from '../shared/user-views.ts';
 import TYPES from '../../../domain/constants/types.ts';
 import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
@@ -14,8 +15,9 @@ import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { assertCompanyActive } from '../shared/access.ts';
 
-// Link ID + email + temporary password prove identity; the new password activates
-// the account and the person is signed in straight away.
+// The activation ID (from the link, or handed back after the temporary password
+// was verified) proves identity; the new password activates the account and the
+// person is signed in straight away.
 @injectable()
 export class ActivateAccountUseCase implements IActivateAccountUseCase {
   constructor(
@@ -32,17 +34,6 @@ export class ActivateAccountUseCase implements IActivateAccountUseCase {
     const record = await this.activations.find(input.activationId);
     if (!record) throw invalid;
 
-    // Both checks always run so a wrong email and a wrong password look identical
-    const emailMatches = input.email.trim().toLowerCase() === record.email;
-    const passwordMatches = await this.hasher.compare(
-      input.temporaryPassword,
-      record.temporaryPasswordHash,
-    );
-    if (!emailMatches || !passwordMatches) {
-      await this.activations.recordFailure(input.activationId, record);
-      throw invalid;
-    }
-
     const user = await this.users.findById(record.userId);
     if (!user || user.status !== UserStatus.INVITED) {
       await this.activations.consume(input.activationId, record.userId);
@@ -56,24 +47,6 @@ export class ActivateAccountUseCase implements IActivateAccountUseCase {
     await this.users.save(user);
     await this.activations.consume(input.activationId, user.id);
 
-    const { accessToken, refreshToken } = await this.sessions.issue({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      organizationId: user.organizationId,
-      tokenVersion: user.tokenVersion,
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
-    };
+    return startSession(this.sessions, user);
   }
 }

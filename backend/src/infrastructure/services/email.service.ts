@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../domain/constants/types.ts';
-import type { IEmailService } from '../../application/interfaces/services/Email.service.interface.ts';
+import type { IEmailService } from '../../application/interfaces/services/email.service.interface.ts';
 import type { Transporter } from 'nodemailer';
 
 @injectable()
@@ -10,12 +10,13 @@ export class EmailService implements IEmailService {
     @inject(TYPES.SenderEmail) private readonly senderEmail: string,
   ) {}
 
-  async sendEmail(to: string, subject: string, text: string): Promise<void> {
+  async sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
     await this.transporter.sendMail({
-      from: this.senderEmail,
+      from: `SIEMple <${this.senderEmail}>`,
       to,
       subject,
       text,
+      ...(html && { html }),
     });
   }
 }

@@ -33,17 +33,27 @@ export interface IResendActivationInput {
   userId: string;
 }
 
-// Public preview for the activation page; deliberately omits the email
+// Shown on the set-password step; only someone holding the link (or the
+// email + temporary password that unlock it) can see it
 export interface IActivationPreview {
   companyName: string;
   username: string;
+  email: string;
   role: UserRole;
   expiresAt: string;
 }
 
-export interface IActivateAccountInput {
-  activationId: string;
+export interface IVerifyActivationInput {
   email: string;
   temporaryPassword: string;
+}
+
+// Hands back the activation ID so the temporary-password route joins the link route
+export interface IVerifiedActivation extends IActivationPreview {
+  activationId: string;
+}
+
+export interface IActivateAccountInput {
+  activationId: string;
   newPassword: string;
 }

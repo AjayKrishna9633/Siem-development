@@ -4,7 +4,7 @@ import TYPES from '../../domain/constants/types.ts';
 import { env } from '../../config/env.config.ts';
 import type { ICacheService } from '../../application/interfaces/services/cache.service.interface.ts';
 import type { IHashService } from '../../application/interfaces/services/hash.service.interface.ts';
-import type { IEmailService } from '../../application/interfaces/services/Email.service.interface.ts';
+import type { IEmailService } from '../../application/interfaces/services/email.service.interface.ts';
 import type {
   IActivationGrant,
   IActivationRecord,
@@ -12,6 +12,12 @@ import type {
   IIssueActivationInput,
 } from '../../application/interfaces/services/activation.service.interface.ts';
 import { UserRole } from '../../domain/enums/UserRole.ts';
+import {
+  activationEmailHtml,
+  activationEmailSubject,
+  activationEmailText,
+  type IActivationEmailInput,
+} from './templates/activation-email.ts';
 
 const ACTIVATION_TTL_SECONDS = 7 * 24 * 60 * 60;
 const MAX_FAILED_ATTEMPTS = 5;
@@ -40,8 +46,12 @@ export class ActivationService implements IActivationService {
   ) {}
 
   async issue(input: IIssueActivationInput): Promise<IActivationGrant> {
+    // A live earlier activation means this is a resend: the email says the old one is dead
+    const replacesEarlier =
+      (await this.cache.get<string>(`activation-user:${input.userId}`)) !== null;
     await this.revokeForUser(input.userId);
 
+    // Must match ACTIVATION_ID_PATTERN
     const activationId = randomBytes(24).toString('hex');
     const temporaryPassword = generateTemporaryPassword();
     const expiresAt = new Date(Date.now() + ACTIVATION_TTL_SECONDS * 1000).toISOString();
@@ -57,32 +67,49 @@ export class ActivationService implements IActivationService {
     await this.cache.set(`activation-user:${input.userId}`, activationId, ACTIVATION_TTL_SECONDS);
 
     const activationLink = `${env.FRONTEND_URL}/activate?id=${activationId}`;
+    const emailSent = await this.sendActivationEmail({
+      username: input.username,
+      companyName: input.companyName,
+      roleTitle: roleTitle[input.role],
+      email: input.email,
+      activationLink,
+      temporaryPassword,
+      signInLink: `${env.FRONTEND_URL}/activate?email=${encodeURIComponent(input.email)}`,
+      expiresAt,
+      replacesEarlier,
+    });
 
+    return { activationId, activationLink, temporaryPassword, expiresAt, emailSent };
+  }
+
+  // Delivery is best-effort: a failure is logged and reported back, and the creator
+  // still receives the link and temporary password to share by hand
+  private async sendActivationEmail(content: IActivationEmailInput): Promise<boolean> {
     try {
       await this.email.sendEmail(
-        input.email,
-        `You've been added to ${input.companyName} on SIEMple`,
-        [
-          `Hello ${input.username},`,
-          '',
-          `You have been added to ${input.companyName} as ${roleTitle[input.role]}.`,
-          '',
-          `1. Open: ${activationLink}`,
-          `2. Enter your email and this temporary password: ${temporaryPassword}`,
-          '3. Choose your new password — you will be signed in right away.',
-          '',
-          'This link expires in 7 days.',
-        ].join('\n'),
+        content.email,
+        activationEmailSubject(content),
+        activationEmailText(content),
+        activationEmailHtml(content),
       );
-    } catch {
-      // Email is best-effort; the creator also receives the link and password to share
+      return true;
+    } catch (err) {
+      console.error(`Activation email to ${content.email} failed:`, err);
+      return false;
     }
-
-    return { activationId, activationLink, temporaryPassword, expiresAt };
   }
 
   find(activationId: string): Promise<IActivationRecord | null> {
     return this.cache.get<IActivationRecord>(`activation:${activationId}`);
+  }
+
+  async findForUser(
+    userId: string,
+  ): Promise<{ activationId: string; record: IActivationRecord } | null> {
+    const activationId = await this.cache.get<string>(`activation-user:${userId}`);
+    if (!activationId) return null;
+    const record = await this.find(activationId);
+    return record ? { activationId, record } : null;
   }
 
   async recordFailure(activationId: string, record: IActivationRecord): Promise<void> {

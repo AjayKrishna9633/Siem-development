@@ -10,8 +10,8 @@ import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
-// Lets the activation page greet the person ("Join Acme Corp as Analyst")
-// without revealing the email, which they must type themselves.
+// The link is the credential: holding it opens the set-password step, which
+// shows who is being activated ("Jane Doe, jane@acme.com — Acme Corp, Analyst").
 @injectable()
 export class GetActivationUseCase implements IGetActivationUseCase {
   constructor(
@@ -34,6 +34,7 @@ export class GetActivationUseCase implements IGetActivationUseCase {
     return {
       companyName: company.name,
       username: user.username,
+      email: user.email,
       role: user.role,
       expiresAt: record.expiresAt,
     };

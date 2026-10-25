@@ -4,10 +4,16 @@ import type {
   IActivateAccountInput,
   IActivationPreview,
   IResendActivationInput,
+  IVerifiedActivation,
+  IVerifyActivationInput,
 } from '../../types/use-case/user-mgmt.types.ts';
 
 export interface IGetActivationUseCase {
   execute(input: { activationId: string }): Promise<IActivationPreview>;
+}
+
+export interface IVerifyActivationUseCase {
+  execute(input: IVerifyActivationInput): Promise<IVerifiedActivation>;
 }
 
 export interface IActivateAccountUseCase {
