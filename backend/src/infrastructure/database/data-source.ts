@@ -7,8 +7,6 @@ export const AppDataSource = new DataSource({
   type: 'postgres',
   url: env.DATABASE_URL,
   synchronize: env.NODE_ENV === 'development',
-  logging: env.NODE_ENV === 'development',
+  logging: false, // <-- set this to false to hide query lines
   entities: [UserModel, CompanyModel],
-  migrations: [],
-  subscribers: [],
 });
