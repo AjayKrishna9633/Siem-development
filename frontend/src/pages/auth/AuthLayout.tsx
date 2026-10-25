@@ -2,6 +2,10 @@ import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { SvgIcon } from '../../components/ui/Misc.tsx';
 import logoShield from '../../assets/icons/logo-shield.svg';
+import { Input } from '../../components/ui/Form.tsx';
+import { PasswordInput } from '../../components/ui/PasswordInput.tsx';
+import { Button } from '../../components/ui/Button.tsx';
+import { cn } from '../../lib/cn.ts';
 
 interface IAuthLayoutProps {
   title: string;
@@ -43,13 +47,21 @@ export const AuthError: React.FC<{ message: string | null }> = ({ message }) =>
     </p>
   ) : null;
 
-export const AuthDivider: React.FC<{ label: string }> = ({ label }) => (
-  <div className="my-5 flex items-center gap-4">
-    <span className="h-px flex-1 bg-line-strong" />
-    <span className="font-mono text-[10px] uppercase tracking-[2px] text-muted">{label}</span>
-    <span className="h-px flex-1 bg-line-strong" />
-  </div>
+// The shared form controls, sized up for the sign-in card
+const authFieldClass = 'h-10 bg-canvas/70';
+
+type IAuthInputProps = React.ComponentProps<typeof Input>;
+
+export const AuthInput: React.FC<IAuthInputProps> = ({ className, ...rest }) => (
+  <Input className={cn(authFieldClass, className)} {...rest} />
 );
 
-export const authInputClass =
-  'h-10 w-full rounded border border-line-strong bg-canvas/70 px-3 text-sm text-ink placeholder:text-subtle focus:border-accent/70 focus:outline-none focus:ring-1 focus:ring-accent/40';
+export const AuthPasswordInput: React.FC<React.ComponentProps<typeof PasswordInput>> = ({
+  className,
+  ...rest
+}) => <PasswordInput className={cn(authFieldClass, className)} {...rest} />;
+
+export const AuthSubmit: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
+  className,
+  ...rest
+}) => <Button type="submit" variant="primary" className={cn('h-10 w-full', className)} {...rest} />;

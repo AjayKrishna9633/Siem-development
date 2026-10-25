@@ -50,8 +50,7 @@ api.interceptors.request.use((config) => {
 });
 
 // Auth endpoints report bad credentials with 401 too; those must not trigger a refresh
-const SKIP_REFRESH =
-  /\/auth\/(login|refresh|logout|accept-invite|verify-otp|send-otp|reset-password)/;
+const SKIP_REFRESH = /\/auth\/(login|refresh|logout|verify-otp|send-otp|reset-password)/;
 
 api.interceptors.response.use(
   (response) => response,

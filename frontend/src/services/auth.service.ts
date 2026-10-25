@@ -3,9 +3,9 @@ import type {
   IApiResponse,
   ILoginResponse,
   IUser,
-  IInviteResponse,
-  IVerifyInviteResponse,
-  UserRole,
+  ICodeSent,
+  IActivationPreview,
+  IVerifiedActivation,
 } from '../types/auth.ts';
 
 export const authService = {
@@ -29,40 +29,39 @@ export const authService = {
     return res.data.data;
   },
 
-  async inviteUser(data: {
-    email: string;
-    username: string;
-    role: UserRole;
-    organizationId?: string | null;
-  }): Promise<IInviteResponse> {
-    const res = await api.post<IApiResponse<IInviteResponse>>('/auth/invite', data);
+  // Activation link route: the ID in the link is enough to open the set-password step
+  async getActivation(activationId: string): Promise<IActivationPreview> {
+    const res = await api.get<IApiResponse<IActivationPreview>>('/auth/activation', {
+      params: { id: activationId },
+    });
     return res.data.data;
   },
 
-  async verifyInvite(token: string): Promise<IVerifyInviteResponse> {
-    const res = await api.get<IApiResponse<IVerifyInviteResponse>>(
-      `/auth/verify-invite?token=${encodeURIComponent(token)}`,
-    );
+  // Temporary-password route: email + temporary password stand in for the link
+  async verifyActivation(email: string, temporaryPassword: string): Promise<IVerifiedActivation> {
+    const res = await api.post<IApiResponse<IVerifiedActivation>>('/auth/activation/verify', {
+      email,
+      temporaryPassword,
+    });
     return res.data.data;
   },
 
-  async acceptInvite(data: {
-    token: string;
-    password: string;
-    username?: string;
-  }): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/accept-invite', data);
+  async activate(activationId: string, newPassword: string): Promise<ILoginResponse> {
+    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/activate', {
+      activationId,
+      newPassword,
+    });
     return res.data.data;
   },
 
-  async sendOtp(email: string, type: 'signup' | 'reset'): Promise<void> {
+  async sendOtp(email: string, type: 'reset'): Promise<void> {
     await api.post<IApiResponse<null>>('/auth/send-otp', { email, type });
   },
 
   async verifyOtp(
     email: string,
     otp: string,
-    type: 'signup' | 'reset',
+    type: 'reset',
   ): Promise<{ verified: boolean; resetToken?: string }> {
     const res = await api.post<IApiResponse<{ verified: boolean; resetToken?: string }>>(
       '/auth/verify-otp',
@@ -93,8 +92,33 @@ export const authService = {
     return res.data.data;
   },
 
-  async listUsers(): Promise<IUser[]> {
-    const res = await api.get<IApiResponse<IUser[]>>('/auth/users');
+  // Password change, step 1: a code goes to the account's email
+  async requestPasswordChange(): Promise<ICodeSent> {
+    const res = await api.post<IApiResponse<ICodeSent>>('/auth/password/code');
+    return res.data.data;
+  },
+
+  // Step 2: other devices are signed out; the returned session keeps this one signed in
+  async changePassword(data: {
+    code: string;
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<ILoginResponse> {
+    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/password', data);
+    return res.data.data;
+  },
+
+  // Super admin only. Step 1: the code goes to the NEW address
+  async requestEmailChange(data: {
+    newEmail: string;
+    currentPassword: string;
+  }): Promise<ICodeSent> {
+    const res = await api.post<IApiResponse<ICodeSent>>('/auth/email/code', data);
+    return res.data.data;
+  },
+
+  async changeEmail(code: string): Promise<ILoginResponse> {
+    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/email', { code });
     return res.data.data;
   },
 };
