@@ -6,6 +6,7 @@ import type { UserRole } from '../../../domain/enums/UserRole.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
+import { minPasswordLength } from '../../../domain/policies/credentials.policy.ts';
 
 // Routes already guard roles; use cases re-check so they are safe to call from anywhere
 export const assertRole = (actor: IActor, ...roles: UserRole[]): void => {
@@ -32,5 +33,17 @@ export const assertCompanyActive = async (
   const company = await companies.findById(user.organizationId);
   if (!company || !company.isActive) {
     throw new AppError(AppErrorCode.COMPANY_DEACTIVATED, ErrorMessage.COMPANY_DEACTIVATED);
+  }
+};
+
+// Request validation applies the general minimum; this adds the role-specific one,
+// e.g. a super admin needs a longer password however it is being set
+export const assertPasswordPolicy = (user: User, newPassword: string): void => {
+  const minLength = minPasswordLength(user.role);
+  if (newPassword.length < minLength) {
+    throw new AppError(
+      AppErrorCode.VALIDATION_ERROR,
+      `Password must be at least ${minLength} characters`,
+    );
   }
 };

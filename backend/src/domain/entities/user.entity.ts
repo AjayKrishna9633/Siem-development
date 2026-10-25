@@ -1,22 +1,23 @@
 import { DomainError } from '../errors/DomainError.ts';
-import type { UserProps } from '../types/user.types.ts';
 import type {
-  CreateSuperAdminDTO,
-  CreateInvitedDTO,
-} from '../../application/dtos/user/request/user-request.dto.ts';
+  ICreateInvitedUserProps,
+  ICreateSuperAdminProps,
+  UserProps,
+} from '../types/user.types.ts';
 import { UserRole } from '../enums/UserRole.ts';
 import { UserStatus } from '../enums/UserStatus.ts';
-import { Constants } from '../../shared/constants/app.constants.ts';
+import { LOGIN_LOCKOUT } from '../constants/security.ts';
+import { normalizeEmail } from '../policies/credentials.policy.ts';
 import { ErrorMessage } from '../enums/ErrorMessage.ts';
 
 export class User {
   private constructor(private props: UserProps) {}
 
-  static createInvited(input: CreateInvitedDTO): User {
+  static createInvited(input: ICreateInvitedUserProps): User {
     return new User({
       id: input.id,
       organizationId: input.organizationId,
-      email: input.email.trim().toLowerCase(),
+      email: normalizeEmail(input.email),
       username: input.username.trim(),
       passwordHash: null,
       role: input.role,
@@ -63,11 +64,11 @@ export class User {
     return this.props.tokenVersion;
   }
 
-  static createSuperAdmin(input: CreateSuperAdminDTO): User {
+  static createSuperAdmin(input: ICreateSuperAdminProps): User {
     return new User({
       id: input.id,
       organizationId: null,
-      email: input.email.trim().toLowerCase(),
+      email: normalizeEmail(input.email),
       username: input.username.trim(),
       passwordHash: input.passwordHash,
       role: UserRole.SUPER_ADMIN,
@@ -113,8 +114,8 @@ export class User {
 
   recordFailedLogin(now: Date): void {
     this.props.failedLoginAttempts += 1;
-    if (this.props.failedLoginAttempts >= Constants.MAX_FAILED_ATTEMPTS) {
-      this.props.lockedUntil = new Date(now.getTime() + Constants.LOCK_MINUTES * 60_000);
+    if (this.props.failedLoginAttempts >= LOGIN_LOCKOUT.MAX_FAILED_ATTEMPTS) {
+      this.props.lockedUntil = new Date(now.getTime() + LOGIN_LOCKOUT.LOCK_MINUTES * 60_000);
       this.props.failedLoginAttempts = 0;
     }
     this.touch(now);
@@ -135,10 +136,11 @@ export class User {
     this.touch(now);
   }
 
-  changeRole(newRole: Exclude<UserRole, UserRole.SUPER_ADMIN>, now: Date): void {
-    if (this.props.role === UserRole.SUPER_ADMIN)
-      throw new DomainError(ErrorMessage.SUPER_ADMIN_ROLE_CANNOT_BE_CHANGED);
-    this.props.role = newRole;
+  // The new address was proven with a code sent to it. Bumping tokenVersion signs out
+  // every session, since access tokens carry the old email.
+  changeEmail(newEmail: string, now: Date): void {
+    this.props.email = normalizeEmail(newEmail);
+    this.props.isEmailVerified = true;
     this.props.tokenVersion += 1;
     this.touch(now);
   }

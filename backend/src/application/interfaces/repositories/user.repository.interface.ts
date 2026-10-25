@@ -1,14 +1,13 @@
 import type { IBaseRepository } from './base.repository.interface.ts';
-import type { ICreateInvitedDTO } from '../../dtos/user/request/user-request.dto.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 
 export interface IUserRepository extends IBaseRepository<User> {
   createSuperAdmin(user: User): Promise<'created' | 'already_exists'>;
-  createInvited(input: ICreateInvitedDTO): Promise<void>;
   countSuperAdmins(): Promise<number>;
   findByEmail(email: string): Promise<User | null>;
   findAll(options?: { organizationId?: string }): Promise<User[]>;
   findByIds(ids: string[]): Promise<User[]>;
+  countInOrganization(organizationId: string): Promise<number>;
   // Member count per company, keyed by organization id
   countByOrganization(): Promise<Map<string, number>>;
 }

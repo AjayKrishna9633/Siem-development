@@ -1,0 +1,56 @@
+import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
+import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
+import type { ILoginResponse, IUserProfileResponse } from '../../types/use-case/auth.types.ts';
+import type { User } from '../../../domain/entities/user.entity.ts';
+
+// Issues tokens for `user` and builds the session response the frontend stores.
+// Shared by login, refresh, activation and password/email changes. Pass `familyId`
+// when rotating, so the new refresh token joins the existing session family.
+export const startSession = async (
+  sessions: ISessionService,
+  user: User,
+  familyId?: string,
+): Promise<ILoginResponse> => {
+  const { accessToken, refreshToken } = await sessions.issue(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId,
+      tokenVersion: user.tokenVersion,
+    },
+    familyId,
+  );
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      organizationId: user.organizationId,
+    },
+  };
+};
+
+// The signed-in user's own profile, as /me and profile updates return it
+export const loadUserProfile = async (
+  companies: ICompanyRepository,
+  user: User,
+): Promise<IUserProfileResponse> => {
+  const snapshot = user.toSnapshot();
+  const company = user.organizationId ? await companies.findById(user.organizationId) : null;
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    role: user.role,
+    status: user.status,
+    organizationId: user.organizationId,
+    companyName: company?.name ?? null,
+    isEmailVerified: snapshot.isEmailVerified,
+    lastLoginAt: snapshot.lastLoginAt,
+    createdAt: snapshot.createdAt,
+  };
+};

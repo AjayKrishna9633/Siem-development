@@ -12,13 +12,19 @@ const TYPES = {
   UpdateCompanyUseCase: Symbol.for('UpdateCompanyUseCase'),
   SetCompanyStatusUseCase: Symbol.for('SetCompanyStatusUseCase'),
   ReplaceCompanyAdminUseCase: Symbol.for('ReplaceCompanyAdminUseCase'),
+  ResendAdminActivationUseCase: Symbol.for('ResendAdminActivationUseCase'),
   AddTeamMemberUseCase: Symbol.for('AddTeamMemberUseCase'),
   ListTeamMembersUseCase: Symbol.for('ListTeamMembersUseCase'),
   GetActivationUseCase: Symbol.for('GetActivationUseCase'),
+  VerifyActivationUseCase: Symbol.for('VerifyActivationUseCase'),
   ActivateAccountUseCase: Symbol.for('ActivateAccountUseCase'),
   ResendActivationUseCase: Symbol.for('ResendActivationUseCase'),
   RefreshSessionUseCase: Symbol.for('RefreshSessionUseCase'),
   LogoutUseCase: Symbol.for('LogoutUseCase'),
+  RequestPasswordChangeUseCase: Symbol.for('RequestPasswordChangeUseCase'),
+  ChangePasswordUseCase: Symbol.for('ChangePasswordUseCase'),
+  RequestEmailChangeUseCase: Symbol.for('RequestEmailChangeUseCase'),
+  ChangeEmailUseCase: Symbol.for('ChangeEmailUseCase'),
   // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
@@ -29,17 +35,21 @@ const TYPES = {
   CacheService: Symbol.for('CacheService'),
   EmailService: Symbol.for('EmailService'),
   HashService: Symbol.for('HashService'),
-  OtpService: Symbol.for('OtpService'),
   TokenService: Symbol.for('TokenService'),
   SessionService: Symbol.for('SessionService'),
   ActivationService: Symbol.for('ActivationService'),
+  VerificationCodeService: Symbol.for('VerificationCodeService'),
+  SecurityMailer: Symbol.for('SecurityMailer'),
 
   // Middleware
   AuthMiddleware: Symbol.for('AuthMiddleware'),
 
   // Controllers
   AdminController: Symbol.for('AdminController'),
-  AuthController: Symbol.for('AuthController'),
+  SessionController: Symbol.for('SessionController'),
+  PasswordResetController: Symbol.for('PasswordResetController'),
+  AccountController: Symbol.for('AccountController'),
+  ActivationController: Symbol.for('ActivationController'),
   CompanyController: Symbol.for('CompanyController'),
   TeamController: Symbol.for('TeamController'),
 

@@ -6,11 +6,11 @@ import type { IMapper } from '../../../application/interfaces/IMapper.ts';
 import { BaseRepository } from './base.repository.ts';
 import { UserModel } from '../models/user.model.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
-import type { ICreateInvitedDTO } from '../../../application/dtos/user/request/user-request.dto.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
+import { normalizeEmail } from '../../../domain/policies/credentials.policy.ts';
 
 @injectable()
-export class TypeOrmuUserRepository
+export class TypeOrmUserRepository
   extends BaseRepository<User, UserModel>
   implements IUserRepository
 {
@@ -38,13 +38,9 @@ export class TypeOrmuUserRepository
     });
   }
 
-  async createInvited(input: ICreateInvitedDTO): Promise<void> {
-    await this.repository.insert(input);
-  }
-
   async findByEmail(email: string): Promise<User | null> {
     const model = await this.repository.findOne({
-      where: { email: email.trim().toLowerCase() },
+      where: { email: normalizeEmail(email) },
     });
     if (!model) return null;
 
@@ -64,6 +60,10 @@ export class TypeOrmuUserRepository
     if (ids.length === 0) return [];
     const models = await this.repository.find({ where: { id: In(ids) } });
     return models.map((model) => this.mapper.toDomain(model));
+  }
+
+  countInOrganization(organizationId: string): Promise<number> {
+    return this.repository.count({ where: { organizationId } });
   }
 
   async countByOrganization(): Promise<Map<string, number>> {

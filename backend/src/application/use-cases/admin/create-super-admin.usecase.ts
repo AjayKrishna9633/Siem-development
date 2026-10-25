@@ -1,5 +1,5 @@
 import { injectable, inject } from 'inversify';
-import ObjectTypes from '../../../domain/constants/types.ts';
+import TYPES from '../../../domain/constants/types.ts';
 import { randomUUID } from 'node:crypto';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import { User } from '../../../domain/entities/user.entity.ts';
@@ -13,8 +13,8 @@ import type { IRegisterSuperAdminUseCase } from '../../interfaces/use-cases/regi
 @injectable()
 export class RegisterSuperAdminUseCase implements IRegisterSuperAdminUseCase {
   constructor(
-    @inject(ObjectTypes.UserRepository) private readonly users: IUserRepository,
-    @inject(ObjectTypes.HashService) private readonly hasher: IHashService,
+    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
+    @inject(TYPES.HashService) private readonly hasher: IHashService,
   ) {}
 
   async execute(input: RegisterSuperAdminInput): Promise<{ id: string; email: string }> {

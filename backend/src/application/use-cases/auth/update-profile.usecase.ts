@@ -1,4 +1,6 @@
 import { injectable, inject } from 'inversify';
+import { loadUserProfile } from '../shared/user-views.ts';
+import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IUpdateProfileUseCase } from '../../interfaces/use-cases/update-profile.interface.ts';
@@ -11,7 +13,10 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class UpdateProfileUseCase implements IUpdateProfileUseCase {
-  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
+  constructor(
+    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
+    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
+  ) {}
 
   async execute(input: IUpdateProfileDTO): Promise<IUserProfileResponse> {
     const user = await this.users.findById(input.id);
@@ -27,18 +32,6 @@ export class UpdateProfileUseCase implements IUpdateProfileUseCase {
     user.updateProfile({ username: input.username }, input.now);
     await this.users.save(user);
 
-    const snapshot = user.toSnapshot();
-
-    return {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-      status: user.status,
-      organizationId: user.organizationId,
-      isEmailVerified: snapshot.isEmailVerified,
-      lastLoginAt: snapshot.lastLoginAt,
-      createdAt: snapshot.createdAt,
-    };
+    return loadUserProfile(this.companies, user);
   }
 }

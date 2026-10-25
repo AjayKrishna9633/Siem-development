@@ -2,15 +2,14 @@ import { container } from './container.ts';
 import TYPES from '../../domain/constants/types.ts';
 
 // Repositories & Mappers
-import { TypeOrmuUserRepository } from '../database/repositories/user.repositories.ts';
+import { TypeOrmUserRepository } from '../database/repositories/user.repository.ts';
 import { UserMapper } from '../database/mappers/user.mapper.ts';
 import { TypeOrmCompanyRepository } from '../database/repositories/company.repository.ts';
 import { CompanyMapper } from '../database/mappers/company.mapper.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
-import { BcryptHashService } from '../services/bycrpt-hash.service.ts';
-import { OtpCryptoService } from '../services/otp.Crypto.service.ts';
+import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
 import { RedisCacheService } from '../redis/redis-cache.service.ts';
 import { createTransporter } from '../../config/mailer.ts';
@@ -18,6 +17,12 @@ import { env } from '../../config/env.config.ts';
 import { EmailService } from '../services/email.service.ts';
 import { JwtTokenService } from '../services/jwt-token.service.ts';
 import { RefreshSessionService } from '../services/refresh-session.service.ts';
+import { VerificationCodeService } from '../services/verification-code.service.ts';
+import { SecurityMailer } from '../services/security-mailer.service.ts';
+import { RequestPasswordChangeUseCase } from '../../application/use-cases/account/request-password-change.usecase.ts';
+import { ChangePasswordUseCase } from '../../application/use-cases/account/change-password.usecase.ts';
+import { RequestEmailChangeUseCase } from '../../application/use-cases/account/request-email-change.usecase.ts';
+import { ChangeEmailUseCase } from '../../application/use-cases/account/change-email.usecase.ts';
 import { ActivationService } from '../services/activation.service.ts';
 
 // UseCases
@@ -33,9 +38,11 @@ import { ListCompaniesUseCase } from '../../application/use-cases/company/list-c
 import { UpdateCompanyUseCase } from '../../application/use-cases/company/update-company.usecase.ts';
 import { SetCompanyStatusUseCase } from '../../application/use-cases/company/set-company-status.usecase.ts';
 import { ReplaceCompanyAdminUseCase } from '../../application/use-cases/company/replace-company-admin.usecase.ts';
+import { ResendAdminActivationUseCase } from '../../application/use-cases/company/resend-admin-activation.usecase.ts';
 import { AddTeamMemberUseCase } from '../../application/use-cases/team/add-team-member.usecase.ts';
 import { ListTeamMembersUseCase } from '../../application/use-cases/team/list-team-members.usecase.ts';
 import { GetActivationUseCase } from '../../application/use-cases/activation/get-activation.usecase.ts';
+import { VerifyActivationUseCase } from '../../application/use-cases/activation/verify-activation.usecase.ts';
 import { ActivateAccountUseCase } from '../../application/use-cases/activation/activate-account.usecase.ts';
 import { ResendActivationUseCase } from '../../application/use-cases/activation/resend-activation.usecase.ts';
 import { RefreshSessionUseCase } from '../../application/use-cases/auth/refresh-session.usecase.ts';
@@ -45,7 +52,10 @@ import { authenticate } from '../../presentation/middlewares/auth.middleware.ts'
 
 // Controllers
 import { AdminController } from '../../presentation/controllers/admin.controller.ts';
-import { AuthController } from '../../presentation/controllers/auth.controller.ts';
+import { SessionController } from '../../presentation/controllers/session.controller.ts';
+import { PasswordResetController } from '../../presentation/controllers/password-reset.controller.ts';
+import { AccountController } from '../../presentation/controllers/account.controller.ts';
+import { ActivationController } from '../../presentation/controllers/activation.controller.ts';
 import { CompanyController } from '../../presentation/controllers/company.controller.ts';
 import { TeamController } from '../../presentation/controllers/team.controller.ts';
 
@@ -61,18 +71,19 @@ container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
 
 // 2. Bind Repositories & Mappers
 container.bind(TYPES.UserMapper).to(UserMapper);
-container.bind(TYPES.UserRepository).to(TypeOrmuUserRepository);
+container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.CompanyMapper).to(CompanyMapper);
 container.bind(TYPES.CompanyRepository).to(TypeOrmCompanyRepository);
 
 // 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
-container.bind(TYPES.OtpService).to(OtpCryptoService);
 container.bind(TYPES.CacheService).to(RedisCacheService);
 container.bind(TYPES.EmailService).to(EmailService);
 container.bind(TYPES.TokenService).to(JwtTokenService);
 container.bind(TYPES.SessionService).to(RefreshSessionService);
 container.bind(TYPES.ActivationService).to(ActivationService);
+container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
+container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 
 // 4. Bind UseCases
 container.bind(TYPES.RegisterSuperAdminUseCase).to(RegisterSuperAdminUseCase);
@@ -87,23 +98,37 @@ container.bind(TYPES.ListCompaniesUseCase).to(ListCompaniesUseCase);
 container.bind(TYPES.UpdateCompanyUseCase).to(UpdateCompanyUseCase);
 container.bind(TYPES.SetCompanyStatusUseCase).to(SetCompanyStatusUseCase);
 container.bind(TYPES.ReplaceCompanyAdminUseCase).to(ReplaceCompanyAdminUseCase);
+container.bind(TYPES.ResendAdminActivationUseCase).to(ResendAdminActivationUseCase);
 container.bind(TYPES.AddTeamMemberUseCase).to(AddTeamMemberUseCase);
 container.bind(TYPES.ListTeamMembersUseCase).to(ListTeamMembersUseCase);
 container.bind(TYPES.GetActivationUseCase).to(GetActivationUseCase);
+container.bind(TYPES.VerifyActivationUseCase).to(VerifyActivationUseCase);
 container.bind(TYPES.ActivateAccountUseCase).to(ActivateAccountUseCase);
 container.bind(TYPES.ResendActivationUseCase).to(ResendActivationUseCase);
 container.bind(TYPES.RefreshSessionUseCase).to(RefreshSessionUseCase);
 container.bind(TYPES.LogoutUseCase).to(LogoutUseCase);
+container.bind(TYPES.RequestPasswordChangeUseCase).to(RequestPasswordChangeUseCase);
+container.bind(TYPES.ChangePasswordUseCase).to(ChangePasswordUseCase);
+container.bind(TYPES.RequestEmailChangeUseCase).to(RequestEmailChangeUseCase);
+container.bind(TYPES.ChangeEmailUseCase).to(ChangeEmailUseCase);
 
 // 5. Bind Controllers
 container.bind(TYPES.AdminController).to(AdminController);
-container.bind(TYPES.AuthController).to(AuthController);
+container.bind(TYPES.SessionController).to(SessionController);
+container.bind(TYPES.PasswordResetController).to(PasswordResetController);
+container.bind(TYPES.AccountController).to(AccountController);
+container.bind(TYPES.ActivationController).to(ActivationController);
 container.bind(TYPES.CompanyController).to(CompanyController);
 container.bind(TYPES.TeamController).to(TeamController);
 
 // Resolve the controllers & services
 export const adminController = container.get<AdminController>(TYPES.AdminController);
-export const authController = container.get<AuthController>(TYPES.AuthController);
+export const sessionController = container.get<SessionController>(TYPES.SessionController);
+export const passwordResetController = container.get<PasswordResetController>(
+  TYPES.PasswordResetController,
+);
+export const accountController = container.get<AccountController>(TYPES.AccountController);
+export const activationController = container.get<ActivationController>(TYPES.ActivationController);
 export const companyController = container.get<CompanyController>(TYPES.CompanyController);
 export const teamController = container.get<TeamController>(TYPES.TeamController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
@@ -113,7 +138,10 @@ export { redisClient };
 
 export const di = {
   adminController,
-  authController,
+  sessionController,
+  passwordResetController,
+  accountController,
+  activationController,
   companyController,
   teamController,
   authMiddleware,

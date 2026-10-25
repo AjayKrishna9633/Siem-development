@@ -15,7 +15,11 @@ export class AdminController {
   ) {}
 
   createSuperAdmin = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.registerSuperAdmin.execute(req.body);
+    const result = await this.registerSuperAdmin.execute({
+      email: req.body.email,
+      username: req.body.username,
+      password: req.body.password,
+    });
 
     res
       .status(HttpStatusCode.CREATED)

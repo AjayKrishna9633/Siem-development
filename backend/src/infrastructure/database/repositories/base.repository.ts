@@ -37,9 +37,4 @@ export abstract class BaseRepository<
     const persistenceModel = this.mapper.toPersistence(entity);
     await this.repository.save(persistenceModel);
   }
-
-  async delete(id: string): Promise<boolean> {
-    const result = await this.repository.delete(id);
-    return (result.affected ?? 0) > 0;
-  }
 }

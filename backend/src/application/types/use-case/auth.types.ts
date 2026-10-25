@@ -1,13 +1,13 @@
 export interface ISendOtpInput {
   email: string;
-  type: 'signup' | 'reset';
+  type: 'reset';
 }
 export type SendOtpInput = ISendOtpInput;
 
 export interface IVerifyOtpInput {
   email: string;
   otp: string;
-  type: 'signup' | 'reset';
+  type: 'reset';
 }
 export type VerifyOtpInput = IVerifyOtpInput;
 
@@ -45,6 +45,8 @@ export interface IUserProfileResponse {
   role: string;
   status: string;
   organizationId: string | null;
+  // Shown on the profile page; null for the super admin, who belongs to no company
+  companyName: string | null;
   isEmailVerified: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
