@@ -1,31 +1,39 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
-import type { IEmailService } from '../../interfaces/services/Email.service.interface.ts';
-import type { ICacheService, CacheKey } from '../../interfaces/services/cache.service.interface.ts';
-import type { IOtpGenerator } from '../../interfaces/services/otp.service.interface.ts';
+import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
+import type { IVerificationCodeService } from '../../interfaces/services/verification-code.service.interface.ts';
+import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { SendOtpInput } from '../../types/use-case/auth.types.ts';
 import type { ISendOtpUseCase } from '../../interfaces/use-cases/send-otp.interface.ts';
+import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 
+// Forgot password, step 1. The caller always gets the same answer, whether or not the
+// account exists, so this can't be used to discover accounts or to email strangers.
 @injectable()
 export class SendOtpUseCase implements ISendOtpUseCase {
-  private readonly OTP_TTL_SECONDS = 5 * 60;
-
   constructor(
-    @inject(TYPES.OtpService) private readonly otpGenerator: IOtpGenerator,
-    @inject(TYPES.CacheService) private readonly cacheService: ICacheService,
-    @inject(TYPES.EmailService) private readonly emailService: IEmailService,
+    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
+    @inject(TYPES.VerificationCodeService) private readonly codes: IVerificationCodeService,
+    @inject(TYPES.SecurityMailer) private readonly mailer: ISecurityMailer,
   ) {}
 
   async execute(input: SendOtpInput): Promise<void> {
-    const otp = await this.otpGenerator.generateOtp();
+    const user = await this.users.findByEmail(input.email);
+    // Invited accounts activate with their link; disabled ones must not regain access
+    if (!user || user.status !== UserStatus.ACTIVE) return;
 
-    const email = input.email.trim().toLowerCase();
-    const cacheKey: CacheKey = `otp:${input.type}:${email}`;
-    await this.cacheService.set(cacheKey, otp, this.OTP_TTL_SECONDS);
+    const { code, expiresInMinutes } = await this.codes.issue('password-reset', user.id, {});
 
-    const subject = `Your ${input.type === 'signup' ? 'Sign Up' : 'Password Reset'} OTP`;
-    const text = `Your OTP is ${otp}. It will expire in 5 minutes.`;
-
-    await this.emailService.sendEmail(email, subject, text);
+    // Not awaited: sending takes as long as the mail server does, and waiting for it
+    // would reveal through the response time that the account exists
+    void this.mailer
+      .sendVerificationCode({
+        to: user.email,
+        username: user.username,
+        purpose: 'password-reset',
+        code,
+        expiresInMinutes,
+      })
+      .catch((err: unknown) => console.error(`Password reset code to ${user.email} failed:`, err));
   }
 }

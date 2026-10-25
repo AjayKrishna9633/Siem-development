@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { CheckCircle2 } from 'lucide-react';
 import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { cn } from '../../lib/cn.ts';
-import { AuthError, AuthLayout, authInputClass } from './AuthLayout.tsx';
+import { newPasswordError } from '../../lib/password.ts';
+import type { ILoginRedirectState } from './Login.tsx';
+import { CodeInput } from '../../components/common/VerificationCode.tsx';
+import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
 type Step = 1 | 2 | 3;
 
@@ -13,9 +15,6 @@ const steps: { id: Step; label: string }[] = [
   { id: 2, label: 'Verify' },
   { id: 3, label: 'Reset' },
 ];
-
-const submitClass =
-  'h-10 w-full rounded bg-accent text-sm font-medium text-canvas transition-colors hover:bg-[#c4d6ff] disabled:bg-line-strong/60 disabled:text-subtle';
 
 export const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +27,6 @@ export const ForgotPassword: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const run = async (fn: () => Promise<void>, fallback: string) => {
     setError(null);
@@ -63,12 +61,14 @@ export const ForgotPassword: React.FC = () => {
 
   const handleReset = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) return setError('Passphrases do not match');
-    if (newPassword.length < 8) return setError('Passphrase must be at least 8 characters');
+    // A super admin's longer minimum comes back from the server, which knows the role
+    const problem = newPasswordError(newPassword, confirmPassword);
+    if (problem) return setError(problem);
     void run(async () => {
       await authService.resetPassword({ email, resetToken, newPassword });
-      setSuccess(true);
-      setTimeout(() => navigate('/login'), 2500);
+      // Straight to sign-in, which shows a confirmation and fills in the email
+      const state: ILoginRedirectState = { passwordReset: true, email };
+      navigate('/login', { replace: true, state });
     }, 'Passphrase reset failed.');
   };
 
@@ -103,47 +103,32 @@ export const ForgotPassword: React.FC = () => {
         ))}
       </ol>
 
-      {success ? (
-        <div className="space-y-2 py-4 text-center">
-          <CheckCircle2 className="mx-auto size-10 text-success" />
-          <p className="text-sm font-medium text-ink">Passphrase updated</p>
-          <p className="text-xs text-muted">Redirecting you to sign in…</p>
-        </div>
-      ) : step === 1 ? (
+      {step === 1 ? (
         <form onSubmit={handleSendOtp} className="space-y-3">
-          <input
+          <AuthInput
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Operator email"
             aria-label="Email"
-            className={authInputClass}
           />
           <AuthError message={error} />
-          <button type="submit" disabled={loading || !email} className={submitClass}>
+          <AuthSubmit disabled={loading || !email}>
             {loading ? 'Sending code…' : 'Send one-time code'}
-          </button>
+          </AuthSubmit>
         </form>
       ) : step === 2 ? (
         <form onSubmit={handleVerifyOtp} className="space-y-3">
           <p className="text-xs text-muted">
-            We sent a 6-digit code to <span className="font-mono text-ink">{email}</span>.
+            If an account exists for <span className="font-mono text-ink">{email}</span>, we sent it
+            a 6-digit code. It expires in 10 minutes; check spam if it doesn&apos;t arrive.
           </p>
-          <input
-            inputMode="numeric"
-            required
-            maxLength={6}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            placeholder="000000"
-            aria-label="One-time code"
-            className={cn(authInputClass, 'text-center font-mono text-lg tracking-[0.5em]')}
-          />
+          <CodeInput value={otp} onChange={setOtp} autoFocus />
           <AuthError message={error} />
-          <button type="submit" disabled={loading || otp.length !== 6} className={submitClass}>
+          <AuthSubmit disabled={loading || otp.length !== 6}>
             {loading ? 'Verifying…' : 'Verify code'}
-          </button>
+          </AuthSubmit>
           <button
             type="button"
             onClick={() => {
@@ -157,28 +142,24 @@ export const ForgotPassword: React.FC = () => {
         </form>
       ) : (
         <form onSubmit={handleReset} className="space-y-3">
-          <input
-            type="password"
+          <AuthPasswordInput
             required
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="New passphrase"
             aria-label="New password"
-            className={authInputClass}
+            autoComplete="new-password"
           />
-          <input
-            type="password"
+          <AuthPasswordInput
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm passphrase"
             aria-label="Confirm password"
-            className={authInputClass}
+            autoComplete="new-password"
           />
           <AuthError message={error} />
-          <button type="submit" disabled={loading} className={submitClass}>
-            {loading ? 'Updating…' : 'Set new passphrase'}
-          </button>
+          <AuthSubmit disabled={loading}>{loading ? 'Updating…' : 'Set new passphrase'}</AuthSubmit>
         </form>
       )}
     </AuthLayout>

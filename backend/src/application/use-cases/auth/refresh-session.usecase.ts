@@ -1,4 +1,5 @@
 import { injectable, inject } from 'inversify';
+import { startSession } from '../shared/user-views.ts';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
@@ -39,27 +40,6 @@ export class RefreshSessionUseCase implements IRefreshSessionUseCase {
       throw err;
     }
 
-    const { accessToken, refreshToken } = await this.sessions.issue(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        organizationId: user.organizationId,
-        tokenVersion: user.tokenVersion,
-      },
-      record.familyId,
-    );
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
-    };
+    return startSession(this.sessions, user, record.familyId);
   }
 }

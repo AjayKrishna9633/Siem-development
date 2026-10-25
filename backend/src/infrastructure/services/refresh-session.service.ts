@@ -15,10 +15,6 @@ import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
-interface IStoredRefreshToken extends IRefreshTokenRecord {
-  usedAt: number | null;
-}
-
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 // Two tabs can refresh with the same cookie at once; a reuse this soon after
@@ -37,11 +33,10 @@ export class RefreshSessionService implements ISessionService {
   async issue(payload: ITokenPayload, familyId: string = randomUUID()): Promise<ISessionTokens> {
     const refreshToken = randomBytes(32).toString('hex');
 
-    const record: IStoredRefreshToken = {
+    const record: IRefreshTokenRecord = {
       userId: payload.userId,
       familyId,
       tokenVersion: payload.tokenVersion,
-      usedAt: null,
     };
 
     // Only the hash is stored, so a cache dump does not leak usable tokens
@@ -57,7 +52,7 @@ export class RefreshSessionService implements ISessionService {
 
   async consume(refreshToken: string): Promise<IRefreshTokenRecord> {
     const key = `refresh:${hashToken(refreshToken)}` as const;
-    const record = await this.cache.get<IStoredRefreshToken>(key);
+    const record = await this.cache.get<IRefreshTokenRecord>(key);
 
     if (!record) {
       throw new AppError(AppErrorCode.INVALID_REFRESH_TOKEN, ErrorMessage.INVALID_REFRESH_TOKEN);
@@ -68,20 +63,19 @@ export class RefreshSessionService implements ISessionService {
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
     }
 
-    if (record.usedAt !== null) {
-      if (Date.now() - record.usedAt > REUSE_GRACE_MS) {
+    // "Is it unused?" and "mark it used" happen in one atomic claim, so of two
+    // simultaneous refreshes with the same token exactly one wins. The claim is kept
+    // until the token would have expired, so a later replay is still detected.
+    const usedKey = `refresh-used:${hashToken(refreshToken)}` as const;
+    const claimed = await this.cache.setIfAbsent(usedKey, Date.now(), REFRESH_TTL_SECONDS);
+    if (!claimed) {
+      const usedAt = await this.cache.get<number>(usedKey);
+      if (usedAt !== null && Date.now() - usedAt > REUSE_GRACE_MS) {
         await this.revokeFamily(record.familyId);
         throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
       }
       throw new AppError(AppErrorCode.INVALID_REFRESH_TOKEN, ErrorMessage.INVALID_REFRESH_TOKEN);
     }
-
-    // Keep the used record until expiry so a later replay is detected
-    await this.cache.set<IStoredRefreshToken>(
-      key,
-      { ...record, usedAt: Date.now() },
-      REFRESH_TTL_SECONDS,
-    );
 
     return { userId: record.userId, familyId: record.familyId, tokenVersion: record.tokenVersion };
   }
@@ -91,7 +85,7 @@ export class RefreshSessionService implements ISessionService {
   }
 
   async revoke(refreshToken: string): Promise<void> {
-    const record = await this.cache.get<IStoredRefreshToken>(`refresh:${hashToken(refreshToken)}`);
+    const record = await this.cache.get<IRefreshTokenRecord>(`refresh:${hashToken(refreshToken)}`);
     if (record) await this.revokeFamily(record.familyId);
   }
 }

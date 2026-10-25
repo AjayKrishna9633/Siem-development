@@ -25,6 +25,21 @@ export class RedisCacheService implements ICacheService {
     }
   }
 
+  async setIfAbsent<T>(key: CacheKey, value: T, ttl: number): Promise<boolean> {
+    const stringVal = JSON.stringify(value);
+    try {
+      // Redis checks and writes in one step, so simultaneous callers cannot both win
+      return (await this.client.set(key, stringVal, 'EX', ttl, 'NX')) === 'OK';
+    } catch {
+      // Redis is offline. The check and the write below have no await between them,
+      // so no other request can run in between: the in-memory claim is atomic too.
+      const existing = this.fallbackStore.get(key);
+      if (existing && Date.now() <= existing.expiresAt) return false;
+      this.fallbackStore.set(key, { value: stringVal, expiresAt: Date.now() + ttl * 1000 });
+      return true;
+    }
+  }
+
   async get<T>(key: CacheKey): Promise<T | null> {
     try {
       const data = await this.client.get(key);

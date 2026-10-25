@@ -1,4 +1,6 @@
 import { injectable, inject } from 'inversify';
+import { startSession } from '../shared/user-views.ts';
+import { randomBytes } from 'node:crypto';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
@@ -21,56 +23,42 @@ export class LoginUseCase implements ILoginUseCase {
     @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
   ) {}
 
+  // A real bcrypt hash of a random value: an unknown email is checked against it, so it
+  // takes as long to reject as a wrong password does
+  private timingHash: Promise<string> | null = null;
+
   async execute(input: ILoginInput): Promise<ILoginResponse> {
-    const normalizedEmail = input.email.trim().toLowerCase();
-    const user = await this.users.findByEmail(normalizedEmail);
-
-    if (!user) {
-      throw new AppError(AppErrorCode.INVALID_CREDENTIALS, ErrorMessage.INVALID_CREDENTIALS);
-    }
-
+    const invalidCredentials = new AppError(
+      AppErrorCode.INVALID_CREDENTIALS,
+      ErrorMessage.INVALID_CREDENTIALS,
+    );
+    const user = await this.users.findByEmail(input.email);
     const now = new Date();
 
-    if (user.isLocked(now)) {
-      throw new AppError(AppErrorCode.ACCOUNT_LOCKED, ErrorMessage.ACCOUNT_LOCKED);
+    // Unknown, never-activated and locked accounts all look exactly like a wrong
+    // password. A locked account's password is not checked, so the lock can't be
+    // used to keep testing guesses.
+    if (!user || !user.passwordHash || user.isLocked(now)) {
+      this.timingHash ??= this.hasher.hash(randomBytes(16).toString('hex'));
+      await this.hasher.compare(input.password, await this.timingHash);
+      throw invalidCredentials;
     }
 
-    if (user.status !== UserStatus.ACTIVE || !user.passwordHash) {
-      throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
-    }
-
-    const isPasswordValid = await this.hasher.compare(input.password, user.passwordHash);
-
-    if (!isPasswordValid) {
+    if (!(await this.hasher.compare(input.password, user.passwordHash))) {
       user.recordFailedLogin(now);
       await this.users.save(user);
-      throw new AppError(AppErrorCode.INVALID_CREDENTIALS, ErrorMessage.INVALID_CREDENTIALS);
+      throw invalidCredentials;
     }
 
-    // Checked after the password so company status is not revealed to guessers
+    // Only someone who knows the password learns that the account or company is inactive
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
+    }
     await assertCompanyActive(this.companies, user);
 
     user.recordSuccessfulLogin(input.ip ?? null, now);
     await this.users.save(user);
 
-    const { accessToken, refreshToken } = await this.sessions.issue({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      organizationId: user.organizationId,
-      tokenVersion: user.tokenVersion,
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
-    };
+    return startSession(this.sessions, user);
   }
 }

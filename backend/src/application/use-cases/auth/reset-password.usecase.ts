@@ -5,6 +5,8 @@ import type { IHashService } from '../../interfaces/services/hash.service.interf
 import type { ICacheService, CacheKey } from '../../interfaces/services/cache.service.interface.ts';
 import type { IResetPasswordInput } from '../../types/use-case/auth.types.ts';
 import type { IResetPasswordUseCase } from '../../interfaces/use-cases/reset-password.interface.ts';
+import { UserStatus } from '../../../domain/enums/UserStatus.ts';
+import { assertPasswordPolicy } from '../shared/access.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
@@ -18,19 +20,21 @@ export class ResetPasswordUseCase implements IResetPasswordUseCase {
   ) {}
 
   async execute(input: IResetPasswordInput): Promise<void> {
-    const normalizedEmail = input.email.trim().toLowerCase();
     const cacheKey: CacheKey = `reset-token:${input.resetToken.trim()}`;
 
+    // Both sides are already normalized: the token stores the account's email, and the
+    // request schema lowercases the submitted one
     const cachedEmail = await this.cacheService.get<string>(cacheKey);
-
-    if (!cachedEmail || cachedEmail.trim().toLowerCase() !== normalizedEmail) {
+    if (!cachedEmail || cachedEmail !== input.email) {
       throw new AppError(AppErrorCode.INVALID_RESET_TOKEN, ErrorMessage.INVALID_RESET_TOKEN);
     }
 
-    const user = await this.users.findByEmail(normalizedEmail);
-    if (!user) {
-      throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
+    // The account may have been disabled since the code was verified
+    const user = await this.users.findByEmail(input.email);
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new AppError(AppErrorCode.INVALID_RESET_TOKEN, ErrorMessage.INVALID_RESET_TOKEN);
     }
+    assertPasswordPolicy(user, input.newPassword);
 
     const now = new Date();
     const newHash = await this.hasher.hash(input.newPassword);
