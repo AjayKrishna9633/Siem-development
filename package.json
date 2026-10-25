@@ -7,11 +7,15 @@
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10"
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev"
   }
 }
