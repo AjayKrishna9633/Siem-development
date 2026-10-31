@@ -7,3 +7,8 @@ export const LOGIN_LOCKOUT = {
 // First-run setup token: printed to the server log, valid for this long. A restart
 // within the window reuses it; after that a new one is printed.
 export const SETUP_TOKEN_TTL_HOURS = 24;
+
+// Single-use links. An invite gives the person a couple of days to get to it; a reset
+// link is short-lived because it can take over an existing account.
+export const INVITE_TOKEN_TTL_HOURS = 48;
+export const RESET_TOKEN_TTL_MINUTES = 30;

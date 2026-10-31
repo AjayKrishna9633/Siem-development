@@ -55,7 +55,7 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
     const { code, expiresInMinutes } = await this.codes.issue('email-change', user.id, pending);
     await this.mailer.sendVerificationCode({
       to: newEmail,
-      username: user.username,
+      username: user.displayName,
       purpose: 'email-change',
       code,
       expiresInMinutes,

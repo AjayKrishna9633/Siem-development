@@ -25,7 +25,7 @@ export class RequestPasswordChangeUseCase implements IRequestPasswordChangeUseCa
     const { code, expiresInMinutes } = await this.codes.issue('password-change', user.id, {});
     await this.mailer.sendVerificationCode({
       to: user.email,
-      username: user.username,
+      username: user.displayName,
       purpose: 'password-change',
       code,
       expiresInMinutes,

@@ -4,7 +4,7 @@ import type { User } from '../../../domain/entities/user.entity.ts';
 import { permissionsFor } from '../../../domain/policies/permissions.policy.ts';
 
 // Issues tokens for `user` and builds the session response the frontend stores.
-// Shared by login, refresh, activation and password/email changes. Pass `familyId`
+// Shared by login, refresh, setup, accepting an invite and password/email changes. Pass `familyId`
 // when rotating, so the new refresh token joins the existing session family.
 export const startSession = async (
   sessions: ISessionService,
@@ -26,7 +26,7 @@ export const startSession = async (
     user: {
       id: user.id,
       email: user.email,
-      username: user.username,
+      username: user.displayName,
       role: user.role,
       // The UI shows and hides features from this list; the API still checks every call
       permissions: permissionsFor(user.role),
@@ -40,7 +40,7 @@ export const toUserProfile = (user: User): IUserProfileResponse => {
   return {
     id: user.id,
     email: user.email,
-    username: user.username,
+    username: user.displayName,
     role: user.role,
     permissions: permissionsFor(user.role),
     status: user.status,

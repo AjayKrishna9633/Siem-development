@@ -42,6 +42,11 @@ export class TypeOrmUserRepository
     return models.map((model) => this.mapper.toDomain(model));
   }
 
+  async deleteInvited(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id, status: UserStatus.INVITED });
+    return result.affected === 1;
+  }
+
   changeWithAdminLock(
     userId: string,
     change: (user: User, activeAdminCount: number) => void,

@@ -6,6 +6,9 @@ export interface IUserRepository extends IBaseRepository<User> {
   // Everyone in this install, newest first
   findAll(): Promise<User[]>;
   findByIds(ids: string[]): Promise<User[]>;
+  // Deletes the user only while they're still invited, in one statement, so an invite
+  // accepted at the same moment is never deleted. False when nothing was deleted.
+  deleteInvited(id: string): Promise<boolean>;
   // For any change that could leave no active admin. In one transaction holding a lock
   // that every such change takes: loads the user, counts active admins, runs `change`
   // (which mutates the user or throws), then saves. Concurrent changes run one at a

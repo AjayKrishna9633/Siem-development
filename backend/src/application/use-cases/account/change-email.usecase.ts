@@ -50,7 +50,7 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
     await this.mailer.notifyEmailChanged({
       oldEmail,
       newEmail: user.email,
-      username: user.username,
+      username: user.displayName,
     });
 
     return startSession(this.sessions, user);

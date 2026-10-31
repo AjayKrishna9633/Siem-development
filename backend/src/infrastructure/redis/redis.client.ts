@@ -28,7 +28,7 @@ export const createRedisClient = () => {
     if (connected !== false) {
       console.warn(
         `Redis not connected at ${safeUrl(env.REDIS_URL)} (${err.message}). ` +
-          'Using the in-memory cache: sessions, activation links and codes are lost when the backend restarts.',
+          'Using the in-memory cache: sessions and verification codes are lost when the backend restarts.',
       );
     }
     connected = false;

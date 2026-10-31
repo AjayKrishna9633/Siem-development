@@ -25,7 +25,8 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.VALIDATION_ERROR]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_REFRESH_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.SESSION_REVOKED]: HttpStatusCode.UNAUTHORIZED,
-  [AppErrorCode.INVALID_ACTIVATION]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.INVALID_INVITE]: HttpStatusCode.BAD_REQUEST,
+  [AppErrorCode.INVITE_NOT_PENDING]: HttpStatusCode.CONFLICT,
   // 400 rather than 401: a wrong current password must not look like an expired session
   [AppErrorCode.INVALID_VERIFICATION_CODE]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CURRENT_PASSWORD]: HttpStatusCode.BAD_REQUEST,

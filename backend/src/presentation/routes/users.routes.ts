@@ -3,7 +3,7 @@ import type { UsersController } from '../controllers/users.controller.ts';
 import { validate } from '../middlewares/validate.middleware.ts';
 import { authorize } from '../middlewares/auth.middleware.ts';
 import { Permission } from '../../domain/enums/Permission.ts';
-import { addUserSchema, changeRoleSchema } from '../validators/user-mgmt.schema.ts';
+import { changeRoleSchema, inviteUserSchema } from '../validators/user-mgmt.schema.ts';
 
 // Everyone in the install — for users who manage users
 export function usersRoutes(controller: UsersController, authMiddleware: RequestHandler): Router {
@@ -11,8 +11,10 @@ export function usersRoutes(controller: UsersController, authMiddleware: Request
   router.use(authMiddleware, authorize(Permission.USERS_MANAGE));
 
   router.get('/', controller.list);
-  router.post('/', validate(addUserSchema), controller.add);
-  router.post('/:userId/activation', controller.resendActivationFor);
+  router.get('/invites', controller.listInvites);
+  router.post('/invites', validate(inviteUserSchema), controller.invite);
+  router.post('/:userId/invite/resend', controller.resendInvite);
+  router.delete('/:userId/invite', controller.revokeInvite);
   router.patch('/:userId/role', validate(changeRoleSchema), controller.changeRole);
   router.post('/:userId/disable', controller.disable);
   router.post('/:userId/enable', controller.enable);

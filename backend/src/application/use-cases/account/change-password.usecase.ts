@@ -49,7 +49,7 @@ export class ChangePasswordUseCase implements IChangePasswordUseCase {
     user.changePassword(await this.hasher.hash(input.newPassword), new Date());
     await this.users.save(user);
     await this.codes.consume('password-change', user.id);
-    await this.mailer.notifyPasswordChanged({ to: user.email, username: user.username });
+    await this.mailer.notifyPasswordChanged({ to: user.email, username: user.displayName });
 
     return startSession(this.sessions, user);
   }

@@ -1,5 +1,5 @@
-// Account-security emails (verification codes and "your account changed" notices) in the
-// same dark SIEMple look as the activation email. Inline styles only, for Gmail/Outlook.
+// Account emails (invitations, reset links, verification codes and "your account changed"
+// notices) in the dark SIEMple look. Inline styles only, for Gmail/Outlook.
 
 export interface ISecurityEmailInput {
   // Small uppercase label above the heading, e.g. "Password change"
@@ -7,6 +7,9 @@ export interface ISecurityEmailInput {
   heading: string;
   paragraphs: string[];
   code?: string;
+  // A button, e.g. { label: 'Accept invitation', url }; the URL is also printed as text
+  // for mail clients that block buttons
+  action?: { label: string; url: string };
   // Shown under the code or at the bottom, e.g. "Didn't request this? ..."
   footnote: string;
 }
@@ -28,6 +31,7 @@ export const securityEmailText = (input: ISecurityEmailInput) =>
     '',
     ...input.paragraphs.flatMap((p) => [p, '']),
     ...(input.code ? [`Your code: ${input.code}`, ''] : []),
+    ...(input.action ? [`${input.action.label}: ${input.action.url}`, ''] : []),
     input.footnote,
   ].join('\n');
 
@@ -46,6 +50,17 @@ export const securityEmailHtml = (input: ISecurityEmailInput) => {
           <td style="background:#0b1326;border:1px solid #334155;border-radius:4px;padding:14px 22px;font-family:${MONO};font-size:28px;letter-spacing:10px;color:#adc6ff;">${escapeHtml(input.code)}</td>
         </tr>
       </table>`
+    : '';
+
+  const action = input.action
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 18px;">
+        <tr>
+          <td style="border-radius:4px;background:#adc6ff;">
+            <a href="${escapeHtml(input.action.url)}" target="_blank" style="display:inline-block;padding:12px 24px;font-family:${FONT};font-size:14px;font-weight:600;color:#0b1326;text-decoration:none;border-radius:4px;">${escapeHtml(input.action.label)}</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0 0 18px;font-family:${FONT};font-size:12px;line-height:18px;color:#64748b;word-break:break-all;">Button not working? Open this link: <a href="${escapeHtml(input.action.url)}" target="_blank" style="color:#adc6ff;">${escapeHtml(input.action.url)}</a></p>`
     : '';
 
   return `<!doctype html>
@@ -72,6 +87,7 @@ export const securityEmailHtml = (input: ISecurityEmailInput) => {
             <h1 style="margin:0 0 16px;font-family:${FONT};font-size:22px;line-height:30px;font-weight:600;color:#f8fafc;">${escapeHtml(input.heading)}</h1>
             ${paragraphs}
             ${code}
+            ${action}
             <p style="margin:8px 0 0;padding-top:16px;border-top:1px solid #1e293b;font-family:${FONT};font-size:12px;line-height:18px;color:#64748b;">${escapeHtml(input.footnote)}</p>
           </td>
         </tr>

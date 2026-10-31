@@ -4,7 +4,8 @@ import type { UserStatus } from '../enums/UserStatus.ts';
 export interface IUserProps {
   id: string;
   email: string;
-  username: string;
+  // Null until an invited person accepts and chooses their name
+  username: string | null;
   passwordHash: string | null;
   role: UserRole;
   status: UserStatus;
@@ -32,10 +33,10 @@ export interface ICreateFirstAdminProps {
   now: Date;
 }
 
+// The person chooses their own name when they accept
 export interface ICreateInvitedUserProps {
   id: string;
   email: string;
-  username: string;
   role: UserRole;
   invitedById: string;
   now: Date;

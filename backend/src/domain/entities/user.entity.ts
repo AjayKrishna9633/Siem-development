@@ -17,7 +17,7 @@ export class User {
     return new User({
       id: input.id,
       email: normalizeEmail(input.email),
-      username: input.username.trim(),
+      username: null,
       passwordHash: null,
       role: input.role,
       status: UserStatus.INVITED,
@@ -68,6 +68,11 @@ export class User {
   get username() {
     return this.props.username;
   }
+  // What to call the person in emails and the UI: their name, or their email until
+  // they've accepted an invitation and chosen one
+  get displayName(): string {
+    return this.props.username ?? this.props.email;
+  }
   get role() {
     return this.props.role;
   }
@@ -101,9 +106,10 @@ export class User {
     );
   }
 
-  acceptInvite(passwordHash: string, now: Date): void {
+  acceptInvite(username: string, passwordHash: string, now: Date): void {
     if (this.props.status !== UserStatus.INVITED)
       throw new DomainError(ErrorMessage.INVITE_ALREADY_USED_OR_DISABLED);
+    this.props.username = username.trim();
     this.props.passwordHash = passwordHash;
     this.props.status = UserStatus.ACTIVE;
     this.props.isEmailVerified = true;
@@ -160,7 +166,7 @@ export class User {
     this.touch(now);
   }
 
-  // Someone disabled before activating goes back to waiting for activation
+  // Someone disabled before accepting their invite goes back to "invited"
   enable(now: Date): void {
     if (this.props.status !== UserStatus.DISABLED) {
       throw new DomainError(ErrorMessage.USER_NOT_DISABLED);

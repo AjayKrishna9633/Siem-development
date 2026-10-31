@@ -7,6 +7,7 @@ import { UserMapper } from '../database/mappers/user.mapper.ts';
 import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.repository.ts';
 import { TypeOrmSystemSettingsRepository } from '../database/repositories/system-settings.repository.ts';
 import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper.ts';
+import { TypeOrmAuthTokenRepository } from '../database/repositories/auth-token.repository.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
@@ -23,7 +24,8 @@ import { RequestPasswordChangeUseCase } from '../../application/use-cases/accoun
 import { ChangePasswordUseCase } from '../../application/use-cases/account/change-password.usecase.ts';
 import { RequestEmailChangeUseCase } from '../../application/use-cases/account/request-email-change.usecase.ts';
 import { ChangeEmailUseCase } from '../../application/use-cases/account/change-email.usecase.ts';
-import { ActivationService } from '../services/activation.service.ts';
+import { AuthTokenService } from '../services/auth-token.service.ts';
+import { AuthMailer } from '../services/auth-mailer.service.ts';
 import { OpaqueTokenService } from '../services/opaque-token.service.ts';
 
 // UseCases
@@ -33,14 +35,15 @@ import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts'
 import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.usecase.ts';
 import { UpdateProfileUseCase } from '../../application/use-cases/auth/update-profile.usecase.ts';
-import { AddUserUseCase } from '../../application/use-cases/users/add-user.usecase.ts';
 import { ListUsersUseCase } from '../../application/use-cases/users/list-users.usecase.ts';
 import { ChangeUserRoleUseCase } from '../../application/use-cases/users/change-user-role.usecase.ts';
 import { SetUserStatusUseCase } from '../../application/use-cases/users/set-user-status.usecase.ts';
-import { GetActivationUseCase } from '../../application/use-cases/activation/get-activation.usecase.ts';
-import { VerifyActivationUseCase } from '../../application/use-cases/activation/verify-activation.usecase.ts';
-import { ActivateAccountUseCase } from '../../application/use-cases/activation/activate-account.usecase.ts';
-import { ResendActivationUseCase } from '../../application/use-cases/activation/resend-activation.usecase.ts';
+import { InviteUserUseCase } from '../../application/use-cases/invites/invite-user.usecase.ts';
+import { ResendInviteUseCase } from '../../application/use-cases/invites/resend-invite.usecase.ts';
+import { RevokeInviteUseCase } from '../../application/use-cases/invites/revoke-invite.usecase.ts';
+import { ListPendingInvitesUseCase } from '../../application/use-cases/invites/list-pending-invites.usecase.ts';
+import { GetInviteUseCase } from '../../application/use-cases/invites/get-invite.usecase.ts';
+import { AcceptInviteUseCase } from '../../application/use-cases/invites/accept-invite.usecase.ts';
 import { RefreshSessionUseCase } from '../../application/use-cases/auth/refresh-session.usecase.ts';
 import { LogoutUseCase } from '../../application/use-cases/auth/logout.usecase.ts';
 import { ResolveSessionUserUseCase } from '../../application/use-cases/auth/resolve-session-user.usecase.ts';
@@ -61,7 +64,7 @@ import { authenticate } from '../../presentation/middlewares/auth.middleware.ts'
 import { SessionController } from '../../presentation/controllers/session.controller.ts';
 import { PasswordResetController } from '../../presentation/controllers/password-reset.controller.ts';
 import { AccountController } from '../../presentation/controllers/account.controller.ts';
-import { ActivationController } from '../../presentation/controllers/activation.controller.ts';
+import { InviteController } from '../../presentation/controllers/invite.controller.ts';
 import { UsersController } from '../../presentation/controllers/users.controller.ts';
 import { SetupController } from '../../presentation/controllers/setup.controller.ts';
 
@@ -82,6 +85,7 @@ container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
 container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
 container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
+container.bind(TYPES.AuthTokenRepository).to(TypeOrmAuthTokenRepository);
 
 // 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
@@ -89,7 +93,8 @@ container.bind(TYPES.CacheService).to(RedisCacheService);
 container.bind(TYPES.EmailService).to(EmailService);
 container.bind(TYPES.TokenService).to(JwtTokenService);
 container.bind(TYPES.SessionService).to(RefreshSessionService);
-container.bind(TYPES.ActivationService).to(ActivationService);
+container.bind(TYPES.AuthTokenService).to(AuthTokenService);
+container.bind(TYPES.AuthMailer).to(AuthMailer);
 container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
 container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 container.bind(TYPES.OpaqueTokenService).to(OpaqueTokenService);
@@ -101,14 +106,15 @@ container.bind(TYPES.LoginUseCase).to(LoginUseCase);
 container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
 container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
 container.bind(TYPES.UpdateProfileUseCase).to(UpdateProfileUseCase);
-container.bind(TYPES.AddUserUseCase).to(AddUserUseCase);
 container.bind(TYPES.ListUsersUseCase).to(ListUsersUseCase);
 container.bind(TYPES.ChangeUserRoleUseCase).to(ChangeUserRoleUseCase);
 container.bind(TYPES.SetUserStatusUseCase).to(SetUserStatusUseCase);
-container.bind(TYPES.GetActivationUseCase).to(GetActivationUseCase);
-container.bind(TYPES.VerifyActivationUseCase).to(VerifyActivationUseCase);
-container.bind(TYPES.ActivateAccountUseCase).to(ActivateAccountUseCase);
-container.bind(TYPES.ResendActivationUseCase).to(ResendActivationUseCase);
+container.bind(TYPES.InviteUserUseCase).to(InviteUserUseCase);
+container.bind(TYPES.ResendInviteUseCase).to(ResendInviteUseCase);
+container.bind(TYPES.RevokeInviteUseCase).to(RevokeInviteUseCase);
+container.bind(TYPES.ListPendingInvitesUseCase).to(ListPendingInvitesUseCase);
+container.bind(TYPES.GetInviteUseCase).to(GetInviteUseCase);
+container.bind(TYPES.AcceptInviteUseCase).to(AcceptInviteUseCase);
 container.bind(TYPES.RefreshSessionUseCase).to(RefreshSessionUseCase);
 container.bind(TYPES.LogoutUseCase).to(LogoutUseCase);
 container.bind(TYPES.ResolveSessionUserUseCase).to(ResolveSessionUserUseCase);
@@ -125,7 +131,7 @@ container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
-container.bind(TYPES.ActivationController).to(ActivationController);
+container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 
@@ -135,7 +141,7 @@ export const passwordResetController = container.get<PasswordResetController>(
   TYPES.PasswordResetController,
 );
 export const accountController = container.get<AccountController>(TYPES.AccountController);
-export const activationController = container.get<ActivationController>(TYPES.ActivationController);
+export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const authMiddleware = authenticate(
@@ -155,7 +161,7 @@ export const di = {
   sessionController,
   passwordResetController,
   accountController,
-  activationController,
+  inviteController,
   usersController,
   setupController,
   authMiddleware,

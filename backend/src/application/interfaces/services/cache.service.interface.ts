@@ -11,6 +11,4 @@ export type CacheKey =
   | `refresh:${string}`
   | `refresh-used:${string}`
   | `refresh-family:${string}`
-  | `activation:${string}`
-  | `activation-user:${string}`
   | `verify:${string}:${string}`;

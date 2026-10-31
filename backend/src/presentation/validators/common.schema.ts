@@ -4,6 +4,15 @@ import {
   PASSWORD_MIN_LENGTH,
 } from '../../domain/policies/credentials.policy.ts';
 
+// Invite and reset links carry 32 random bytes as hex
+export const LINK_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+
+export const linkTokenField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(LINK_TOKEN_PATTERN, 'This link is incomplete or invalid');
+
 const byteLength = (s: string) => new TextEncoder().encode(s).length;
 
 // Trimmed and lowercased before the format check, so " Jane@Acme.co " arrives as

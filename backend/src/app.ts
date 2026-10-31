@@ -8,7 +8,7 @@ import { di } from './infrastructure/di/index.ts';
 import { sessionRoutes } from './presentation/routes/session.routes.ts';
 import { passwordResetRoutes } from './presentation/routes/password-reset.routes.ts';
 import { accountRoutes } from './presentation/routes/account.routes.ts';
-import { activationRoutes } from './presentation/routes/activation.routes.ts';
+import { inviteRoutes } from './presentation/routes/invite.routes.ts';
 import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
@@ -35,7 +35,7 @@ app.use('/api/setup', setupRoutes(di.setupController));
 app.use('/api/auth', sessionRoutes(di.sessionController));
 app.use('/api/auth', passwordResetRoutes(di.passwordResetController));
 app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
-app.use('/api/auth', activationRoutes(di.activationController));
+app.use('/api/auth', inviteRoutes(di.inviteController));
 app.use('/api/users', usersRoutes(di.usersController, di.authMiddleware));
 
 app.use(notFoundHandler);

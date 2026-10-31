@@ -5,6 +5,10 @@ export enum AuditAction {
   USER_ROLE_CHANGED = 'user.role_changed',
   USER_DISABLED = 'user.disabled',
   USER_ENABLED = 'user.enabled',
+  INVITE_CREATED = 'invite.created',
+  INVITE_RESENT = 'invite.resent',
+  INVITE_REVOKED = 'invite.revoked',
+  INVITE_ACCEPTED = 'invite.accepted',
 }
 
 // What the action was done to, as stored in audit_logs.target_type

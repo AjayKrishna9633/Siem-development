@@ -29,7 +29,7 @@ export class SendOtpUseCase implements ISendOtpUseCase {
     void this.mailer
       .sendVerificationCode({
         to: user.email,
-        username: user.username,
+        username: user.displayName,
         purpose: 'password-reset',
         code,
         expiresInMinutes,

@@ -45,7 +45,7 @@ export class SetupController {
       context: requestContextFrom(req),
     });
 
-    // The new admin is signed in straight away, like an activation
+    // The new admin is signed in straight away, like someone accepting an invite
     setRefreshCookie(res, refreshToken);
     res
       .status(HttpStatusCode.CREATED)
