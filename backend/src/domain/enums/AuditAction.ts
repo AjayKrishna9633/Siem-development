@@ -9,6 +9,8 @@ export enum AuditAction {
   INVITE_RESENT = 'invite.resent',
   INVITE_REVOKED = 'invite.revoked',
   INVITE_ACCEPTED = 'invite.accepted',
+  PASSWORD_RESET_REQUESTED = 'password.reset_requested',
+  PASSWORD_RESET_COMPLETED = 'password.reset_completed',
 }
 
 // What the action was done to, as stored in audit_logs.target_type

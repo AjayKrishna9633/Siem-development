@@ -8,6 +8,7 @@ import type {
 import type {
   IAuthMailer,
   IInviteEmail,
+  IPasswordResetEmail,
 } from '../../application/interfaces/services/auth-mailer.interface.ts';
 import { securityEmailHtml, securityEmailText } from './templates/security-email.ts';
 
@@ -45,6 +46,28 @@ export class AuthMailer implements IAuthMailer {
       subject: input.replacesEarlier
         ? `New invitation link for ${org} on SIEMple`
         : `You're invited to ${org} on SIEMple`,
+      text: securityEmailText(content),
+      html: securityEmailHtml(content),
+    });
+  }
+
+  sendPasswordReset(input: IPasswordResetEmail): Promise<IEmailDelivery> {
+    const content = {
+      eyebrow: 'Password reset',
+      heading: `Reset your SIEMple password, ${input.name}`,
+      paragraphs: [
+        input.byAdmin
+          ? 'An administrator sent you this link so you can choose a new password.'
+          : 'Someone asked to reset the password for your SIEMple account.',
+        `The link works once and expires ${formatExpiry(input.expiresAt)}. Setting a new password signs you out on every device.`,
+      ],
+      action: { label: 'Choose a new password', url: input.link },
+      footnote: "Didn't ask for this? Ignore this email; your password stays the same.",
+    };
+
+    return this.email.send({
+      to: input.to,
+      subject: 'Reset your SIEMple password',
       text: securityEmailText(content),
       html: securityEmailHtml(content),
     });

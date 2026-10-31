@@ -5,45 +5,57 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import type { ISendOtpUseCase } from '../../application/interfaces/use-cases/send-otp.interface.ts';
-import type { IVerifyOtpUseCase } from '../../application/interfaces/use-cases/verify-otp.interface.ts';
-import type { IResetPasswordUseCase } from '../../application/interfaces/use-cases/reset-password.interface.ts';
+import { requestContextFrom } from '../http/request-context.ts';
+import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
+import type {
+  IGetPasswordResetUseCase,
+  IRequestPasswordResetUseCase,
+  IResetPasswordUseCase,
+} from '../../application/interfaces/use-cases/password-reset.interface.ts';
 
-// Forgot password, for someone who is signed out: email a code, verify it, set a new password
+// Forgot password, for someone who is signed out: request a link, open it, set a password
 @injectable()
 export class PasswordResetController {
   constructor(
-    @inject(TYPES.SendOtpUseCase) private readonly sendOtpUseCase: ISendOtpUseCase,
-    @inject(TYPES.VerifyOtpUseCase) private readonly verifyOtpUseCase: IVerifyOtpUseCase,
-    @inject(TYPES.ResetPasswordUseCase)
-    private readonly resetPasswordUseCase: IResetPasswordUseCase,
+    @inject(TYPES.RequestPasswordResetUseCase)
+    private readonly requestPasswordReset: IRequestPasswordResetUseCase,
+    @inject(TYPES.GetPasswordResetUseCase)
+    private readonly getPasswordReset: IGetPasswordResetUseCase,
+    @inject(TYPES.ResetPasswordUseCase) private readonly resetPassword: IResetPasswordUseCase,
   ) {}
 
-  sendOtp = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.sendOtpUseCase.execute({ email: req.body.email, type: req.body.type });
-
-    res
-      .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.OTP_SENT));
-  });
-
-  verifyOtp = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.verifyOtpUseCase.execute({
+  request = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    await this.requestPasswordReset.execute({
       email: req.body.email,
-      otp: req.body.otp,
-      type: req.body.type,
+      context: requestContextFrom(req),
     });
 
+    // The same answer whether or not the account exists or email is configured
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.OTP_VERIFIED));
+      .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.PASSWORD_RESET_REQUESTED));
   });
 
-  resetPassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.resetPasswordUseCase.execute({
-      email: req.body.email,
-      resetToken: req.body.resetToken,
-      newPassword: req.body.newPassword,
+  preview = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const token = typeof req.query.token === 'string' ? req.query.token.trim().toLowerCase() : '';
+    if (!LINK_TOKEN_PATTERN.test(token)) {
+      throw new AppError(AppErrorCode.INVALID_RESET_LINK, ErrorMessage.INVALID_RESET_LINK);
+    }
+
+    const result = await this.getPasswordReset.execute({ token });
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.PASSWORD_RESET_FETCHED));
+  });
+
+  reset = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    await this.resetPassword.execute({
+      token: req.body.token,
+      password: req.body.password,
+      context: requestContextFrom(req),
     });
 
     res

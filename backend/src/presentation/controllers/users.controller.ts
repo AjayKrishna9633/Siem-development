@@ -18,6 +18,7 @@ import type {
   IResendInviteUseCase,
   IRevokeInviteUseCase,
 } from '../../application/interfaces/use-cases/invites.interface.ts';
+import type { IIssueResetLinkUseCase } from '../../application/interfaces/use-cases/password-reset.interface.ts';
 
 @injectable()
 export class UsersController {
@@ -29,6 +30,8 @@ export class UsersController {
     @inject(TYPES.InviteUserUseCase) private readonly inviteUser: IInviteUserUseCase,
     @inject(TYPES.ResendInviteUseCase) private readonly resendInviteUseCase: IResendInviteUseCase,
     @inject(TYPES.RevokeInviteUseCase) private readonly revokeInviteUseCase: IRevokeInviteUseCase,
+    @inject(TYPES.IssueResetLinkUseCase)
+    private readonly issueResetLinkUseCase: IIssueResetLinkUseCase,
     @inject(TYPES.ListPendingInvitesUseCase)
     private readonly listPendingInvites: IListPendingInvitesUseCase,
   ) {}
@@ -84,6 +87,18 @@ export class UsersController {
     res
       .status(HttpStatusCode.OK)
       .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.INVITE_REVOKED));
+  });
+
+  issueResetLink = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const result = await this.issueResetLinkUseCase.execute({
+      actor: actorFrom(req),
+      userId: idParamFrom(req, 'userId'),
+      context: requestContextFrom(req),
+    });
+
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.RESET_LINK_ISSUED));
   });
 
   changeRole = catchAsync(async (req: Request, res: Response): Promise<void> => {

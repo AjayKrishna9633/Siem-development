@@ -1,7 +1,9 @@
 const TYPES = {
   // Use Cases
-  SendOtpUseCase: Symbol.for('SendOtpUseCase'),
-  VerifyOtpUseCase: Symbol.for('VerifyOtpUseCase'),
+  RequestPasswordResetUseCase: Symbol.for('RequestPasswordResetUseCase'),
+  GetPasswordResetUseCase: Symbol.for('GetPasswordResetUseCase'),
+  IssueResetLinkUseCase: Symbol.for('IssueResetLinkUseCase'),
+  CreateRecoveryLinkUseCase: Symbol.for('CreateRecoveryLinkUseCase'),
   LoginUseCase: Symbol.for('LoginUseCase'),
   GetCurrentUserUseCase: Symbol.for('GetCurrentUserUseCase'),
   ResetPasswordUseCase: Symbol.for('ResetPasswordUseCase'),

@@ -7,7 +7,6 @@ export interface ICacheService {
   delete(key: string): Promise<void>;
 }
 export type CacheKey =
-  | `reset-token:${string}`
   | `refresh:${string}`
   | `refresh-used:${string}`
   | `refresh-family:${string}`

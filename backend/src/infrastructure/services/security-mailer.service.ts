@@ -27,11 +27,6 @@ const codeCopy: Record<VerificationPurpose, { subject: string; eyebrow: string; 
       eyebrow: 'Email change',
       action: 'make this your new sign-in email',
     },
-    'password-reset': {
-      subject: 'Your SIEMple password reset code',
-      eyebrow: 'Password reset',
-      action: 'reset your password',
-    },
   };
 
 @injectable()

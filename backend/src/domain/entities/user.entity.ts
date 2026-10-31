@@ -141,6 +141,14 @@ export class User {
     this.touch(now);
   }
 
+  // Through a reset link: also lifts a sign-in lockout, since locked-out is often exactly
+  // why someone is resetting
+  resetPassword(newHash: string, now: Date): void {
+    this.changePassword(newHash, now);
+    this.props.failedLoginAttempts = 0;
+    this.props.lockedUntil = null;
+  }
+
   // The new address was proven with a code sent to it. Bumping tokenVersion signs out
   // every session, since access tokens carry the old email.
   changeEmail(newEmail: string, now: Date): void {

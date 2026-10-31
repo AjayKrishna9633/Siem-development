@@ -1,31 +1,23 @@
 import { z } from 'zod';
-import { emailField, newPasswordField, secretField } from './common.schema.ts';
+import { emailField, linkTokenField, newPasswordField, secretField } from './common.schema.ts';
 
 const verificationCode = z
   .string()
   .trim()
   .regex(/^\d{6}$/, 'Enter the 6-digit code');
 
-export const sendOtpSchema = z.object({
-  email: emailField,
-  type: z.literal('reset'),
-});
-
-export const verifyOtpSchema = z.object({
-  email: emailField,
-  otp: verificationCode,
-  type: z.literal('reset'),
-});
-
 export const loginSchema = z.object({
   email: emailField,
   password: secretField('Password'),
 });
 
-export const resetPasswordSchema = z.object({
+export const requestPasswordResetSchema = z.object({
   email: emailField,
-  resetToken: z.string().min(1, 'Reset token is required'),
-  newPassword: newPasswordField(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: linkTokenField,
+  password: newPasswordField(),
 });
 
 export const updateProfileSchema = z.object({

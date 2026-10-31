@@ -1,22 +1,3 @@
-export interface ISendOtpInput {
-  email: string;
-  type: 'reset';
-}
-export type SendOtpInput = ISendOtpInput;
-
-export interface IVerifyOtpInput {
-  email: string;
-  otp: string;
-  type: 'reset';
-}
-export type VerifyOtpInput = IVerifyOtpInput;
-
-export interface IVerifyOtpResponse {
-  verified: boolean;
-  resetToken?: string;
-}
-export type VerifyOtpResponse = IVerifyOtpResponse;
-
 export interface ILoginInput {
   email: string;
   password: string;
@@ -50,10 +31,3 @@ export interface IUserProfileResponse {
   createdAt: Date;
 }
 export type UserProfileResponse = IUserProfileResponse;
-
-export interface IResetPasswordInput {
-  email: string;
-  resetToken: string;
-  newPassword: string;
-}
-export type ResetPasswordInput = IResetPasswordInput;

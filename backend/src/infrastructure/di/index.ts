@@ -29,11 +29,14 @@ import { AuthMailer } from '../services/auth-mailer.service.ts';
 import { OpaqueTokenService } from '../services/opaque-token.service.ts';
 
 // UseCases
-import { SendOtpUseCase } from '../../application/use-cases/auth/send-otp.usecase.ts';
-import { VerifyOtpUseCase } from '../../application/use-cases/auth/verify-otp.usecase.ts';
+import { RequestPasswordResetUseCase } from '../../application/use-cases/password-reset/request-password-reset.usecase.ts';
+import { GetPasswordResetUseCase } from '../../application/use-cases/password-reset/get-password-reset.usecase.ts';
+import { IssueResetLinkUseCase } from '../../application/use-cases/password-reset/issue-reset-link.usecase.ts';
+import { CreateRecoveryLinkUseCase } from '../../application/use-cases/password-reset/create-recovery-link.usecase.ts';
+import type { ICreateRecoveryLinkUseCase } from '../../application/interfaces/use-cases/password-reset.interface.ts';
 import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts';
 import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
-import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.usecase.ts';
+import { ResetPasswordUseCase } from '../../application/use-cases/password-reset/reset-password.usecase.ts';
 import { UpdateProfileUseCase } from '../../application/use-cases/auth/update-profile.usecase.ts';
 import { ListUsersUseCase } from '../../application/use-cases/users/list-users.usecase.ts';
 import { ChangeUserRoleUseCase } from '../../application/use-cases/users/change-user-role.usecase.ts';
@@ -100,8 +103,10 @@ container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 container.bind(TYPES.OpaqueTokenService).to(OpaqueTokenService);
 
 // 4. Bind UseCases
-container.bind(TYPES.SendOtpUseCase).to(SendOtpUseCase);
-container.bind(TYPES.VerifyOtpUseCase).to(VerifyOtpUseCase);
+container.bind(TYPES.RequestPasswordResetUseCase).to(RequestPasswordResetUseCase);
+container.bind(TYPES.GetPasswordResetUseCase).to(GetPasswordResetUseCase);
+container.bind(TYPES.IssueResetLinkUseCase).to(IssueResetLinkUseCase);
+container.bind(TYPES.CreateRecoveryLinkUseCase).to(CreateRecoveryLinkUseCase);
 container.bind(TYPES.LoginUseCase).to(LoginUseCase);
 container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
 container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
@@ -148,6 +153,9 @@ export const authMiddleware = authenticate(
   tokenService,
   container.get<IResolveSessionUserUseCase>(TYPES.ResolveSessionUserUseCase),
 );
+export const createRecoveryLink = container.get<ICreateRecoveryLinkUseCase>(
+  TYPES.CreateRecoveryLinkUseCase,
+);
 export const setupController = container.get<SetupController>(TYPES.SetupController);
 export const issueSetupToken = container.get<IIssueSetupTokenUseCase>(TYPES.IssueSetupTokenUseCase);
 const getSetupStatus = container.get<IGetSetupStatusUseCase>(TYPES.GetSetupStatusUseCase);
@@ -167,6 +175,7 @@ export const di = {
   authMiddleware,
   setupGuardMiddleware,
   issueSetupToken,
+  createRecoveryLink,
   tokenService,
   redisClient,
   container,
