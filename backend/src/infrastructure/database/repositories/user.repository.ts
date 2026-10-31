@@ -7,6 +7,8 @@ import { BaseRepository } from './base.repository.ts';
 import { UserModel } from '../models/user.model.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 import { normalizeEmail } from '../../../domain/policies/credentials.policy.ts';
+import { UserRole } from '../../../domain/enums/UserRole.ts';
+import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 
 @injectable()
 export class TypeOrmUserRepository
@@ -38,5 +40,28 @@ export class TypeOrmUserRepository
     if (ids.length === 0) return [];
     const models = await this.repository.find({ where: { id: In(ids) } });
     return models.map((model) => this.mapper.toDomain(model));
+  }
+
+  changeWithAdminLock(
+    userId: string,
+    change: (user: User, activeAdminCount: number) => void,
+  ): Promise<User | null> {
+    return this.db.transaction(async (manager) => {
+      // A transaction-scoped advisory lock: released on commit or rollback, and taken by
+      // every admin-affecting change, so two of them can never interleave
+      await manager.query(`SELECT pg_advisory_xact_lock(hashtext('users_admin_change'))`);
+
+      const model = await manager.findOne(UserModel, { where: { id: userId } });
+      if (!model) return null;
+      const activeAdminCount = await manager.countBy(UserModel, {
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      const user = this.mapper.toDomain(model);
+      change(user, activeAdminCount);
+      await manager.save(UserModel, this.mapper.toPersistence(user));
+      return user;
+    });
   }
 }

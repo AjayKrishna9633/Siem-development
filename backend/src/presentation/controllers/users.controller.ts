@@ -6,8 +6,11 @@ import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
 import { actorFrom, idParamFrom } from '../http/actor.ts';
+import { requestContextFrom } from '../http/request-context.ts';
 import type {
   IAddUserUseCase,
+  IChangeUserRoleUseCase,
+  ISetUserStatusUseCase,
   IListUsersUseCase,
 } from '../../application/interfaces/use-cases/users.interface.ts';
 import type { IResendActivationUseCase } from '../../application/interfaces/use-cases/activation.interface.ts';
@@ -18,6 +21,8 @@ export class UsersController {
     @inject(TYPES.AddUserUseCase) private readonly addUser: IAddUserUseCase,
     @inject(TYPES.ListUsersUseCase)
     private readonly listUsers: IListUsersUseCase,
+    @inject(TYPES.ChangeUserRoleUseCase) private readonly changeUserRole: IChangeUserRoleUseCase,
+    @inject(TYPES.SetUserStatusUseCase) private readonly setUserStatus: ISetUserStatusUseCase,
     @inject(TYPES.ResendActivationUseCase)
     private readonly resendActivation: IResendActivationUseCase,
   ) {}
@@ -53,4 +58,36 @@ export class UsersController {
       .status(HttpStatusCode.OK)
       .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.ACTIVATION_ISSUED));
   });
+
+  changeRole = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const result = await this.changeUserRole.execute({
+      actor: actorFrom(req),
+      userId: idParamFrom(req, 'userId'),
+      role: req.body.role,
+      context: requestContextFrom(req),
+    });
+
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.USER_ROLE_CHANGED));
+  });
+
+  disable = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    await this.respondWithStatus(req, res, false);
+  });
+
+  enable = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    await this.respondWithStatus(req, res, true);
+  });
+
+  private async respondWithStatus(req: Request, res: Response, enabled: boolean): Promise<void> {
+    const result = await this.setUserStatus.execute({
+      actor: actorFrom(req),
+      userId: idParamFrom(req, 'userId'),
+      enabled,
+      context: requestContextFrom(req),
+    });
+    const message = enabled ? SuccessMessage.USER_ENABLED : SuccessMessage.USER_DISABLED;
+    res.status(HttpStatusCode.OK).json(new ApiResponse(HttpStatusCode.OK, result, message));
+  }
 }

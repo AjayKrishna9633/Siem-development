@@ -8,6 +8,8 @@ const TYPES = {
   UpdateProfileUseCase: Symbol.for('UpdateProfileUseCase'),
   AddUserUseCase: Symbol.for('AddUserUseCase'),
   ListUsersUseCase: Symbol.for('ListUsersUseCase'),
+  ChangeUserRoleUseCase: Symbol.for('ChangeUserRoleUseCase'),
+  SetUserStatusUseCase: Symbol.for('SetUserStatusUseCase'),
   GetActivationUseCase: Symbol.for('GetActivationUseCase'),
   VerifyActivationUseCase: Symbol.for('VerifyActivationUseCase'),
   ActivateAccountUseCase: Symbol.for('ActivateAccountUseCase'),

@@ -30,4 +30,8 @@ export enum ErrorMessage {
   SAME_PASSWORD = 'New password must be different from your current password',
   SAME_EMAIL = 'This is already your email address',
   EMAIL_TAKEN = 'Another account already uses this email address',
+  LAST_ADMIN = 'This is the only active administrator. Make someone else an administrator first',
+  CANNOT_CHANGE_OWN_ACCESS = "You can't change your own role or disable your own account. Ask another administrator",
+  USER_ALREADY_DISABLED = 'This user is already disabled',
+  USER_NOT_DISABLED = 'This user is not disabled',
 }

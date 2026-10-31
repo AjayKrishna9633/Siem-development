@@ -32,6 +32,8 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.SAME_PASSWORD]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.SAME_EMAIL]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.EMAIL_TAKEN]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.LAST_ADMIN]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.CANNOT_CHANGE_OWN_ACCESS]: HttpStatusCode.FORBIDDEN,
 };
 
 // Postgres error 22P02, e.g. "invalid input syntax for type uuid"

@@ -36,6 +36,8 @@ import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-pas
 import { UpdateProfileUseCase } from '../../application/use-cases/auth/update-profile.usecase.ts';
 import { AddUserUseCase } from '../../application/use-cases/users/add-user.usecase.ts';
 import { ListUsersUseCase } from '../../application/use-cases/users/list-users.usecase.ts';
+import { ChangeUserRoleUseCase } from '../../application/use-cases/users/change-user-role.usecase.ts';
+import { SetUserStatusUseCase } from '../../application/use-cases/users/set-user-status.usecase.ts';
 import { GetActivationUseCase } from '../../application/use-cases/activation/get-activation.usecase.ts';
 import { VerifyActivationUseCase } from '../../application/use-cases/activation/verify-activation.usecase.ts';
 import { ActivateAccountUseCase } from '../../application/use-cases/activation/activate-account.usecase.ts';
@@ -101,6 +103,8 @@ container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
 container.bind(TYPES.UpdateProfileUseCase).to(UpdateProfileUseCase);
 container.bind(TYPES.AddUserUseCase).to(AddUserUseCase);
 container.bind(TYPES.ListUsersUseCase).to(ListUsersUseCase);
+container.bind(TYPES.ChangeUserRoleUseCase).to(ChangeUserRoleUseCase);
+container.bind(TYPES.SetUserStatusUseCase).to(SetUserStatusUseCase);
 container.bind(TYPES.GetActivationUseCase).to(GetActivationUseCase);
 container.bind(TYPES.VerifyActivationUseCase).to(VerifyActivationUseCase);
 container.bind(TYPES.ActivateAccountUseCase).to(ActivateAccountUseCase);

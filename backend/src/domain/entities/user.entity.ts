@@ -80,6 +80,10 @@ export class User {
   get tokenVersion() {
     return this.props.tokenVersion;
   }
+  // Counts toward "there must always be one": an admin who can actually sign in
+  get isActiveAdmin() {
+    return this.props.role === UserRole.ADMIN && this.props.status === UserStatus.ACTIVE;
+  }
 
   toSnapshot(): Readonly<UserProps> {
     return { ...this.props };
@@ -140,9 +144,28 @@ export class User {
     this.touch(now);
   }
 
+  // Takes effect on the next request: the session check reads the role from the database
+  changeRole(role: UserRole, now: Date): void {
+    this.props.role = role;
+    this.touch(now);
+  }
+
+  // Bumping tokenVersion ends every session the user has
   disable(now: Date): void {
+    if (this.props.status === UserStatus.DISABLED) {
+      throw new DomainError(ErrorMessage.USER_ALREADY_DISABLED);
+    }
     this.props.status = UserStatus.DISABLED;
     this.props.tokenVersion += 1;
+    this.touch(now);
+  }
+
+  // Someone disabled before activating goes back to waiting for activation
+  enable(now: Date): void {
+    if (this.props.status !== UserStatus.DISABLED) {
+      throw new DomainError(ErrorMessage.USER_NOT_DISABLED);
+    }
+    this.props.status = this.props.passwordHash ? UserStatus.ACTIVE : UserStatus.INVITED;
     this.touch(now);
   }
 
