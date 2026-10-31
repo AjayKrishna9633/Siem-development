@@ -16,7 +16,7 @@ export const AddUser: React.FC = () => {
       <PageHeader
         crumbs={[{ label: 'User Management', to: '/users' }, { label: 'Add User' }]}
         title="Add User"
-        description="Add an analyst to your company."
+        description="Add an analyst or administrator to SIEMple."
       />
 
       <Panel className="mx-auto max-w-[620px] bg-raised/50 p-5">

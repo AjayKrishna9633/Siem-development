@@ -27,8 +27,7 @@ export const TopNavBar: React.FC = () => {
   };
 
   const links = [
-    ...(user?.role === 'super_admin' ? [{ label: 'Companies', to: '/companies' }] : []),
-    ...(user?.role === 'org_admin' ? [{ label: 'Users', to: '/users' }] : []),
+    ...(user?.role === 'admin' ? [{ label: 'Users', to: '/users' }] : []),
     { label: 'Profile', to: '/profile' },
   ];
 

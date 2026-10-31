@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import type { ICodeSent } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { minPasswordLength, newPasswordError } from '../../lib/password.ts';
+import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
 
 type Step = 'start' | 'verify' | 'done';
 
@@ -39,7 +39,7 @@ export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClos
   };
 
   // A super admin needs a longer password, same as the backend enforces
-  const minLength = minPasswordLength(user?.role);
+  const minLength = PASSWORD_MIN_LENGTH;
   const mismatch = confirmPassword !== '' && confirmPassword !== newPassword;
   const tooShort = newPassword !== '' && newPassword.length < minLength;
   const sameAsCurrent = newPassword !== '' && newPassword === currentPassword;

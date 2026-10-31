@@ -1,11 +1,5 @@
-import type { UserRole } from '../types/auth.ts';
-
 // Mirrors the backend's credentials policy (domain/policies/credentials.policy.ts)
-export const PASSWORD_MIN_LENGTH = 8;
-export const SUPER_ADMIN_PASSWORD_MIN_LENGTH = 12;
-
-export const minPasswordLength = (role?: UserRole): number =>
-  role === 'super_admin' ? SUPER_ADMIN_PASSWORD_MIN_LENGTH : PASSWORD_MIN_LENGTH;
+export const PASSWORD_MIN_LENGTH = 12;
 
 // The first problem with a new password and its confirmation, or null when it's fine
 export const newPasswordError = (

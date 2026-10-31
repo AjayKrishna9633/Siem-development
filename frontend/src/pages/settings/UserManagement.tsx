@@ -14,11 +14,10 @@ import { teamService } from '../../services/team.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
 import { ResentActivationNotice } from '../../components/common/ResentActivationNotice.tsx';
 import { ResendActivationDialog } from '../../components/common/ResendActivationDialog.tsx';
-import type { IUser, UserStatus } from '../../types/auth.ts';
-import type { IActivationGrant } from '../../types/company.ts';
+import type { IActivationGrant, IUser, UserRole, UserStatus } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { sortItems, type ISortField, type SortDirection } from '../../lib/sort.ts';
-import { COMPANY_ROLES, roleLabel, type CompanyRole } from '../../lib/roles.ts';
+import { ALL_ROLES, roleLabel } from '../../lib/roles.ts';
 
 const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -26,8 +25,7 @@ const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: 'disabled', label: 'Disabled' },
 ];
 
-// Only company roles are offered: the super admin never belongs to a company
-const ROLE_OPTIONS = COMPANY_ROLES.map((r) => ({ value: r, label: roleLabel[r] }));
+const ROLE_OPTIONS = ALL_ROLES.map((r) => ({ value: r, label: roleLabel[r] }));
 
 type UserSortKey = 'name' | 'email' | 'role' | 'status' | 'lastLogin';
 
@@ -77,7 +75,7 @@ export const UserManagement: React.FC = () => {
     }
   };
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState<'all' | CompanyRole>('all');
+  const [role, setRole] = useState<'all' | UserRole>('all');
   const [status, setStatus] = useState<'all' | UserStatus>('all');
   const [sortBy, setSortBy] = useState<UserSortKey>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -86,7 +84,6 @@ export const UserManagement: React.FC = () => {
     const q = search.toLowerCase();
     return users.filter(
       (u) =>
-        u.role !== 'super_admin' &&
         (role === 'all' || u.role === role) &&
         (status === 'all' || (u.status ?? 'active') === status) &&
         `${u.username} ${u.email}`.toLowerCase().includes(q),
@@ -112,7 +109,7 @@ export const UserManagement: React.FC = () => {
       <PageHeader
         crumbs={[{ label: 'User Management' }]}
         title="User Management"
-        description="Everyone in your company who can sign in to SIEMple."
+        description="Everyone who can sign in to this SIEMple install."
         actions={
           <Button
             variant="primary"

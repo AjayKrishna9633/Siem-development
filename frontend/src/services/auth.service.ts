@@ -17,18 +17,6 @@ export const authService = {
     return res.data.data;
   },
 
-  async registerSuperAdmin(data: {
-    email: string;
-    username: string;
-    password: string;
-  }): Promise<{ id: string; email: string }> {
-    const res = await api.post<IApiResponse<{ id: string; email: string }>>(
-      '/admin/register-super-admin',
-      data,
-    );
-    return res.data.data;
-  },
-
   // Activation link route: the ID in the link is enough to open the set-password step
   async getActivation(activationId: string): Promise<IActivationPreview> {
     const res = await api.get<IApiResponse<IActivationPreview>>('/auth/activation', {
@@ -108,7 +96,7 @@ export const authService = {
     return res.data.data;
   },
 
-  // Super admin only. Step 1: the code goes to the NEW address
+  // Admin only. Step 1: the code goes to the NEW address
   async requestEmailChange(data: {
     newEmail: string;
     currentPassword: string;

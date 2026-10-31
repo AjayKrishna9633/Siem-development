@@ -14,7 +14,7 @@ export const FormSection: React.FC<{ title: string; children: React.ReactNode }>
   </section>
 );
 
-// Name + email pair used wherever a person is onboarded (analyst, company admin).
+// Name + email pair used wherever a person is onboarded.
 // A field shows its error once the user leaves it, or every field does once the form
 // has been submitted (`showAllErrors`), so nothing is flagged while still typing.
 export const PersonFields: React.FC<{

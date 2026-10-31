@@ -5,7 +5,8 @@ import { Field, Select } from '../ui/Form.tsx';
 import { FormSection, PersonFields } from '../common/FormSection.tsx';
 import { isValidPerson } from '../../lib/validation.ts';
 import { teamService } from '../../services/team.service.ts';
-import type { ITeamMemberWithActivation } from '../../types/auth.ts';
+import type { ITeamMemberWithActivation, UserRole } from '../../types/auth.ts';
+import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 
 interface IAddUserFormProps {
@@ -13,11 +14,11 @@ interface IAddUserFormProps {
   onCancel: () => void;
 }
 
-// Company admins only add analysts; company admins themselves are created by the
-// super admin along with the company
+// An admin adds anyone in the organization, choosing their role up front
 export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<UserRole>('t1_analyst');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +35,7 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
     setSubmitting(true);
     setError(null);
     try {
-      onCreated(await teamService.add({ username: username.trim(), email: email.trim() }));
+      onCreated(await teamService.add({ username: username.trim(), email: email.trim(), role }));
     } catch (err: unknown) {
       setError(apiErrorMessage(err, 'Failed to add the user.'));
     } finally {
@@ -55,13 +56,13 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
       </FormSection>
 
       <FormSection title="Role">
-        <Field
-          label="System Role"
-          hint="Can view and triage alerts. Cannot manage users or company settings."
-          className="max-w-sm"
-        >
-          <Select value="analyst" disabled>
-            <option value="analyst">Analyst</option>
+        <Field label="System Role" hint={roleDescription[role]} className="max-w-sm">
+          <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+            {ALL_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {roleLabel[r]}
+              </option>
+            ))}
           </Select>
         </Field>
       </FormSection>

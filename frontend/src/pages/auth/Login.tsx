@@ -46,15 +46,9 @@ export const Login: React.FC = () => {
       title="Secure Access"
       subtitle="Authenticate to access SOC capabilities."
       footer={
-        <div className="space-x-4">
-          <Link to="/activate" className="text-accent hover:underline">
-            Have an invite? Activate account
-          </Link>
-          <span className="text-subtle">·</span>
-          <Link to="/setup-super-admin" className="text-muted hover:text-ink">
-            First-run setup
-          </Link>
-        </div>
+        <Link to="/activate" className="text-accent hover:underline">
+          Have an invite? Activate account
+        </Link>
       }
     >
       {redirect?.passwordReset && (

@@ -18,7 +18,7 @@ export const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [dialog, setDialog] = useState<'password' | 'email' | null>(null);
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isAdmin = user?.role === 'admin';
 
   // Session payloads carry only identity fields; load audit timestamps from /me
   useEffect(() => {
@@ -63,9 +63,7 @@ export const Profile: React.FC = () => {
     <div className="mx-auto w-full max-w-[640px] space-y-6 px-6 py-8">
       <form onSubmit={handleSave} className="space-y-6">
         <div className="border-b border-line pb-4">
-          <h1 className="text-xl font-semibold text-ink">
-            {user.role === 'analyst' ? 'Analyst Profile' : 'Profile'}
-          </h1>
+          <h1 className="text-xl font-semibold text-ink">Profile</h1>
           <p className="text-sm text-muted">
             Manage personal settings and view session forensic data.
           </p>
@@ -81,10 +79,6 @@ export const Profile: React.FC = () => {
               <span className="rounded-sm border border-line-strong bg-raised px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.5px] text-muted">
                 {roleLabel[user.role]}
               </span>
-            </p>
-            <p className="text-sm text-muted">
-              {/* companyName arrives with /auth/me, a moment after the page opens */}
-              {user.organizationId ? (user.companyName ?? 'Loading company…') : 'Platform scope'}
             </p>
             <p className="flex items-center gap-1.5 text-xs text-subtle">
               <Info className="size-3.5" /> Your role is managed by an administrator. Contact your
@@ -109,7 +103,7 @@ export const Profile: React.FC = () => {
                   <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
                   <Input value={user.email} disabled className="pl-9" aria-label="Email address" />
                 </div>
-                {isSuperAdmin && (
+                {isAdmin && (
                   <Button variant="outline" onClick={() => setDialog('email')}>
                     Change
                   </Button>
@@ -117,9 +111,9 @@ export const Profile: React.FC = () => {
               </div>
               <span className="flex items-center gap-1.5 text-[11px] text-subtle">
                 <TriangleAlert className="size-3" />
-                {isSuperAdmin
+                {isAdmin
                   ? 'Changing your email needs your password and a code sent to the new address.'
-                  : 'Your email is managed by your company administrator.'}
+                  : 'Your email is managed by an administrator.'}
               </span>
             </div>
           </Panel>
@@ -198,7 +192,7 @@ export const Profile: React.FC = () => {
       {/* Outside the profile form: React bubbles portal events, so a dialog's submit would
           otherwise also submit the profile form */}
       {dialog === 'password' && <ChangePasswordDialog onClose={() => setDialog(null)} />}
-      {dialog === 'email' && isSuperAdmin && <ChangeEmailDialog onClose={() => setDialog(null)} />}
+      {dialog === 'email' && isAdmin && <ChangeEmailDialog onClose={() => setDialog(null)} />}
     </div>
   );
 };

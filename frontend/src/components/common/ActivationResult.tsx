@@ -1,7 +1,7 @@
 import React from 'react';
 import { CircleCheck } from 'lucide-react';
 import { ActivationDetails } from './ActivationDetails.tsx';
-import type { IActivationGrant } from '../../types/company.ts';
+import type { IActivationGrant } from '../../types/auth.ts';
 
 // Success screen after onboarding someone: what happened, whether the email went out,
 // and the credentials as a backup

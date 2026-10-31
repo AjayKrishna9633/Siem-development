@@ -120,7 +120,7 @@ export const Activate: React.FC = () => {
         <form onSubmit={handleActivate} className="space-y-3">
           <div className="space-y-1 rounded border border-line-strong bg-canvas/60 p-3">
             <p className="font-mono text-[10px] uppercase tracking-[1px] text-muted">
-              Joining {preview.companyName}
+              Joining SIEMple
             </p>
             <p className="truncate text-sm text-ink">{preview.username}</p>
             <p className="truncate font-mono text-xs text-muted">{preview.email}</p>

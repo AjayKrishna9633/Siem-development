@@ -1,6 +1,4 @@
-import type { IActivationGrant } from './company.ts';
-
-export type UserRole = 'super_admin' | 'org_admin' | 'analyst';
+export type UserRole = 'admin' | 't2_analyst' | 't1_analyst';
 
 export type UserStatus = 'invited' | 'active' | 'disabled';
 
@@ -9,12 +7,9 @@ export interface IUser {
   email: string;
   username: string;
   role: UserRole;
-  organizationId: string | null;
   status?: UserStatus;
   createdAt?: string;
   lastLoginAt?: string | null;
-  // From /auth/me; null for the super admin, who belongs to no company
-  companyName?: string | null;
 }
 
 export interface IApiResponse<T = unknown> {
@@ -29,7 +24,17 @@ export interface ILoginResponse {
   user: IUser;
 }
 
-// A company admin adds an analyst; the activation is shown once
+// One-time credentials the new user activates with
+export interface IActivationGrant {
+  activationId: string;
+  activationLink: string;
+  temporaryPassword: string;
+  expiresAt: string;
+  // False when the activation email couldn't be delivered; share the details by hand
+  emailSent: boolean;
+}
+
+// An admin adds a team member; the activation is shown once
 export interface ITeamMemberWithActivation {
   member: IUser;
   activation: IActivationGrant;
@@ -43,7 +48,6 @@ export interface ICodeSent {
 
 // Who is being activated, shown on the set-password step
 export interface IActivationPreview {
-  companyName: string;
   username: string;
   email: string;
   role: UserRole;

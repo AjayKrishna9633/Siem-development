@@ -82,8 +82,8 @@ const UserRow: React.FC<{
   const status = u.status ?? 'active';
   const invited = status === 'invited';
   const disabled = status === 'disabled';
-  // A company admin can resend only to analysts who haven't activated yet
-  const canResend = invited && u.role === 'analyst' && !!onResendActivation;
+  // Only someone who hasn't activated yet can get a new activation
+  const canResend = invited && !!onResendActivation;
 
   return (
     <Tr className={cn(disabled && 'opacity-60')}>

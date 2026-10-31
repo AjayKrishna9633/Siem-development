@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Check, Copy, MailCheck, MailWarning } from 'lucide-react';
 import { Button } from '../ui/Button.tsx';
 import { LocalTime } from './LocalTime.tsx';
-import type { IActivationGrant } from '../../types/company.ts';
+import type { IActivationGrant } from '../../types/auth.ts';
 
 const CopyRow: React.FC<{ label: string; value: string }> = ({ label, value }) => {
   const [copied, setCopied] = useState(false);

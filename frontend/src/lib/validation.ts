@@ -5,7 +5,7 @@ export const isEmail = (email: string) => /\S+@\S+\.\S+/.test(email.trim());
 export const isValidPerson = (name: string, email: string) =>
   name.trim().length >= 2 && isEmail(email);
 
-// Company and user IDs are UUIDs, matching the backend's route checks
+// User IDs are UUIDs, matching the backend's route checks
 export const isUuid = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -21,6 +21,3 @@ export const personFieldErrors = (name: string, email: string) => ({
       ? 'Enter a full email address, like name@company.com.'
       : undefined,
 });
-
-export const companyNameError = (name: string) =>
-  name.trim().length < 2 ? 'Enter a company name of at least 2 characters.' : undefined;

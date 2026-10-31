@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { Panel } from '../ui/Panel.tsx';
 import { ActivationDetails } from './ActivationDetails.tsx';
-import type { IActivationGrant } from '../../types/company.ts';
+import type { IActivationGrant } from '../../types/auth.ts';
 
 // Shown above a list after "resend activation": who it was for, delivery status,
 // and the new link + temporary password as a backup

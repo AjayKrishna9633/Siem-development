@@ -1,16 +1,25 @@
 import { api } from './api.ts';
-import type { IApiResponse, ITeamMemberWithActivation, IUser } from '../types/auth.ts';
-import type { IActivationGrant } from '../types/company.ts';
+import type {
+  IActivationGrant,
+  IApiResponse,
+  ITeamMemberWithActivation,
+  IUser,
+  UserRole,
+} from '../types/auth.ts';
 import { isUuid } from '../lib/validation.ts';
 
-// A company admin's own people. The backend scopes every call to the admin's company.
+// Everyone in the install. Admins only; the backend enforces it.
 export const teamService = {
   async list(): Promise<IUser[]> {
     const res = await api.get<IApiResponse<IUser[]>>('/team');
     return res.data.data;
   },
 
-  async add(data: { email: string; username: string }): Promise<ITeamMemberWithActivation> {
+  async add(data: {
+    email: string;
+    username: string;
+    role: UserRole;
+  }): Promise<ITeamMemberWithActivation> {
     const res = await api.post<IApiResponse<ITeamMemberWithActivation>>('/team', data);
     return res.data.data;
   },
