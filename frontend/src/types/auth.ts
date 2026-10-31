@@ -17,6 +17,8 @@ export interface IApiResponse<T = unknown> {
   data: T;
   message: string;
   success?: boolean;
+  // On errors: the backend's machine-readable reason, e.g. 'SETUP_REQUIRED'
+  code?: string;
 }
 
 export interface ILoginResponse {

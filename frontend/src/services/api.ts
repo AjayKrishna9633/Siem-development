@@ -52,9 +52,19 @@ api.interceptors.request.use((config) => {
 // Auth endpoints report bad credentials with 401 too; those must not trigger a refresh
 const SKIP_REFRESH = /\/auth\/(login|refresh|logout|verify-otp|send-otp|reset-password)/;
 
+// Until first-run setup is done the backend answers every API call with SETUP_REQUIRED;
+// any page that hits it is sent to the setup page instead of showing an error
+const isSetupRequired = (error: unknown) =>
+  axios.isAxiosError<IApiResponse>(error) &&
+  error.response?.status === 403 &&
+  error.response.data?.code === 'SETUP_REQUIRED';
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (isSetupRequired(error) && window.location.pathname !== '/setup') {
+      window.location.assign('/setup');
+    }
     const original = error.config as
       (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
 

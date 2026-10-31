@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
 import { homePathFor } from './lib/roles.ts';
 import { Login } from './pages/auth/Login.tsx';
+import { Setup } from './pages/auth/Setup.tsx';
 import { Activate } from './pages/auth/Activate.tsx';
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx';
 import { Unauthorized } from './pages/Unauthorized.tsx';
@@ -36,6 +37,7 @@ export const App: React.FC = () => {
       <Routes>
         {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
         <Route path="/activate" element={<Activate />} />
         <Route path="/accept-invite" element={<Navigate to="/activate" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
