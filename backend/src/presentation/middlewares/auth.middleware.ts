@@ -4,7 +4,9 @@ import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
+import type { Permission } from '../../domain/enums/Permission.ts';
 import type { UserRole } from '../../domain/enums/UserRole.ts';
+import { hasPermission } from '../../domain/policies/permissions.policy.ts';
 
 export function authenticate(tokenService: ITokenService) {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -34,14 +36,16 @@ export function authenticate(tokenService: ITokenService) {
   };
 }
 
-export function requireRoles(...allowedRoles: UserRole[]) {
+// Every listed permission is required. Runs after `authenticate`.
+export function authorize(...required: Permission[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       next(new AppError(AppErrorCode.UNAUTHORIZED, ErrorMessage.UNAUTHORIZED));
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role as UserRole)) {
+    const role = req.user.role as UserRole;
+    if (!required.every((permission) => hasPermission(role, permission))) {
       next(new AppError(AppErrorCode.FORBIDDEN, ErrorMessage.FORBIDDEN));
       return;
     }

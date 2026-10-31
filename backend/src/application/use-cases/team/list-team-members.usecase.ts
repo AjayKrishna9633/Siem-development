@@ -3,8 +3,8 @@ import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IListTeamMembersUseCase } from '../../interfaces/use-cases/team.interface.ts';
 import type { IListTeamMembersInput, ITeamMember } from '../../types/use-case/user-mgmt.types.ts';
-import { UserRole } from '../../../domain/enums/UserRole.ts';
-import { assertRole } from '../shared/access.ts';
+import { assertPermission } from '../shared/access.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
 import { toTeamMember } from './team-member.ts';
 
 // Admins see everyone in the install
@@ -13,7 +13,7 @@ export class ListTeamMembersUseCase implements IListTeamMembersUseCase {
   constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
 
   async execute(input: IListTeamMembersInput): Promise<ITeamMember[]> {
-    assertRole(input.actor, UserRole.ADMIN);
+    assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const members = await this.users.findAll();
     return members.map(toTeamMember);

@@ -1,7 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import type { AccountController } from '../controllers/account.controller.ts';
 import { validate } from '../middlewares/validate.middleware.ts';
-import { requireRoles } from '../middlewares/auth.middleware.ts';
+import { authorize } from '../middlewares/auth.middleware.ts';
 import {
   updateProfileSchema,
   changePasswordSchema,
@@ -9,7 +9,7 @@ import {
   changeEmailSchema,
 } from '../validators/auth.schema.ts';
 import { createRateLimiter } from '../http/rate-limit.ts';
-import { UserRole } from '../../domain/enums/UserRole.ts';
+import { Permission } from '../../domain/enums/Permission.ts';
 
 // Mounted at /api/auth. Every route needs a signed-in user.
 export function accountRoutes(
@@ -24,7 +24,7 @@ export function accountRoutes(
     'Too many verification codes requested, please try again later.',
   );
   const changeLimiter = createRateLimiter(10, 'Too many attempts, please try again later.');
-  const adminOnly = requireRoles(UserRole.ADMIN);
+  const canManageUsers = authorize(Permission.USERS_MANAGE);
 
   router.get('/me', authMiddleware, controller.getMe);
   router.put('/profile', authMiddleware, validate(updateProfileSchema), controller.updateProfile);
@@ -38,11 +38,11 @@ export function accountRoutes(
     controller.changePassword,
   );
 
-  // Analysts' emails are managed by admins, so only an admin changes their own
+  // Analysts' emails are managed by admins, so only someone who manages users changes their own
   router.post(
     '/email/code',
     authMiddleware,
-    adminOnly,
+    canManageUsers,
     codeLimiter,
     validate(requestEmailChangeSchema),
     controller.requestEmailChange,
@@ -50,7 +50,7 @@ export function accountRoutes(
   router.post(
     '/email',
     authMiddleware,
-    adminOnly,
+    canManageUsers,
     changeLimiter,
     validate(changeEmailSchema),
     controller.changeEmail,

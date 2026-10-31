@@ -1,6 +1,7 @@
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
 import type { ILoginResponse, IUserProfileResponse } from '../../types/use-case/auth.types.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
+import { permissionsFor } from '../../../domain/policies/permissions.policy.ts';
 
 // Issues tokens for `user` and builds the session response the frontend stores.
 // Shared by login, refresh, activation and password/email changes. Pass `familyId`
@@ -27,6 +28,8 @@ export const startSession = async (
       email: user.email,
       username: user.username,
       role: user.role,
+      // The UI shows and hides features from this list; the API still checks every call
+      permissions: permissionsFor(user.role),
     },
   };
 };
@@ -39,6 +42,7 @@ export const toUserProfile = (user: User): IUserProfileResponse => {
     email: user.email,
     username: user.username,
     role: user.role,
+    permissions: permissionsFor(user.role),
     status: user.status,
     isEmailVerified: snapshot.isEmailVerified,
     lastLoginAt: snapshot.lastLoginAt,

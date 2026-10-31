@@ -7,8 +7,8 @@ import type {
   IAddTeamMemberInput,
   IAddTeamMemberResponse,
 } from '../../types/use-case/user-mgmt.types.ts';
-import { UserRole } from '../../../domain/enums/UserRole.ts';
-import { assertRole } from '../shared/access.ts';
+import { assertPermission } from '../shared/access.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
 import { onboardMember } from '../shared/onboard-member.ts';
 import { toTeamMember } from './team-member.ts';
 
@@ -21,7 +21,7 @@ export class AddTeamMemberUseCase implements IAddTeamMemberUseCase {
   ) {}
 
   async execute(input: IAddTeamMemberInput): Promise<IAddTeamMemberResponse> {
-    assertRole(input.actor, UserRole.ADMIN);
+    assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const { user, activation } = await onboardMember(this.users, this.activations, {
       role: input.role,

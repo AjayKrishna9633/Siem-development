@@ -7,12 +7,12 @@ import type {
 } from '../../interfaces/services/activation.service.interface.ts';
 import type { IResendActivationUseCase } from '../../interfaces/use-cases/activation.interface.ts';
 import type { IResendActivationInput } from '../../types/use-case/user-mgmt.types.ts';
-import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { assertRole } from '../shared/access.ts';
+import { assertPermission } from '../shared/access.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
 
 // Issues a new link + temporary password (the old one stops working).
 // Admins only.
@@ -24,7 +24,7 @@ export class ResendActivationUseCase implements IResendActivationUseCase {
   ) {}
 
   async execute(input: IResendActivationInput): Promise<IActivationGrant> {
-    assertRole(input.actor, UserRole.ADMIN);
+    assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const target = await this.users.findById(input.userId);
     if (!target) {

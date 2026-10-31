@@ -33,6 +33,7 @@ export interface ILoginResponse {
     email: string;
     username: string;
     role: string;
+    permissions: string[];
   };
 }
 export type LoginResponse = ILoginResponse;
@@ -42,6 +43,7 @@ export interface IUserProfileResponse {
   email: string;
   username: string;
   role: string;
+  permissions: string[];
   status: string;
   isEmailVerified: boolean;
   lastLoginAt: Date | null;

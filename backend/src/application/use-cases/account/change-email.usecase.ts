@@ -7,11 +7,11 @@ import type { ISecurityMailer } from '../../interfaces/services/security-mailer.
 import type { IChangeEmailUseCase } from '../../interfaces/use-cases/account.interface.ts';
 import type { IChangeEmailInput } from '../../types/use-case/account.types.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
-import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { assertRole } from '../shared/access.ts';
+import { assertPermission } from '../shared/access.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
 import { invalidCode, loadActiveUser } from './account-helpers.ts';
 import { startSession } from '../shared/user-views.ts';
 import type { IPendingEmailChange } from './request-email-change.usecase.ts';
@@ -27,7 +27,7 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
   ) {}
 
   async execute(input: IChangeEmailInput): Promise<ILoginResponse> {
-    assertRole(input.actor, UserRole.ADMIN);
+    assertPermission(input.actor, Permission.USERS_MANAGE);
     const user = await loadActiveUser(this.users, input.actor.userId);
 
     const pending = await this.codes.check<IPendingEmailChange>(

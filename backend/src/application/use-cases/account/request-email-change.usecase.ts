@@ -9,11 +9,11 @@ import type {
   ICodeSentResponse,
   IRequestEmailChangeInput,
 } from '../../types/use-case/account.types.ts';
-import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { assertRole } from '../shared/access.ts';
+import { assertPermission } from '../shared/access.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
 import { loadActiveUser } from './account-helpers.ts';
 
 export interface IPendingEmailChange {
@@ -33,7 +33,7 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
   ) {}
 
   async execute(input: IRequestEmailChangeInput): Promise<ICodeSentResponse> {
-    assertRole(input.actor, UserRole.ADMIN);
+    assertPermission(input.actor, Permission.USERS_MANAGE);
     const user = await loadActiveUser(this.users, input.actor.userId);
 
     if (!(await this.hasher.compare(input.currentPassword, user.passwordHash as string))) {
