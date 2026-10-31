@@ -1,21 +1,21 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
-import type { IListTeamMembersUseCase } from '../../interfaces/use-cases/team.interface.ts';
-import type { IListTeamMembersInput, ITeamMember } from '../../types/use-case/user-mgmt.types.ts';
+import type { IListUsersUseCase } from '../../interfaces/use-cases/users.interface.ts';
+import type { IListUsersInput, IManagedUser } from '../../types/use-case/user-mgmt.types.ts';
 import { assertPermission } from '../shared/access.ts';
 import { Permission } from '../../../domain/enums/Permission.ts';
-import { toTeamMember } from './team-member.ts';
+import { toManagedUser } from './managed-user.ts';
 
 // Admins see everyone in the install
 @injectable()
-export class ListTeamMembersUseCase implements IListTeamMembersUseCase {
+export class ListUsersUseCase implements IListUsersUseCase {
   constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
 
-  async execute(input: IListTeamMembersInput): Promise<ITeamMember[]> {
+  async execute(input: IListUsersInput): Promise<IManagedUser[]> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const members = await this.users.findAll();
-    return members.map(toTeamMember);
+    return members.map(toManagedUser);
   }
 }

@@ -14,7 +14,7 @@ export enum SuccessMessage {
   ACTIVATION_FETCHED = 'Activation details retrieved successfully',
   ACTIVATION_VERIFIED = 'Temporary password verified successfully',
   ACCOUNT_ACTIVATED = 'Account activated successfully',
-  TEAM_MEMBER_ADDED = 'User added successfully',
+  USER_ADDED = 'User added successfully',
   VERIFICATION_CODE_SENT = 'Verification code sent',
   PASSWORD_CHANGED = 'Password changed successfully',
   EMAIL_CHANGED = 'Email address changed successfully',

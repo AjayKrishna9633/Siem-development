@@ -7,23 +7,23 @@ import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
 import { actorFrom, idParamFrom } from '../http/actor.ts';
 import type {
-  IAddTeamMemberUseCase,
-  IListTeamMembersUseCase,
-} from '../../application/interfaces/use-cases/team.interface.ts';
+  IAddUserUseCase,
+  IListUsersUseCase,
+} from '../../application/interfaces/use-cases/users.interface.ts';
 import type { IResendActivationUseCase } from '../../application/interfaces/use-cases/activation.interface.ts';
 
 @injectable()
-export class TeamController {
+export class UsersController {
   constructor(
-    @inject(TYPES.AddTeamMemberUseCase) private readonly addTeamMember: IAddTeamMemberUseCase,
-    @inject(TYPES.ListTeamMembersUseCase)
-    private readonly listTeamMembers: IListTeamMembersUseCase,
+    @inject(TYPES.AddUserUseCase) private readonly addUser: IAddUserUseCase,
+    @inject(TYPES.ListUsersUseCase)
+    private readonly listUsers: IListUsersUseCase,
     @inject(TYPES.ResendActivationUseCase)
     private readonly resendActivation: IResendActivationUseCase,
   ) {}
 
   list = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.listTeamMembers.execute({ actor: actorFrom(req) });
+    const result = await this.listUsers.execute({ actor: actorFrom(req) });
 
     res
       .status(HttpStatusCode.OK)
@@ -31,7 +31,7 @@ export class TeamController {
   });
 
   add = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.addTeamMember.execute({
+    const result = await this.addUser.execute({
       actor: actorFrom(req),
       role: req.body.role,
       username: req.body.username,
@@ -40,7 +40,7 @@ export class TeamController {
 
     res
       .status(HttpStatusCode.CREATED)
-      .json(new ApiResponse(HttpStatusCode.CREATED, result, SuccessMessage.TEAM_MEMBER_ADDED));
+      .json(new ApiResponse(HttpStatusCode.CREATED, result, SuccessMessage.USER_ADDED));
   });
 
   resendActivationFor = catchAsync(async (req: Request, res: Response): Promise<void> => {

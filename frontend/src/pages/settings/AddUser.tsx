@@ -5,11 +5,11 @@ import { Panel } from '../../components/ui/Panel.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { ActivationResult } from '../../components/common/ActivationResult.tsx';
 import { AddUserForm } from '../../components/users/AddUserForm.tsx';
-import type { ITeamMemberWithActivation } from '../../types/auth.ts';
+import type { IUserWithActivation } from '../../types/auth.ts';
 
 export const AddUser: React.FC = () => {
   const navigate = useNavigate();
-  const [result, setResult] = useState<ITeamMemberWithActivation | null>(null);
+  const [result, setResult] = useState<IUserWithActivation | null>(null);
 
   return (
     <Page>

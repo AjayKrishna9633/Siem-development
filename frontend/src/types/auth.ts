@@ -36,8 +36,8 @@ export interface IActivationGrant {
   emailSent: boolean;
 }
 
-// An admin adds a team member; the activation is shown once
-export interface ITeamMemberWithActivation {
+// An admin adds a user; the activation is shown once
+export interface IUserWithActivation {
   member: IUser;
   activation: IActivationGrant;
 }

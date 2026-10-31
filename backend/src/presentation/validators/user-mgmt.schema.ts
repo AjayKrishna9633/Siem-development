@@ -3,7 +3,7 @@ import { ACTIVATION_ID_PATTERN } from '../../application/interfaces/services/act
 import { UserRole } from '../../domain/enums/UserRole.ts';
 import { emailField, newPasswordField, personNameField, secretField } from './common.schema.ts';
 
-export const addTeamMemberSchema = z.object({
+export const addUserSchema = z.object({
   username: personNameField,
   email: emailField,
   role: z.enum(UserRole, 'Choose a role'),

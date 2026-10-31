@@ -10,7 +10,7 @@ import { UserTable } from '../../components/users/UserTable.tsx';
 import { useRemoteList } from '../../hooks/useRemoteList.ts';
 import { usePaged } from '../../hooks/usePaged.ts';
 import { useAuthStore } from '../../store/auth.store.ts';
-import { teamService } from '../../services/team.service.ts';
+import { usersService } from '../../services/users.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
 import { ResentActivationNotice } from '../../components/common/ResentActivationNotice.tsx';
 import { ResendActivationDialog } from '../../components/common/ResendActivationDialog.tsx';
@@ -55,7 +55,7 @@ export const UserManagement: React.FC = () => {
     loading,
     error,
     reload,
-  } = useRemoteList(teamService.list, 'Failed to load users.');
+  } = useRemoteList(usersService.list, 'Failed to load users.');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [resent, setResent] = useState<{ user: IUser; grant: IActivationGrant } | null>(null);
@@ -67,7 +67,7 @@ export const UserManagement: React.FC = () => {
     setBusyId(u.id);
     setActionError(null);
     try {
-      setResent({ user: u, grant: await teamService.resendActivation(u.id) });
+      setResent({ user: u, grant: await usersService.resendActivation(u.id) });
     } catch (err: unknown) {
       setActionError(apiErrorMessage(err, 'Failed to issue a new activation.'));
     } finally {

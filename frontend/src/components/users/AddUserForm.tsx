@@ -4,13 +4,13 @@ import { Button } from '../ui/Button.tsx';
 import { Field, Select } from '../ui/Form.tsx';
 import { FormSection, PersonFields } from '../common/FormSection.tsx';
 import { isValidPerson } from '../../lib/validation.ts';
-import { teamService } from '../../services/team.service.ts';
-import type { ITeamMemberWithActivation, UserRole } from '../../types/auth.ts';
+import { usersService } from '../../services/users.service.ts';
+import type { IUserWithActivation, UserRole } from '../../types/auth.ts';
 import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 
 interface IAddUserFormProps {
-  onCreated: (result: ITeamMemberWithActivation) => void;
+  onCreated: (result: IUserWithActivation) => void;
   onCancel: () => void;
 }
 
@@ -35,7 +35,7 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
     setSubmitting(true);
     setError(null);
     try {
-      onCreated(await teamService.add({ username: username.trim(), email: email.trim(), role }));
+      onCreated(await usersService.add({ username: username.trim(), email: email.trim(), role }));
     } catch (err: unknown) {
       setError(apiErrorMessage(err, 'Failed to add the user.'));
     } finally {

@@ -9,7 +9,7 @@ import { sessionRoutes } from './presentation/routes/session.routes.ts';
 import { passwordResetRoutes } from './presentation/routes/password-reset.routes.ts';
 import { accountRoutes } from './presentation/routes/account.routes.ts';
 import { activationRoutes } from './presentation/routes/activation.routes.ts';
-import { teamRoutes } from './presentation/routes/team.routes.ts';
+import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
 
@@ -36,7 +36,7 @@ app.use('/api/auth', sessionRoutes(di.sessionController));
 app.use('/api/auth', passwordResetRoutes(di.passwordResetController));
 app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
 app.use('/api/auth', activationRoutes(di.activationController));
-app.use('/api/team', teamRoutes(di.teamController, di.authMiddleware));
+app.use('/api/users', usersRoutes(di.usersController, di.authMiddleware));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

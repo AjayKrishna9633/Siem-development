@@ -34,8 +34,8 @@ import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts'
 import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.usecase.ts';
 import { UpdateProfileUseCase } from '../../application/use-cases/auth/update-profile.usecase.ts';
-import { AddTeamMemberUseCase } from '../../application/use-cases/team/add-team-member.usecase.ts';
-import { ListTeamMembersUseCase } from '../../application/use-cases/team/list-team-members.usecase.ts';
+import { AddUserUseCase } from '../../application/use-cases/users/add-user.usecase.ts';
+import { ListUsersUseCase } from '../../application/use-cases/users/list-users.usecase.ts';
 import { GetActivationUseCase } from '../../application/use-cases/activation/get-activation.usecase.ts';
 import { VerifyActivationUseCase } from '../../application/use-cases/activation/verify-activation.usecase.ts';
 import { ActivateAccountUseCase } from '../../application/use-cases/activation/activate-account.usecase.ts';
@@ -61,7 +61,7 @@ import { SessionController } from '../../presentation/controllers/session.contro
 import { PasswordResetController } from '../../presentation/controllers/password-reset.controller.ts';
 import { AccountController } from '../../presentation/controllers/account.controller.ts';
 import { ActivationController } from '../../presentation/controllers/activation.controller.ts';
-import { TeamController } from '../../presentation/controllers/team.controller.ts';
+import { UsersController } from '../../presentation/controllers/users.controller.ts';
 import { SetupController } from '../../presentation/controllers/setup.controller.ts';
 
 // 1. Bind external constants/factories
@@ -99,8 +99,8 @@ container.bind(TYPES.LoginUseCase).to(LoginUseCase);
 container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
 container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
 container.bind(TYPES.UpdateProfileUseCase).to(UpdateProfileUseCase);
-container.bind(TYPES.AddTeamMemberUseCase).to(AddTeamMemberUseCase);
-container.bind(TYPES.ListTeamMembersUseCase).to(ListTeamMembersUseCase);
+container.bind(TYPES.AddUserUseCase).to(AddUserUseCase);
+container.bind(TYPES.ListUsersUseCase).to(ListUsersUseCase);
 container.bind(TYPES.GetActivationUseCase).to(GetActivationUseCase);
 container.bind(TYPES.VerifyActivationUseCase).to(VerifyActivationUseCase);
 container.bind(TYPES.ActivateAccountUseCase).to(ActivateAccountUseCase);
@@ -122,7 +122,7 @@ container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
 container.bind(TYPES.ActivationController).to(ActivationController);
-container.bind(TYPES.TeamController).to(TeamController);
+container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 
 // Resolve the controllers & services
@@ -132,7 +132,7 @@ export const passwordResetController = container.get<PasswordResetController>(
 );
 export const accountController = container.get<AccountController>(TYPES.AccountController);
 export const activationController = container.get<ActivationController>(TYPES.ActivationController);
-export const teamController = container.get<TeamController>(TYPES.TeamController);
+export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const authMiddleware = authenticate(
   tokenService,
@@ -152,7 +152,7 @@ export const di = {
   passwordResetController,
   accountController,
   activationController,
-  teamController,
+  usersController,
   setupController,
   authMiddleware,
   setupGuardMiddleware,

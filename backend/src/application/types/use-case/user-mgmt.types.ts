@@ -3,7 +3,7 @@ import type { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import type { IActivationGrant } from '../../interfaces/services/activation.service.interface.ts';
 import type { IActor } from './actor.types.ts';
 
-export interface ITeamMember {
+export interface IManagedUser {
   id: string;
   email: string;
   username: string;
@@ -13,19 +13,19 @@ export interface ITeamMember {
   lastLoginAt: Date | null;
 }
 
-export interface IAddTeamMemberInput {
+export interface IAddUserInput {
   actor: IActor;
   role: UserRole;
   username: string;
   email: string;
 }
 
-export interface IAddTeamMemberResponse {
-  member: ITeamMember;
+export interface IAddUserResponse {
+  member: IManagedUser;
   activation: IActivationGrant;
 }
 
-export interface IListTeamMembersInput {
+export interface IListUsersInput {
   actor: IActor;
 }
 

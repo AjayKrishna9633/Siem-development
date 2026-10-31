@@ -6,8 +6,8 @@ const TYPES = {
   GetCurrentUserUseCase: Symbol.for('GetCurrentUserUseCase'),
   ResetPasswordUseCase: Symbol.for('ResetPasswordUseCase'),
   UpdateProfileUseCase: Symbol.for('UpdateProfileUseCase'),
-  AddTeamMemberUseCase: Symbol.for('AddTeamMemberUseCase'),
-  ListTeamMembersUseCase: Symbol.for('ListTeamMembersUseCase'),
+  AddUserUseCase: Symbol.for('AddUserUseCase'),
+  ListUsersUseCase: Symbol.for('ListUsersUseCase'),
   GetActivationUseCase: Symbol.for('GetActivationUseCase'),
   VerifyActivationUseCase: Symbol.for('VerifyActivationUseCase'),
   ActivateAccountUseCase: Symbol.for('ActivateAccountUseCase'),
@@ -49,7 +49,7 @@ const TYPES = {
   PasswordResetController: Symbol.for('PasswordResetController'),
   AccountController: Symbol.for('AccountController'),
   ActivationController: Symbol.for('ActivationController'),
-  TeamController: Symbol.for('TeamController'),
+  UsersController: Symbol.for('UsersController'),
   SetupController: Symbol.for('SetupController'),
 
   // External / Config
