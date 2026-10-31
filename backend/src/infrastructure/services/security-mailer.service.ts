@@ -17,11 +17,6 @@ const NOT_YOU =
 
 const codeCopy: Record<VerificationPurpose, { subject: string; eyebrow: string; action: string }> =
   {
-    'password-change': {
-      subject: 'Your SIEMple password change code',
-      eyebrow: 'Password change',
-      action: 'change your password',
-    },
     'email-change': {
       subject: 'Confirm your new SIEMple email address',
       eyebrow: 'Email change',

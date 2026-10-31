@@ -14,13 +14,5 @@ export const loadActiveUser = async (users: IUserRepository, userId: string): Pr
   return user;
 };
 
-// "jane.doe@gmail.com" -> "ja******@gmail.com", enough to recognise without exposing it
-export const maskEmail = (email: string): string => {
-  const [local, domain] = email.split('@');
-  if (!local || !domain) return email;
-  const visible = local.slice(0, Math.min(2, local.length));
-  return `${visible}${'*'.repeat(Math.max(1, local.length - visible.length))}@${domain}`;
-};
-
 export const invalidCode = () =>
   new AppError(AppErrorCode.INVALID_VERIFICATION_CODE, ErrorMessage.INVALID_VERIFICATION_CODE);

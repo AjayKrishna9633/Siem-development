@@ -1,4 +1,5 @@
 import type { IActor } from './actor.types.ts';
+import type { IRequestContext } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 
 // Where the code went, so the UI can say "We sent a code to j***@gmail.com"
 export interface ICodeSentResponse {
@@ -6,15 +7,11 @@ export interface ICodeSentResponse {
   expiresInMinutes: number;
 }
 
-export interface IRequestPasswordChangeInput {
-  actor: IActor;
-}
-
 export interface IChangePasswordInput {
   actor: IActor;
-  code: string;
   currentPassword: string;
   newPassword: string;
+  context: IRequestContext;
 }
 
 export interface IRequestEmailChangeInput {

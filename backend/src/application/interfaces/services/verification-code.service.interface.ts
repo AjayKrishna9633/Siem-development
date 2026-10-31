@@ -1,5 +1,5 @@
 // What a code confirms. One pending code per user per purpose; a new request replaces it.
-export type VerificationPurpose = 'password-change' | 'email-change';
+export type VerificationPurpose = 'email-change';
 
 export interface IVerificationCodeService {
   // Stores `data` alongside a fresh code (e.g. the new email being confirmed) and returns

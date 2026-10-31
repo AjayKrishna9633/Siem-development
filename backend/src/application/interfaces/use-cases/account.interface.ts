@@ -4,12 +4,7 @@ import type {
   IChangePasswordInput,
   ICodeSentResponse,
   IRequestEmailChangeInput,
-  IRequestPasswordChangeInput,
 } from '../../types/use-case/account.types.ts';
-
-export interface IRequestPasswordChangeUseCase {
-  execute(input: IRequestPasswordChangeInput): Promise<ICodeSentResponse>;
-}
 
 // Returns a fresh session: the change signs out every other device, but not this one
 export interface IChangePasswordUseCase {

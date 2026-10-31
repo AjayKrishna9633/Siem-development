@@ -11,10 +11,10 @@ import type {
   IChangeEmailUseCase,
   IChangePasswordUseCase,
   IRequestEmailChangeUseCase,
-  IRequestPasswordChangeUseCase,
 } from '../../application/interfaces/use-cases/account.interface.ts';
 import { actorFrom } from '../http/actor.ts';
 import { setRefreshCookie } from '../http/refresh-cookie.ts';
+import { requestContextFrom } from '../http/request-context.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
@@ -27,8 +27,6 @@ export class AccountController {
     private readonly getCurrentUserUseCase: IGetCurrentUserUseCase,
     @inject(TYPES.UpdateProfileUseCase)
     private readonly updateProfileUseCase: IUpdateProfileUseCase,
-    @inject(TYPES.RequestPasswordChangeUseCase)
-    private readonly requestPasswordChangeUseCase: IRequestPasswordChangeUseCase,
     @inject(TYPES.ChangePasswordUseCase)
     private readonly changePasswordUseCase: IChangePasswordUseCase,
     @inject(TYPES.RequestEmailChangeUseCase)
@@ -64,21 +62,13 @@ export class AccountController {
       .json(new ApiResponse(HttpStatusCode.OK, updatedProfile, SuccessMessage.PROFILE_UPDATED));
   });
 
-  requestPasswordChange = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.requestPasswordChangeUseCase.execute({ actor: actorFrom(req) });
-
-    res
-      .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.VERIFICATION_CODE_SENT));
-  });
-
   // Other devices are signed out; this one gets a fresh session cookie
   changePassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const { refreshToken, ...session } = await this.changePasswordUseCase.execute({
       actor: actorFrom(req),
-      code: req.body.code,
       currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
+      context: requestContextFrom(req),
     });
 
     setRefreshCookie(res, refreshToken);

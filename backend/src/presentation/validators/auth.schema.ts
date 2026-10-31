@@ -29,7 +29,6 @@ export const updateProfileSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  code: verificationCode,
   currentPassword: secretField('Current password'),
   newPassword: newPasswordField(),
 });

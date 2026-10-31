@@ -18,18 +18,18 @@ export function accountRoutes(
 ): Router {
   const router = Router();
 
-  // Password and email changes: a code is emailed first, then confirmed with the change
+  // Email changes: a code is emailed to the new address first, then confirmed
   const codeLimiter = createRateLimiter(
     5,
     'Too many verification codes requested, please try again later.',
   );
+  // Also limits guessing the current password with a stolen session
   const changeLimiter = createRateLimiter(10, 'Too many attempts, please try again later.');
   const canManageUsers = authorize(Permission.USERS_MANAGE);
 
   router.get('/me', authMiddleware, controller.getMe);
   router.put('/profile', authMiddleware, validate(updateProfileSchema), controller.updateProfile);
 
-  router.post('/password/code', authMiddleware, codeLimiter, controller.requestPasswordChange);
   router.post(
     '/password',
     authMiddleware,
