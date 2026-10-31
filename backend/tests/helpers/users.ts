@@ -26,23 +26,34 @@ export const setupFirstAdmin = async (app: Express, email = 'admin@example.com')
   return { id: res.body.data.user.id, token: res.body.data.accessToken } as ISignedInUser;
 };
 
-// An admin adds someone, who then activates and is signed in
+// The token inside an invite link (tests run without email, so the link is returned)
+export const tokenFromLink = (link: string): string => {
+  const token = new URL(link).searchParams.get('token');
+  if (!token) throw new Error(`No token in ${link}`);
+  return token;
+};
+
+// An admin invites someone, who accepts and is signed in
 export const addActiveUser = async (
   app: Express,
   admin: ISignedInUser,
   email: string,
   role: string,
 ): Promise<ISignedInUser> => {
-  const added = await request(app)
-    .post('/api/users')
+  const invited = await request(app)
+    .post('/api/users/invites')
     .set('Authorization', `Bearer ${admin.token}`)
-    .send({ username: email.split('@')[0], email, role });
-  if (added.status !== 201) throw new Error(`Add user failed: ${added.status}`);
+    .send({ email, role });
+  if (invited.status !== 201) throw new Error(`Invite failed: ${invited.status}`);
 
-  const activated = await request(app)
-    .post('/api/auth/activate')
-    .send({ activationId: added.body.data.activation.activationId, newPassword: PASSWORD });
-  if (activated.status !== 200) throw new Error(`Activation failed: ${activated.status}`);
+  const accepted = await request(app)
+    .post('/api/auth/invite/accept')
+    .send({
+      token: tokenFromLink(invited.body.data.invite.link),
+      name: email.split('@')[0],
+      password: PASSWORD,
+    });
+  if (accepted.status !== 200) throw new Error(`Accept failed: ${accepted.status}`);
 
-  return { id: added.body.data.member.id, token: activated.body.data.accessToken };
+  return { id: invited.body.data.user.id, token: accepted.body.data.accessToken };
 };

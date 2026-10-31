@@ -14,3 +14,8 @@ if (testUrl) {
   process.env.DATABASE_URL = testUrl;
 }
 process.env.NODE_ENV = 'test';
+
+// Tests must never send real email. Blanking these (dotenv doesn't override variables
+// that are already set) makes the app run without email, so invite and reset links come
+// back in API responses, which is also what the tests read.
+for (const name of ['SMTP_HOST', 'OTP_EMAIL', 'OTP_PASSWORD']) process.env[name] = '';
