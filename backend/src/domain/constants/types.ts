@@ -18,10 +18,16 @@ const TYPES = {
   ChangePasswordUseCase: Symbol.for('ChangePasswordUseCase'),
   RequestEmailChangeUseCase: Symbol.for('RequestEmailChangeUseCase'),
   ChangeEmailUseCase: Symbol.for('ChangeEmailUseCase'),
+  IssueSetupTokenUseCase: Symbol.for('IssueSetupTokenUseCase'),
+  GetSetupStatusUseCase: Symbol.for('GetSetupStatusUseCase'),
+  VerifySetupTokenUseCase: Symbol.for('VerifySetupTokenUseCase'),
+  CompleteSetupUseCase: Symbol.for('CompleteSetupUseCase'),
   // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
   AuditLogRepository: Symbol.for('AuditLogRepository'),
+  SystemSettingsRepository: Symbol.for('SystemSettingsRepository'),
+  SystemSettingsMapper: Symbol.for('SystemSettingsMapper'),
 
   // Services
   CacheService: Symbol.for('CacheService'),
@@ -32,6 +38,7 @@ const TYPES = {
   ActivationService: Symbol.for('ActivationService'),
   VerificationCodeService: Symbol.for('VerificationCodeService'),
   SecurityMailer: Symbol.for('SecurityMailer'),
+  OpaqueTokenService: Symbol.for('OpaqueTokenService'),
 
   // Middleware
   AuthMiddleware: Symbol.for('AuthMiddleware'),
@@ -42,6 +49,7 @@ const TYPES = {
   AccountController: Symbol.for('AccountController'),
   ActivationController: Symbol.for('ActivationController'),
   TeamController: Symbol.for('TeamController'),
+  SetupController: Symbol.for('SetupController'),
 
   // External / Config
   DataSource: Symbol.for('DataSource'),

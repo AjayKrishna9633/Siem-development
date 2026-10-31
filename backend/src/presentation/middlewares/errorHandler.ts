@@ -8,6 +8,10 @@ import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 const statusByCode: Record<AppErrorCode, number> = {
+  [AppErrorCode.SETUP_REQUIRED]: HttpStatusCode.FORBIDDEN,
+  // Setup routes stop existing once setup is done, so they answer like an unknown route
+  [AppErrorCode.SETUP_ALREADY_COMPLETED]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.INVALID_SETUP_TOKEN]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.OTP_INVALID]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.ACCOUNT_INACTIVE]: HttpStatusCode.FORBIDDEN,
@@ -97,7 +101,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void =
 
   if (err instanceof AppError) {
     const statusCode = statusByCode[err.code] || HttpStatusCode.BAD_REQUEST;
-    res.status(statusCode).json(new ApiResponse(statusCode, null, err.message));
+    res.status(statusCode).json(new ApiResponse(statusCode, null, err.message, err.code));
     return;
   }
 

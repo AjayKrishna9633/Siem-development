@@ -23,6 +23,15 @@ export type UserProps = IUserProps;
 
 // What the domain needs to create each kind of user. Defined here, not in the
 // application layer, so the entity depends on nothing outside the domain.
+// The admin created by first-run setup: active immediately, with the password they chose
+export interface ICreateFirstAdminProps {
+  id: string;
+  email: string;
+  username: string;
+  passwordHash: string;
+  now: Date;
+}
+
 export interface ICreateInvitedUserProps {
   id: string;
   email: string;

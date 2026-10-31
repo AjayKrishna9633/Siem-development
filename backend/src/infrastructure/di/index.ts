@@ -5,6 +5,8 @@ import TYPES from '../../domain/constants/types.ts';
 import { TypeOrmUserRepository } from '../database/repositories/user.repository.ts';
 import { UserMapper } from '../database/mappers/user.mapper.ts';
 import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.repository.ts';
+import { TypeOrmSystemSettingsRepository } from '../database/repositories/system-settings.repository.ts';
+import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
@@ -23,6 +25,7 @@ import { ChangePasswordUseCase } from '../../application/use-cases/account/chang
 import { RequestEmailChangeUseCase } from '../../application/use-cases/account/request-email-change.usecase.ts';
 import { ChangeEmailUseCase } from '../../application/use-cases/account/change-email.usecase.ts';
 import { ActivationService } from '../services/activation.service.ts';
+import { OpaqueTokenService } from '../services/opaque-token.service.ts';
 
 // UseCases
 import { SendOtpUseCase } from '../../application/use-cases/auth/send-otp.usecase.ts';
@@ -39,6 +42,15 @@ import { ActivateAccountUseCase } from '../../application/use-cases/activation/a
 import { ResendActivationUseCase } from '../../application/use-cases/activation/resend-activation.usecase.ts';
 import { RefreshSessionUseCase } from '../../application/use-cases/auth/refresh-session.usecase.ts';
 import { LogoutUseCase } from '../../application/use-cases/auth/logout.usecase.ts';
+import { IssueSetupTokenUseCase } from '../../application/use-cases/setup/issue-setup-token.usecase.ts';
+import { GetSetupStatusUseCase } from '../../application/use-cases/setup/get-setup-status.usecase.ts';
+import { VerifySetupTokenUseCase } from '../../application/use-cases/setup/verify-setup-token.usecase.ts';
+import { CompleteSetupUseCase } from '../../application/use-cases/setup/complete-setup.usecase.ts';
+import type {
+  IGetSetupStatusUseCase,
+  IIssueSetupTokenUseCase,
+} from '../../application/interfaces/use-cases/setup.interface.ts';
+import { setupGuard } from '../../presentation/middlewares/setup-guard.middleware.ts';
 import type { ITokenService } from '../../application/interfaces/services/token.service.interface.ts';
 import { authenticate } from '../../presentation/middlewares/auth.middleware.ts';
 
@@ -48,6 +60,7 @@ import { PasswordResetController } from '../../presentation/controllers/password
 import { AccountController } from '../../presentation/controllers/account.controller.ts';
 import { ActivationController } from '../../presentation/controllers/activation.controller.ts';
 import { TeamController } from '../../presentation/controllers/team.controller.ts';
+import { SetupController } from '../../presentation/controllers/setup.controller.ts';
 
 // 1. Bind external constants/factories
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
@@ -63,6 +76,8 @@ container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
+container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
+container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
 
 // 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
@@ -73,6 +88,7 @@ container.bind(TYPES.SessionService).to(RefreshSessionService);
 container.bind(TYPES.ActivationService).to(ActivationService);
 container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
 container.bind(TYPES.SecurityMailer).to(SecurityMailer);
+container.bind(TYPES.OpaqueTokenService).to(OpaqueTokenService);
 
 // 4. Bind UseCases
 container.bind(TYPES.SendOtpUseCase).to(SendOtpUseCase);
@@ -93,6 +109,10 @@ container.bind(TYPES.RequestPasswordChangeUseCase).to(RequestPasswordChangeUseCa
 container.bind(TYPES.ChangePasswordUseCase).to(ChangePasswordUseCase);
 container.bind(TYPES.RequestEmailChangeUseCase).to(RequestEmailChangeUseCase);
 container.bind(TYPES.ChangeEmailUseCase).to(ChangeEmailUseCase);
+container.bind(TYPES.IssueSetupTokenUseCase).to(IssueSetupTokenUseCase);
+container.bind(TYPES.GetSetupStatusUseCase).to(GetSetupStatusUseCase);
+container.bind(TYPES.VerifySetupTokenUseCase).to(VerifySetupTokenUseCase);
+container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 
 // 5. Bind Controllers
 container.bind(TYPES.SessionController).to(SessionController);
@@ -100,6 +120,7 @@ container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
 container.bind(TYPES.ActivationController).to(ActivationController);
 container.bind(TYPES.TeamController).to(TeamController);
+container.bind(TYPES.SetupController).to(SetupController);
 
 // Resolve the controllers & services
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
@@ -111,6 +132,12 @@ export const activationController = container.get<ActivationController>(TYPES.Ac
 export const teamController = container.get<TeamController>(TYPES.TeamController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const authMiddleware = authenticate(tokenService);
+export const setupController = container.get<SetupController>(TYPES.SetupController);
+export const issueSetupToken = container.get<IIssueSetupTokenUseCase>(TYPES.IssueSetupTokenUseCase);
+const getSetupStatus = container.get<IGetSetupStatusUseCase>(TYPES.GetSetupStatusUseCase);
+export const setupGuardMiddleware = setupGuard(
+  async () => (await getSetupStatus.execute()).completed,
+);
 
 export { redisClient };
 
@@ -120,7 +147,10 @@ export const di = {
   accountController,
   activationController,
   teamController,
+  setupController,
   authMiddleware,
+  setupGuardMiddleware,
+  issueSetupToken,
   tokenService,
   redisClient,
   container,

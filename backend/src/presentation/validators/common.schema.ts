@@ -23,5 +23,11 @@ export const newPasswordField = (minLength = PASSWORD_MIN_LENGTH) =>
       `Password too long (exceeds ${PASSWORD_MAX_BYTES} bytes)`,
     );
 
+export const personNameField = z
+  .string()
+  .trim()
+  .min(2, 'Name must be at least 2 characters')
+  .max(100);
+
 // An existing password or temporary password being checked, not set
 export const secretField = (label: string) => z.string().min(1, `${label} is required`).max(128);

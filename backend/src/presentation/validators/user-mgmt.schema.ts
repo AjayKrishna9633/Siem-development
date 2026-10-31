@@ -1,12 +1,10 @@
 import { z } from 'zod';
 import { ACTIVATION_ID_PATTERN } from '../../application/interfaces/services/activation.service.interface.ts';
 import { UserRole } from '../../domain/enums/UserRole.ts';
-import { emailField, newPasswordField, secretField } from './common.schema.ts';
-
-const personName = z.string().trim().min(2, 'Name must be at least 2 characters').max(100);
+import { emailField, newPasswordField, personNameField, secretField } from './common.schema.ts';
 
 export const addTeamMemberSchema = z.object({
-  username: personName,
+  username: personNameField,
   email: emailField,
   role: z.enum(UserRole, 'Choose a role'),
 });

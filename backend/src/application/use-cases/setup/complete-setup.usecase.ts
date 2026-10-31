@@ -1,0 +1,83 @@
+import { injectable, inject } from 'inversify';
+import { randomUUID } from 'node:crypto';
+import TYPES from '../../../domain/constants/types.ts';
+import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
+import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
+import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
+import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
+import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
+import type { ICompleteSetupUseCase } from '../../interfaces/use-cases/setup.interface.ts';
+import type { ICompleteSetupInput } from '../../types/use-case/setup.types.ts';
+import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
+import { User } from '../../../domain/entities/user.entity.ts';
+import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
+import { startSession } from '../shared/user-views.ts';
+import {
+  invalidSetupToken,
+  isSetupTokenValid,
+  recordRejectedSetupToken,
+  setupAlreadyCompleted,
+} from './setup-token.ts';
+
+// Setup step 2: creates the first admin and closes setup for good, then signs them in.
+// Everything that decides the outcome happens inside one transaction holding a lock on
+// the settings row, so two simultaneous requests can never both create an admin.
+@injectable()
+export class CompleteSetupUseCase implements ICompleteSetupUseCase {
+  constructor(
+    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
+    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.OpaqueTokenService) private readonly tokens: IOpaqueTokenService,
+    @inject(TYPES.HashService) private readonly hasher: IHashService,
+    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
+  ) {}
+
+  async execute(input: ICompleteSetupInput): Promise<ILoginResponse> {
+    // Hashing is deliberately slow, so it happens before the lock is taken
+    const passwordHash = await this.hasher.hash(input.password);
+    const now = new Date();
+    let tokenRejected = false;
+
+    let admin: User;
+    try {
+      admin = await this.settings.completeSetup((locked) => {
+        if (locked.isSetupCompleted) throw setupAlreadyCompleted();
+        if (!isSetupTokenValid(locked, input.token, this.tokens, now)) {
+          tokenRejected = true;
+          throw invalidSetupToken();
+        }
+
+        locked.completeSetup(
+          { orgName: input.orgName, baseUrl: input.baseUrl, timezone: input.timezone },
+          now,
+        );
+        return User.createFirstAdmin({
+          id: randomUUID(),
+          email: input.email,
+          username: input.adminName,
+          passwordHash,
+          now,
+        });
+      });
+    } catch (err) {
+      // Recorded after the rollback; written inside the transaction it would be undone too
+      if (tokenRejected) await recordRejectedSetupToken(this.audit, input.context);
+      throw err;
+    }
+
+    await this.audit.append({
+      actorUserId: admin.id,
+      action: AuditAction.SETUP_COMPLETED,
+      targetType: AuditTargetType.USER,
+      targetId: admin.id,
+      context: input.context,
+      metadata: { email: admin.email, orgName: input.orgName },
+    });
+
+    admin.recordSuccessfulLogin(input.context.ip, now);
+    await this.users.save(admin);
+    return startSession(this.sessions, admin);
+  }
+}

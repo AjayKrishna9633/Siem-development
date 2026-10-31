@@ -1,4 +1,6 @@
 export enum SuccessMessage {
+  SETUP_TOKEN_VALID = 'Setup token accepted',
+  SETUP_COMPLETED = 'Setup completed',
   OTP_SENT = 'OTP sent successfully',
   OTP_VERIFIED = 'OTP verified successfully',
   LOGIN_SUCCESSFUL = 'Login successful',

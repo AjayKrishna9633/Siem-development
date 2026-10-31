@@ -10,11 +10,14 @@ import { passwordResetRoutes } from './presentation/routes/password-reset.routes
 import { accountRoutes } from './presentation/routes/account.routes.ts';
 import { activationRoutes } from './presentation/routes/activation.routes.ts';
 import { teamRoutes } from './presentation/routes/team.routes.ts';
+import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
 
 const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+// Before any API route: blocks the API until first-run setup is done, then closes setup
+app.use(di.setupGuardMiddleware);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
@@ -27,6 +30,7 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.use('/api/setup', setupRoutes(di.setupController));
 // Auth endpoints share one prefix but are split by concern
 app.use('/api/auth', sessionRoutes(di.sessionController));
 app.use('/api/auth', passwordResetRoutes(di.passwordResetController));
