@@ -4,8 +4,7 @@ import type {
   ILoginResponse,
   IUser,
   ICodeSent,
-  IActivationPreview,
-  IVerifiedActivation,
+  IInvitePreview,
 } from '../types/auth.ts';
 
 export const authService = {
@@ -17,28 +16,21 @@ export const authService = {
     return res.data.data;
   },
 
-  // Activation link route: the ID in the link is enough to open the set-password step
-  async getActivation(activationId: string): Promise<IActivationPreview> {
-    const res = await api.get<IApiResponse<IActivationPreview>>('/auth/activation', {
-      params: { id: activationId },
+  // The accept page opens with this; any problem with the link is one generic error
+  async getInvite(token: string): Promise<IInvitePreview> {
+    const res = await api.get<IApiResponse<IInvitePreview>>('/auth/invite', {
+      params: { token },
     });
     return res.data.data;
   },
 
-  // Temporary-password route: email + temporary password stand in for the link
-  async verifyActivation(email: string, temporaryPassword: string): Promise<IVerifiedActivation> {
-    const res = await api.post<IApiResponse<IVerifiedActivation>>('/auth/activation/verify', {
-      email,
-      temporaryPassword,
-    });
-    return res.data.data;
-  },
-
-  async activate(activationId: string, newPassword: string): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/activate', {
-      activationId,
-      newPassword,
-    });
+  // Spends the link, activates the account and signs the person in
+  async acceptInvite(data: {
+    token: string;
+    name: string;
+    password: string;
+  }): Promise<ILoginResponse> {
+    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/invite/accept', data);
     return res.data.data;
   },
 

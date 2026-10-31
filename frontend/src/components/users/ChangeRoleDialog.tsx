@@ -3,11 +3,11 @@ import { Modal } from '../ui/Modal.tsx';
 import { Button } from '../ui/Button.tsx';
 import { Field, Select } from '../ui/Form.tsx';
 import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
-import type { IUser, UserRole } from '../../types/auth.ts';
+import type { IManagedUser, UserRole } from '../../types/auth.ts';
 
 // The new role applies to the user's very next request, without signing them out
 export const ChangeRoleDialog: React.FC<{
-  user: IUser;
+  user: IManagedUser;
   onSave: (role: UserRole) => Promise<void>;
   onCancel: () => void;
 }> = ({ user, onSave, onCancel }) => {
@@ -29,7 +29,7 @@ export const ChangeRoleDialog: React.FC<{
       title="Change role"
       description={
         <>
-          <span className="text-ink">{user.username}</span>{' '}
+          <span className="text-ink">{user.username ?? 'Invited user'}</span>{' '}
           <span className="font-mono text-xs">({user.email})</span>
         </>
       }

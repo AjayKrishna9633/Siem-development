@@ -9,8 +9,8 @@ export const isValidPerson = (name: string, email: string) =>
 export const isUuid = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-// Activation IDs are 48 lowercase hex characters, matching the backend's ACTIVATION_ID_PATTERN
-export const isActivationId = (id: string) => /^[0-9a-f]{48}$/.test(id);
+// Invite and reset links carry 64 lowercase hex characters (the backend's LINK_TOKEN_PATTERN)
+export const isLinkToken = (token: string) => /^[0-9a-f]{64}$/.test(token);
 
 // Inline messages for a name + email pair; a missing key means that field is fine
 export const personFieldErrors = (name: string, email: string) => ({

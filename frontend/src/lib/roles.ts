@@ -1,6 +1,6 @@
 import type { UserRole } from '../types/auth.ts';
 
-// One name per role everywhere in the app, matching the backend's activation emails
+// One name per role everywhere in the app, matching the backend's invitation emails
 export const roleLabel: Record<UserRole, string> = {
   admin: 'Administrator',
   t2_analyst: 'Tier 2 Analyst',

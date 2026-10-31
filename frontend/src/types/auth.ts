@@ -39,20 +39,32 @@ export interface ILoginResponse {
   user: IUser;
 }
 
-// One-time credentials the new user activates with
-export interface IActivationGrant {
-  activationId: string;
-  activationLink: string;
-  temporaryPassword: string;
-  expiresAt: string;
-  // False when the activation email couldn't be delivered; share the details by hand
-  emailSent: boolean;
+// A row in user management. Someone who hasn't accepted their invite has no name yet.
+export interface IManagedUser extends Omit<IUser, 'username' | 'permissions'> {
+  username: string | null;
+  // For invited rows: whether their link has expired (or was never issued), as the server sees it
+  inviteExpired?: boolean;
 }
 
-// An admin adds a user; the activation is shown once
-export interface IUserWithActivation {
-  member: IUser;
-  activation: IActivationGrant;
+// After inviting or resending. `link` is only there when the email wasn't delivered.
+export interface IInviteDelivery {
+  delivered: boolean;
+  expiresAt: string;
+  link?: string;
+}
+
+export interface IInviteResult {
+  user: IManagedUser;
+  invite: IInviteDelivery;
+}
+
+export interface IPendingInvite {
+  userId: string;
+  email: string;
+  role: UserRole;
+  invitedAt: string;
+  expiresAt: string | null;
+  expired: boolean;
 }
 
 // Where a verification code was sent (masked for the account's own address)
@@ -61,15 +73,10 @@ export interface ICodeSent {
   expiresInMinutes: number;
 }
 
-// Who is being activated, shown on the set-password step
-export interface IActivationPreview {
-  username: string;
+// Shown on the accept-invite page to whoever holds the link
+export interface IInvitePreview {
   email: string;
   role: UserRole;
+  orgName: string | null;
   expiresAt: string;
-}
-
-// The temporary-password route hands back the activation ID the link would carry
-export interface IVerifiedActivation extends IActivationPreview {
-  activationId: string;
 }

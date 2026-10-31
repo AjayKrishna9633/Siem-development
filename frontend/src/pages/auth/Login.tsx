@@ -45,11 +45,7 @@ export const Login: React.FC = () => {
     <AuthLayout
       title="Secure Access"
       subtitle="Authenticate to access SOC capabilities."
-      footer={
-        <Link to="/activate" className="text-accent hover:underline">
-          Have an invite? Activate account
-        </Link>
-      }
+      footer={<span>Invited? Open the link in your invitation email.</span>}
     >
       {redirect?.passwordReset && (
         <p

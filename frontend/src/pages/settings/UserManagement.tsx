@@ -12,18 +12,21 @@ import { usePaged } from '../../hooks/usePaged.ts';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { usersService } from '../../services/users.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
-import { ResentActivationNotice } from '../../components/common/ResentActivationNotice.tsx';
-import { ResendActivationDialog } from '../../components/common/ResendActivationDialog.tsx';
+import {
+  ResendInviteDialog,
+  ResentInviteNotice,
+  RevokeInviteDialog,
+} from '../../components/users/InviteDialogs.tsx';
 import { ChangeRoleDialog } from '../../components/users/ChangeRoleDialog.tsx';
 import { UserStatusDialog } from '../../components/users/UserStatusDialog.tsx';
-import type { IActivationGrant, IUser, UserRole, UserStatus } from '../../types/auth.ts';
+import type { IInviteDelivery, IManagedUser, UserRole, UserStatus } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { sortItems, type ISortField, type SortDirection } from '../../lib/sort.ts';
 import { ALL_ROLES, roleLabel } from '../../lib/roles.ts';
 
 const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
-  { value: 'invited', label: 'Awaiting activation' },
+  { value: 'invited', label: 'Invited' },
   { value: 'disabled', label: 'Disabled' },
 ];
 
@@ -31,8 +34,8 @@ const ROLE_OPTIONS = ALL_ROLES.map((r) => ({ value: r, label: roleLabel[r] }));
 
 type UserSortKey = 'name' | 'email' | 'role' | 'status' | 'lastLogin';
 
-const SORT_FIELDS: ISortField<IUser, UserSortKey>[] = [
-  { value: 'name', label: 'Name', kind: 'text', get: (u) => u.username },
+const SORT_FIELDS: ISortField<IManagedUser, UserSortKey>[] = [
+  { value: 'name', label: 'Name', kind: 'text', get: (u) => u.username ?? u.email },
   { value: 'email', label: 'Email', kind: 'text', get: (u) => u.email },
   {
     value: 'role',
@@ -61,18 +64,28 @@ export const UserManagement: React.FC = () => {
   } = useRemoteList(usersService.list, 'Failed to load users.');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [resent, setResent] = useState<{ user: IUser; grant: IActivationGrant } | null>(null);
+  const [resent, setResent] = useState<{ user: IManagedUser; delivery: IInviteDelivery } | null>(
+    null,
+  );
 
-  // Resending is confirmed first, since it invalidates the link the analyst may be using
-  const [confirmResend, setConfirmResend] = useState<IUser | null>(null);
-  const [roleTarget, setRoleTarget] = useState<IUser | null>(null);
-  const [statusTarget, setStatusTarget] = useState<{ user: IUser; enable: boolean } | null>(null);
+  // Resending and revoking are confirmed first: both kill the link the person may be using
+  const [confirmResend, setConfirmResend] = useState<IManagedUser | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<IManagedUser | null>(null);
+  const [roleTarget, setRoleTarget] = useState<IManagedUser | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{
+    user: IManagedUser;
+    enable: boolean;
+  } | null>(null);
 
   // The server answers with the updated row; swap it in without reloading the list
-  const replaceUser = (updated: IUser) =>
+  const replaceUser = (updated: IManagedUser) =>
     setUsers((current) => current.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
 
-  const runAction = async (u: IUser, action: () => Promise<IUser>, failure: string) => {
+  const runAction = async (
+    u: IManagedUser,
+    action: () => Promise<IManagedUser>,
+    failure: string,
+  ) => {
     setBusyId(u.id);
     setActionError(null);
     try {
@@ -84,13 +97,28 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const resendActivation = async (u: IUser) => {
+  const resendInvite = async (u: IManagedUser) => {
     setBusyId(u.id);
     setActionError(null);
     try {
-      setResent({ user: u, grant: await usersService.resendActivation(u.id) });
+      const delivery = await usersService.resendInvite(u.id);
+      setResent({ user: u, delivery });
+      replaceUser({ ...u, inviteExpired: false });
     } catch (err: unknown) {
-      setActionError(apiErrorMessage(err, 'Failed to issue a new activation.'));
+      setActionError(apiErrorMessage(err, 'Failed to send a new invitation.'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const revokeInvite = async (u: IManagedUser) => {
+    setBusyId(u.id);
+    setActionError(null);
+    try {
+      await usersService.revokeInvite(u.id);
+      setUsers((current) => current.filter((x) => x.id !== u.id));
+    } catch (err: unknown) {
+      setActionError(apiErrorMessage(err, 'Failed to revoke the invitation.'));
     } finally {
       setBusyId(null);
     }
@@ -107,7 +135,7 @@ export const UserManagement: React.FC = () => {
       (u) =>
         (role === 'all' || u.role === role) &&
         (status === 'all' || (u.status ?? 'active') === status) &&
-        `${u.username} ${u.email}`.toLowerCase().includes(q),
+        `${u.username ?? ''} ${u.email}`.toLowerCase().includes(q),
     );
   }, [users, role, status, search]);
 
@@ -137,7 +165,7 @@ export const UserManagement: React.FC = () => {
             icon={<UserPlus className="size-4" />}
             onClick={() => navigate('/users/new')}
           >
-            Add user
+            Invite user
           </Button>
         }
       />
@@ -146,19 +174,17 @@ export const UserManagement: React.FC = () => {
         loading={loading}
         stats={[
           { label: 'Total users', value: users.length },
-          { label: 'Awaiting activation', value: count('invited') },
+          { label: 'Pending invitations', value: count('invited') },
           { label: 'Disabled accounts', value: count('disabled') },
         ]}
       />
 
       {resent && (
-        <ResentActivationNotice
-          grant={resent.grant}
+        <ResentInviteNotice
           email={resent.user.email}
+          delivery={resent.delivery}
           onDismiss={() => setResent(null)}
-        >
-          New activation issued for <span className="font-medium">{resent.user.username}</span>.
-        </ResentActivationNotice>
+        />
       )}
 
       {actionError && <p className="text-sm text-critical">{actionError}</p>}
@@ -217,27 +243,38 @@ export const UserManagement: React.FC = () => {
             loading={loading}
             currentUserId={currentUserId}
             busyId={busyId}
-            onResendActivation={setConfirmResend}
+            onResendInvite={setConfirmResend}
+            onRevokeInvite={setConfirmRevoke}
             onChangeRole={setRoleTarget}
             onSetEnabled={(user, enable) => setStatusTarget({ user, enable })}
             emptyText={
               filtersActive
                 ? 'No users match the current filters.'
-                : 'No users yet. Add an analyst to get started.'
+                : 'No users yet. Invite an analyst to get started.'
             }
           />
         )}
       </Panel>
 
       {confirmResend && (
-        <ResendActivationDialog
-          name={confirmResend.username}
+        <ResendInviteDialog
           email={confirmResend.email}
           onConfirm={async () => {
-            await resendActivation(confirmResend);
+            await resendInvite(confirmResend);
             setConfirmResend(null);
           }}
           onCancel={() => setConfirmResend(null)}
+        />
+      )}
+
+      {confirmRevoke && (
+        <RevokeInviteDialog
+          email={confirmRevoke.email}
+          onConfirm={async () => {
+            await revokeInvite(confirmRevoke);
+            setConfirmRevoke(null);
+          }}
+          onCancel={() => setConfirmRevoke(null)}
         />
       )}
 

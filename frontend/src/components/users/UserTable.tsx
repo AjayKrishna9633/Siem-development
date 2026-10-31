@@ -1,11 +1,11 @@
 import React from 'react';
-import { Ban, Mail, Pencil, Send, UserCheck } from 'lucide-react';
+import { Ban, Mail, Pencil, Send, UserCheck, UserX } from 'lucide-react';
 import { StatusDot, Tag } from '../ui/Badge.tsx';
 import { Avatar } from '../ui/Misc.tsx';
 import { Table, THead, Th, Tr, Td } from '../ui/Table.tsx';
 import { TableStatusRow } from '../common/TableStatusRow.tsx';
 import { LocalTime } from '../common/LocalTime.tsx';
-import type { IUser, UserStatus } from '../../types/auth.ts';
+import type { IManagedUser, UserStatus } from '../../types/auth.ts';
 import { roleLabel } from '../../lib/roles.ts';
 import { cn } from '../../lib/cn.ts';
 
@@ -17,19 +17,20 @@ const statusTone: Record<UserStatus, 'success' | 'info' | 'neutral'> = {
 
 const statusLabel: Record<UserStatus, string> = {
   active: 'Active',
-  invited: 'Awaiting activation',
+  invited: 'Invited',
   disabled: 'Disabled',
 };
 
 interface IUserTableProps {
-  users: IUser[];
+  users: IManagedUser[];
   loading: boolean;
   emptyText: string;
   currentUserId?: string;
   busyId?: string | null;
-  onResendActivation?: (user: IUser) => void;
-  onChangeRole?: (user: IUser) => void;
-  onSetEnabled?: (user: IUser, enabled: boolean) => void;
+  onResendInvite?: (user: IManagedUser) => void;
+  onRevokeInvite?: (user: IManagedUser) => void;
+  onChangeRole?: (user: IManagedUser) => void;
+  onSetEnabled?: (user: IManagedUser, enabled: boolean) => void;
 }
 
 const COLUMNS = 5;
@@ -40,7 +41,8 @@ export const UserTable: React.FC<IUserTableProps> = ({
   emptyText,
   currentUserId,
   busyId,
-  onResendActivation,
+  onResendInvite,
+  onRevokeInvite,
   onChangeRole,
   onSetEnabled,
 }) => (
@@ -70,7 +72,8 @@ export const UserTable: React.FC<IUserTableProps> = ({
             user={u}
             isSelf={u.id === currentUserId}
             busy={busyId === u.id}
-            onResendActivation={onResendActivation}
+            onResendInvite={onResendInvite}
+            onRevokeInvite={onRevokeInvite}
             onChangeRole={onChangeRole}
             onSetEnabled={onSetEnabled}
           />
@@ -80,18 +83,19 @@ export const UserTable: React.FC<IUserTableProps> = ({
 );
 
 const UserRow: React.FC<{
-  user: IUser;
+  user: IManagedUser;
   isSelf: boolean;
   busy: boolean;
-  onResendActivation?: (user: IUser) => void;
-  onChangeRole?: (user: IUser) => void;
-  onSetEnabled?: (user: IUser, enabled: boolean) => void;
-}> = ({ user: u, isSelf, busy, onResendActivation, onChangeRole, onSetEnabled }) => {
+  onResendInvite?: (user: IManagedUser) => void;
+  onRevokeInvite?: (user: IManagedUser) => void;
+  onChangeRole?: (user: IManagedUser) => void;
+  onSetEnabled?: (user: IManagedUser, enabled: boolean) => void;
+}> = ({ user: u, isSelf, busy, onResendInvite, onRevokeInvite, onChangeRole, onSetEnabled }) => {
   const status = u.status ?? 'active';
   const invited = status === 'invited';
   const disabled = status === 'disabled';
-  // Only someone who hasn't activated yet can get a new activation
-  const canResend = invited && !!onResendActivation;
+  // Resending fixes an expired (or never-issued) link
+  const inviteExpired = invited && u.inviteExpired === true;
   // The backend refuses changes to your own access; the buttons say so up front
   const selfNote = "You can't change your own access";
 
@@ -104,11 +108,11 @@ const UserRow: React.FC<{
               <Mail className="size-3.5" />
             </span>
           ) : (
-            <Avatar name={u.username} />
+            <Avatar name={u.username ?? u.email} />
           )}
           <div>
             <p className="text-ink">
-              {u.username}
+              {u.username ?? <span className="text-muted">Awaiting acceptance</span>}
               {isSelf && <span className="ml-2 text-xs text-muted">(you)</span>}
             </p>
             <p className="text-xs text-muted">{u.email}</p>
@@ -120,7 +124,7 @@ const UserRow: React.FC<{
       </Td>
       <Td>
         <StatusDot tone={statusTone[status]} className={disabled ? 'text-muted' : 'text-ink'}>
-          {statusLabel[status]}
+          {inviteExpired ? 'Invite expired' : statusLabel[status]}
         </StatusDot>
       </Td>
       <Td className="font-mono text-sm text-muted">
@@ -128,13 +132,13 @@ const UserRow: React.FC<{
       </Td>
       <Td>
         <div className="flex justify-end gap-3 text-muted">
-          {canResend && (
+          {invited && (
             <button
               type="button"
-              title="Send a new activation"
-              disabled={busy}
-              onClick={() => onResendActivation?.(u)}
-              className="hover:text-ink disabled:opacity-50"
+              title="Send a new invitation"
+              disabled={busy || !onResendInvite}
+              onClick={() => onResendInvite?.(u)}
+              className="hover:text-ink disabled:opacity-40"
             >
               <Send className="size-3.5" />
             </button>
@@ -148,7 +152,17 @@ const UserRow: React.FC<{
           >
             <Pencil className="size-3.5" />
           </button>
-          {disabled ? (
+          {invited ? (
+            <button
+              type="button"
+              title="Revoke invitation"
+              disabled={busy || !onRevokeInvite}
+              onClick={() => onRevokeInvite?.(u)}
+              className="hover:text-critical disabled:opacity-40"
+            >
+              <UserX className="size-3.5" />
+            </button>
+          ) : disabled ? (
             <button
               type="button"
               title="Enable user"

@@ -1,43 +1,44 @@
 import React, { useState } from 'react';
 import { Info } from 'lucide-react';
 import { Button } from '../ui/Button.tsx';
-import { Field, Select } from '../ui/Form.tsx';
-import { FormSection, PersonFields } from '../common/FormSection.tsx';
-import { isValidPerson } from '../../lib/validation.ts';
+import { Field, Input, Select } from '../ui/Form.tsx';
+import { FormSection } from '../common/FormSection.tsx';
+import { isEmail } from '../../lib/validation.ts';
 import { usersService } from '../../services/users.service.ts';
-import type { IUserWithActivation, UserRole } from '../../types/auth.ts';
+import type { IInviteResult, UserRole } from '../../types/auth.ts';
 import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 
-interface IAddUserFormProps {
-  onCreated: (result: IUserWithActivation) => void;
+// An admin invites someone by email and role; the person picks their own name on accepting
+export const InviteUserForm: React.FC<{
+  onInvited: (result: IInviteResult) => void;
   onCancel: () => void;
-}
-
-// An admin adds anyone in the organization, choosing their role up front
-export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }) => {
-  const [username, setUsername] = useState('');
+}> = ({ onInvited, onCancel }) => {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('t1_analyst');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const valid = isValidPerson(username, email);
-  // Set by the first submit: from then on every invalid field shows its message
+  // Set by the first submit: from then on an invalid email shows its message
   const [attempted, setAttempted] = useState(false);
+
+  const emailError = !email.trim()
+    ? 'Enter an email address.'
+    : !isEmail(email)
+      ? 'Enter a full email address, like name@company.com.'
+      : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) {
+    if (emailError) {
       setAttempted(true);
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      onCreated(await usersService.add({ username: username.trim(), email: email.trim(), role }));
+      onInvited(await usersService.invite({ email: email.trim(), role }));
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Failed to add the user.'));
+      setError(apiErrorMessage(err, 'Failed to send the invitation.'));
     } finally {
       setSubmitting(false);
     }
@@ -45,14 +46,20 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      <FormSection title="Identity">
-        <PersonFields
-          name={username}
-          email={email}
-          onName={setUsername}
-          onEmail={setEmail}
-          showAllErrors={attempted}
-        />
+      <FormSection title="Who">
+        <Field
+          label="Email address"
+          error={attempted ? emailError : undefined}
+          className="max-w-sm"
+        >
+          <Input
+            type="email"
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@company.com"
+          />
+        </Field>
       </FormSection>
 
       <FormSection title="Role">
@@ -69,8 +76,8 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
 
       <p className="flex gap-3 rounded border border-line-strong bg-canvas/50 p-3 text-sm text-ink">
         <Info className="mt-0.5 size-4 shrink-0 text-muted" />
-        You&apos;ll get an activation link and a temporary password to send them. They choose their
-        own password when they activate.
+        They get a single-use link, valid for 48 hours, to choose their name and password. If this
+        server can&apos;t send email, you&apos;ll get the link to send them yourself.
       </p>
 
       {error && <p className="text-sm text-critical">{error}</p>}
@@ -80,7 +87,7 @@ export const AddUserForm: React.FC<IAddUserFormProps> = ({ onCreated, onCancel }
           Cancel
         </Button>
         <Button type="submit" variant="primary" disabled={submitting}>
-          {submitting ? 'Adding…' : 'Add user'}
+          {submitting ? 'Inviting…' : 'Send invitation'}
         </Button>
       </div>
     </form>

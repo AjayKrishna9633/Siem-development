@@ -1,11 +1,11 @@
 import React from 'react';
 import { ConfirmDialog } from '../ui/ConfirmDialog.tsx';
-import type { IUser } from '../../types/auth.ts';
+import type { IManagedUser } from '../../types/auth.ts';
 
 // Disabling removes access immediately, so it is confirmed; enabling is confirmed too,
 // since it restores access with the person's old password
 export const UserStatusDialog: React.FC<{
-  user: IUser;
+  user: IManagedUser;
   enable: boolean;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
@@ -18,7 +18,7 @@ export const UserStatusDialog: React.FC<{
     onCancel={onCancel}
   >
     <p>
-      <span className="text-ink">{user.username}</span> (
+      <span className="text-ink">{user.username ?? 'Invited user'}</span> (
       <span className="font-mono text-xs">{user.email}</span>)
     </p>
     {enable ? (

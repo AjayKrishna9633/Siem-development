@@ -6,11 +6,11 @@ import { AppShell } from './components/layout/AppShell.tsx';
 import { homePathFor } from './lib/permissions.ts';
 import { Login } from './pages/auth/Login.tsx';
 import { Setup } from './pages/auth/Setup.tsx';
-import { Activate } from './pages/auth/Activate.tsx';
+import { AcceptInvite } from './pages/auth/AcceptInvite.tsx';
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx';
 import { Unauthorized } from './pages/Unauthorized.tsx';
 import { UserManagement } from './pages/settings/UserManagement.tsx';
-import { AddUser } from './pages/settings/AddUser.tsx';
+import { InviteUser } from './pages/settings/InviteUser.tsx';
 import { Profile } from './pages/settings/Profile.tsx';
 
 // People who manage users land on user management, everyone else on their profile
@@ -38,8 +38,7 @@ export const App: React.FC = () => {
         {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/setup" element={<Setup />} />
-        <Route path="/activate" element={<Activate />} />
-        <Route path="/accept-invite" element={<Navigate to="/activate" replace />} />
+        <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Authenticated account pages */}
@@ -63,7 +62,7 @@ export const App: React.FC = () => {
             path="/users/new"
             element={
               <CanManageUsers>
-                <AddUser />
+                <InviteUser />
               </CanManageUsers>
             }
           />
