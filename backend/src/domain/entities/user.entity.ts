@@ -141,6 +141,11 @@ export class User {
     this.touch(now);
   }
 
+  // Same password, stronger hash: sessions stay valid, unlike a real password change
+  upgradePasswordHash(newHash: string): void {
+    this.props.passwordHash = newHash;
+  }
+
   // Through a reset link: also lifts a sign-in lockout, since locked-out is often exactly
   // why someone is resetting
   resetPassword(newHash: string, now: Date): void {

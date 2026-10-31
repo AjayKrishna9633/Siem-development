@@ -64,6 +64,10 @@ export class LoginUseCase implements ILoginUseCase {
       throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
     }
 
+    // Hashes made with a lower bcrypt cost are upgraded while the password is at hand
+    if (this.hasher.needsRehash(user.passwordHash)) {
+      user.upgradePasswordHash(await this.hasher.hash(input.password));
+    }
     user.recordSuccessfulLogin(input.context.ip, now);
     await this.users.save(user);
 

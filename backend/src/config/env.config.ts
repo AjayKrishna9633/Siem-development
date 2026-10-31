@@ -11,6 +11,17 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   REDIS_URL: z.string().url(),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  // Set when SIEMple runs behind a reverse proxy (nginx, Traefik...), so req.ip is the
+  // real client: 'true', a hop count like '1', or addresses like 'loopback' or
+  // '10.0.0.0/8'. Unset means connections come straight from clients.
+  TRUST_PROXY: z.preprocess(
+    (v) => {
+      if (v === undefined || v === '' || v === 'false') return undefined;
+      if (v === 'true') return true;
+      return typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : v;
+    },
+    z.union([z.boolean(), z.number().int().nonnegative(), z.string()]).optional(),
+  ),
 
   // Email is optional: without it, invite and reset links are shown to the admin to
   // pass on by hand. SMTP_SECURE defaults to true on port 465 (implicit TLS).

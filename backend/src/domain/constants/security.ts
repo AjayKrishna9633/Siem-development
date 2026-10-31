@@ -12,3 +12,7 @@ export const SETUP_TOKEN_TTL_HOURS = 24;
 // link is short-lived because it can take over an existing account.
 export const INVITE_TOKEN_TTL_HOURS = 48;
 export const RESET_TOKEN_TTL_MINUTES = 30;
+
+// bcrypt work factor: 2^12 rounds, roughly 250 ms per hash on a typical server. Hashes
+// made with a lower cost are upgraded the next time their owner signs in.
+export const BCRYPT_COST = 12;

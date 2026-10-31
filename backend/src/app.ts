@@ -14,6 +14,8 @@ import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
 
 const app = express();
+// Without this behind a proxy, every request would appear to come from the proxy's IP
+if (env.TRUST_PROXY !== undefined) app.set('trust proxy', env.TRUST_PROXY);
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 // Before any API route: blocks the API until first-run setup is done, then closes setup
