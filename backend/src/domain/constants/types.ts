@@ -21,6 +21,7 @@ const TYPES = {
   // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
+  AuditLogRepository: Symbol.for('AuditLogRepository'),
 
   // Services
   CacheService: Symbol.for('CacheService'),

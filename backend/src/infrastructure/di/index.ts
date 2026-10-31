@@ -4,6 +4,7 @@ import TYPES from '../../domain/constants/types.ts';
 // Repositories & Mappers
 import { TypeOrmUserRepository } from '../database/repositories/user.repository.ts';
 import { UserMapper } from '../database/mappers/user.mapper.ts';
+import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.repository.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
@@ -61,6 +62,7 @@ container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
 // 2. Bind Repositories & Mappers
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
+container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
 
 // 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
