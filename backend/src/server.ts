@@ -8,6 +8,11 @@ await AppDataSource.initialize();
 const [row] = await AppDataSource.query<{ now: Date }[]>('SELECT now()');
 console.log(`Database connected at ${row?.now.toISOString()}`);
 
+// A customer upgrading only restarts the server, so pending migrations run here.
+// Each one runs in a transaction; a failure stops startup before any request is served.
+const applied = await AppDataSource.runMigrations({ transaction: 'each' });
+for (const migration of applied) console.log(`Migration applied: ${migration.name}`);
+
 // Connect now rather than on the first request, so the Redis status is logged at startup.
 // A failure is already reported by the client's error listener.
 redisClient.connect().catch(() => {});
