@@ -34,7 +34,10 @@ const depsWith = (delivered: boolean) => {
     findUsable: vi.fn(),
     consume: vi.fn(),
   };
-  const mailer = { sendInvite: vi.fn(async () => ({ delivered })) };
+  const mailer = {
+    sendInvite: vi.fn(async () => ({ delivered })),
+    sendPasswordReset: vi.fn(async () => ({ delivered })),
+  };
   const repo = { get: async () => settings } as unknown as ISystemSettingsRepository;
   return { deps: { settings: repo, tokens, mailer }, tokens, mailer };
 };
