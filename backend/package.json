@@ -13,7 +13,8 @@
     "migration:check": "tsx node_modules/typeorm/cli.js migration:generate src/infrastructure/database/migrations/Check --check -d src/infrastructure/database/data-source.ts",
     "migration:show": "tsx node_modules/typeorm/cli.js migration:show -d src/infrastructure/database/data-source.ts",
     "lint": "eslint .",
-    "setup-token": "tsx src/cli/setup-token.ts"
+    "setup-token": "tsx src/cli/setup-token.ts",
+    "reset-admin": "tsx src/cli/reset-admin.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
