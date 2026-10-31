@@ -78,9 +78,13 @@ describe('roles, permissions and account status', () => {
         .send({ role: 't2_analyst' }),
     ]);
 
-    const statuses = [first.status, second.status].sort();
-    expect(statuses).toEqual([200, 409]);
-    expect([first, second].find((r) => r.status === 409)?.body.code).toBe('LAST_ADMIN');
+    // Whichever request loses is refused by one of two safeguards, depending on timing:
+    // 403 if the winner had already committed when the loser was authenticated (the role
+    // is re-read on every request), or 409 LAST_ADMIN if both got past authentication and
+    // the advisory lock decided. admin-race.test.ts pins down the lock path on its own.
+    const loser = first.status === 200 ? second : first;
+    expect([first.status, second.status]).toContain(200);
+    expect([403, 409]).toContain(loser.status);
 
     const remainingAdmin = first.status === 200 ? admin : otherAdmin;
     const users = await request(app).get('/api/users').set(as(remainingAdmin));
