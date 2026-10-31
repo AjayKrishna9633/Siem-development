@@ -12,6 +12,7 @@ import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '../http
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
+import { requestContextFrom } from '../http/request-context.ts';
 
 // Signing in and out, and keeping a session alive with the refresh cookie
 @injectable()
@@ -24,16 +25,11 @@ export class SessionController {
   ) {}
 
   login = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const forwardedHeader = req.headers['x-forwarded-for'];
-    const ip =
-      typeof forwardedHeader === 'string'
-        ? (forwardedHeader.split(',')[0]?.trim() ?? req.ip ?? null)
-        : (req.ip ?? null);
-
     const { refreshToken, ...session } = await this.loginUseCase.execute({
       email: req.body.email,
       password: req.body.password,
-      ip,
+      // req.ip, not X-Forwarded-For, which any client can fake (see TRUST_PROXY)
+      context: requestContextFrom(req),
     });
 
     setRefreshCookie(res, refreshToken);
@@ -63,7 +59,10 @@ export class SessionController {
   });
 
   logout = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.logoutUseCase.execute({ refreshToken: readRefreshCookie(req) });
+    await this.logoutUseCase.execute({
+      refreshToken: readRefreshCookie(req),
+      context: requestContextFrom(req),
+    });
 
     clearRefreshCookie(res);
     res

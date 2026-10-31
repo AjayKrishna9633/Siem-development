@@ -17,5 +17,6 @@ export interface ISessionService {
   // Marks a refresh token as used; reuse of a used token revokes its whole family
   consume(refreshToken: string): Promise<IRefreshTokenRecord>;
   revokeFamily(familyId: string): Promise<void>;
-  revoke(refreshToken: string): Promise<void>;
+  // Ends the token's whole session family; returns whose session it was (null if unknown)
+  revoke(refreshToken: string): Promise<string | null>;
 }

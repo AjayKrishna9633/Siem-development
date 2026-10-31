@@ -84,8 +84,10 @@ export class RefreshSessionService implements ISessionService {
     await this.cache.delete(`refresh-family:${familyId}`);
   }
 
-  async revoke(refreshToken: string): Promise<void> {
+  async revoke(refreshToken: string): Promise<string | null> {
     const record = await this.cache.get<IRefreshTokenRecord>(`refresh:${hashToken(refreshToken)}`);
-    if (record) await this.revokeFamily(record.familyId);
+    if (!record) return null;
+    await this.revokeFamily(record.familyId);
+    return record.userId;
   }
 }

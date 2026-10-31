@@ -2,6 +2,9 @@
 export enum AuditAction {
   SETUP_TOKEN_REJECTED = 'setup.token_rejected',
   SETUP_COMPLETED = 'setup.completed',
+  LOGIN_SUCCEEDED = 'auth.login_succeeded',
+  LOGIN_FAILED = 'auth.login_failed',
+  LOGGED_OUT = 'auth.logged_out',
   USER_ROLE_CHANGED = 'user.role_changed',
   USER_DISABLED = 'user.disabled',
   USER_ENABLED = 'user.enabled',
