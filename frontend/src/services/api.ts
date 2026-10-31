@@ -50,7 +50,7 @@ api.interceptors.request.use((config) => {
 });
 
 // Auth endpoints report bad credentials with 401 too; those must not trigger a refresh
-const SKIP_REFRESH = /\/auth\/(login|refresh|logout|verify-otp|send-otp|reset-password)/;
+const SKIP_REFRESH = /\/auth\/(login|refresh|logout)/;
 
 // Until first-run setup is done the backend answers every API call with SETUP_REQUIRED;
 // any page that hits it is sent to the setup page instead of showing an error

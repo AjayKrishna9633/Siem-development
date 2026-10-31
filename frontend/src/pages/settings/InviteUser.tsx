@@ -5,7 +5,7 @@ import { Page, PageHeader } from '../../components/ui/PageHeader.tsx';
 import { Panel } from '../../components/ui/Panel.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { InviteUserForm } from '../../components/users/InviteUserForm.tsx';
-import { InviteDeliveryDetails } from '../../components/common/InviteDeliveryDetails.tsx';
+import { LinkDeliveryDetails } from '../../components/common/LinkDeliveryDetails.tsx';
 import type { IInviteResult } from '../../types/auth.ts';
 import { roleLabel } from '../../lib/roles.ts';
 
@@ -31,7 +31,7 @@ export const InviteUser: React.FC = () => {
                 {roleLabel[result.user.role]}
               </span>
             </p>
-            <InviteDeliveryDetails delivery={result.invite} email={result.user.email} />
+            <LinkDeliveryDetails delivery={result.invite} email={result.user.email} />
             <div className="flex gap-3 pt-2">
               <Button variant="secondary" onClick={() => setResult(null)}>
                 Invite another

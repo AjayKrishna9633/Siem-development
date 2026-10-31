@@ -2,8 +2,8 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog.tsx';
 import { Panel } from '../ui/Panel.tsx';
-import { InviteDeliveryDetails } from '../common/InviteDeliveryDetails.tsx';
-import type { IInviteDelivery } from '../../types/auth.ts';
+import { LinkDeliveryDetails } from '../common/LinkDeliveryDetails.tsx';
+import type { ILinkDelivery } from '../../types/auth.ts';
 
 // Resending kills the current link at once, so it is confirmed first: the person may be
 // about to open the old one
@@ -45,12 +45,34 @@ export const RevokeInviteDialog: React.FC<{
   </ConfirmDialog>
 );
 
-// Shown above the user list after a resend: where it went, and the link if it wasn't emailed
-export const ResentInviteNotice: React.FC<{
+export const IssueResetLinkDialog: React.FC<{
   email: string;
-  delivery: IInviteDelivery;
+  onConfirm: () => Promise<void>;
+  onCancel: () => void;
+}> = ({ email, onConfirm, onCancel }) => (
+  <ConfirmDialog
+    title="Send a password reset link?"
+    confirmLabel="Send reset link"
+    tone="primary"
+    onConfirm={onConfirm}
+    onCancel={onCancel}
+  >
+    <p>
+      <span className="font-mono text-xs text-ink">{email}</span> gets a single-use link, valid for
+      30 minutes, to choose a new password. You never see or set the password yourself.
+    </p>
+    <p>Their current password keeps working until they use the link.</p>
+  </ConfirmDialog>
+);
+
+// Shown above the user list after a resend or reset link: where it went, and the link if
+// it wasn't emailed
+export const LinkIssuedNotice: React.FC<{
+  email: string;
+  delivery: ILinkDelivery;
+  kind: 'invite' | 'reset';
   onDismiss: () => void;
-}> = ({ email, delivery, onDismiss }) => (
+}> = ({ email, delivery, kind, onDismiss }) => (
   <Panel className="relative space-y-3 bg-raised/50 p-4">
     <button
       type="button"
@@ -61,8 +83,9 @@ export const ResentInviteNotice: React.FC<{
       <X className="size-4" />
     </button>
     <p className="pr-6 text-sm text-ink">
-      New invitation issued. The previous link no longer works.
+      {kind === 'invite' ? 'New invitation issued.' : 'Password reset link issued.'} Any earlier
+      link no longer works.
     </p>
-    <InviteDeliveryDetails delivery={delivery} email={email} />
+    <LinkDeliveryDetails delivery={delivery} email={email} kind={kind} />
   </Panel>
 );

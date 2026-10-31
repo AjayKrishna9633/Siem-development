@@ -5,6 +5,7 @@ import type {
   IUser,
   ICodeSent,
   IInvitePreview,
+  IPasswordResetPreview,
 } from '../types/auth.ts';
 
 export const authService = {
@@ -34,28 +35,21 @@ export const authService = {
     return res.data.data;
   },
 
-  async sendOtp(email: string, type: 'reset'): Promise<void> {
-    await api.post<IApiResponse<null>>('/auth/send-otp', { email, type });
+  // Always answers the same, whether or not the account exists
+  async requestPasswordReset(email: string): Promise<void> {
+    await api.post<IApiResponse<null>>('/auth/password-reset/request', { email });
   },
 
-  async verifyOtp(
-    email: string,
-    otp: string,
-    type: 'reset',
-  ): Promise<{ verified: boolean; resetToken?: string }> {
-    const res = await api.post<IApiResponse<{ verified: boolean; resetToken?: string }>>(
-      '/auth/verify-otp',
-      { email, otp, type },
-    );
+  async getPasswordReset(token: string): Promise<IPasswordResetPreview> {
+    const res = await api.get<IApiResponse<IPasswordResetPreview>>('/auth/password-reset', {
+      params: { token },
+    });
     return res.data.data;
   },
 
-  async resetPassword(data: {
-    email: string;
-    resetToken: string;
-    newPassword: string;
-  }): Promise<void> {
-    await api.post<IApiResponse<null>>('/auth/reset-password', data);
+  // Signs the account out everywhere; the person then signs in with the new password
+  async resetPassword(data: { token: string; password: string }): Promise<void> {
+    await api.post<IApiResponse<null>>('/auth/password-reset', data);
   },
 
   async logout(): Promise<void> {
@@ -72,15 +66,8 @@ export const authService = {
     return res.data.data;
   },
 
-  // Password change, step 1: a code goes to the account's email
-  async requestPasswordChange(): Promise<ICodeSent> {
-    const res = await api.post<IApiResponse<ICodeSent>>('/auth/password/code');
-    return res.data.data;
-  },
-
-  // Step 2: other devices are signed out; the returned session keeps this one signed in
+  // Other devices are signed out; the returned session keeps this one signed in
   async changePassword(data: {
-    code: string;
     currentPassword: string;
     newPassword: string;
   }): Promise<ILoginResponse> {

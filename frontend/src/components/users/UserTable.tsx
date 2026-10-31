@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ban, Mail, Pencil, Send, UserCheck, UserX } from 'lucide-react';
+import { Ban, KeyRound, Mail, Pencil, Send, UserCheck, UserX } from 'lucide-react';
 import { StatusDot, Tag } from '../ui/Badge.tsx';
 import { Avatar } from '../ui/Misc.tsx';
 import { Table, THead, Th, Tr, Td } from '../ui/Table.tsx';
@@ -29,6 +29,7 @@ interface IUserTableProps {
   busyId?: string | null;
   onResendInvite?: (user: IManagedUser) => void;
   onRevokeInvite?: (user: IManagedUser) => void;
+  onIssueResetLink?: (user: IManagedUser) => void;
   onChangeRole?: (user: IManagedUser) => void;
   onSetEnabled?: (user: IManagedUser, enabled: boolean) => void;
 }
@@ -43,6 +44,7 @@ export const UserTable: React.FC<IUserTableProps> = ({
   busyId,
   onResendInvite,
   onRevokeInvite,
+  onIssueResetLink,
   onChangeRole,
   onSetEnabled,
 }) => (
@@ -74,6 +76,7 @@ export const UserTable: React.FC<IUserTableProps> = ({
             busy={busyId === u.id}
             onResendInvite={onResendInvite}
             onRevokeInvite={onRevokeInvite}
+            onIssueResetLink={onIssueResetLink}
             onChangeRole={onChangeRole}
             onSetEnabled={onSetEnabled}
           />
@@ -88,9 +91,19 @@ const UserRow: React.FC<{
   busy: boolean;
   onResendInvite?: (user: IManagedUser) => void;
   onRevokeInvite?: (user: IManagedUser) => void;
+  onIssueResetLink?: (user: IManagedUser) => void;
   onChangeRole?: (user: IManagedUser) => void;
   onSetEnabled?: (user: IManagedUser, enabled: boolean) => void;
-}> = ({ user: u, isSelf, busy, onResendInvite, onRevokeInvite, onChangeRole, onSetEnabled }) => {
+}> = ({
+  user: u,
+  isSelf,
+  busy,
+  onResendInvite,
+  onRevokeInvite,
+  onIssueResetLink,
+  onChangeRole,
+  onSetEnabled,
+}) => {
   const status = u.status ?? 'active';
   const invited = status === 'invited';
   const disabled = status === 'disabled';
@@ -141,6 +154,17 @@ const UserRow: React.FC<{
               className="hover:text-ink disabled:opacity-40"
             >
               <Send className="size-3.5" />
+            </button>
+          )}
+          {status === 'active' && !isSelf && (
+            <button
+              type="button"
+              title="Send a password reset link"
+              disabled={busy || !onIssueResetLink}
+              onClick={() => onIssueResetLink?.(u)}
+              className="hover:text-ink disabled:opacity-40"
+            >
+              <KeyRound className="size-3.5" />
             </button>
           )}
           <button

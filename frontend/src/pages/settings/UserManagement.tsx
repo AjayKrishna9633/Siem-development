@@ -13,13 +13,14 @@ import { useAuthStore } from '../../store/auth.store.ts';
 import { usersService } from '../../services/users.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
 import {
+  IssueResetLinkDialog,
+  LinkIssuedNotice,
   ResendInviteDialog,
-  ResentInviteNotice,
   RevokeInviteDialog,
 } from '../../components/users/InviteDialogs.tsx';
 import { ChangeRoleDialog } from '../../components/users/ChangeRoleDialog.tsx';
 import { UserStatusDialog } from '../../components/users/UserStatusDialog.tsx';
-import type { IInviteDelivery, IManagedUser, UserRole, UserStatus } from '../../types/auth.ts';
+import type { ILinkDelivery, IManagedUser, UserRole, UserStatus } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { sortItems, type ISortField, type SortDirection } from '../../lib/sort.ts';
 import { ALL_ROLES, roleLabel } from '../../lib/roles.ts';
@@ -64,13 +65,16 @@ export const UserManagement: React.FC = () => {
   } = useRemoteList(usersService.list, 'Failed to load users.');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [resent, setResent] = useState<{ user: IManagedUser; delivery: IInviteDelivery } | null>(
-    null,
-  );
+  const [issued, setIssued] = useState<{
+    user: IManagedUser;
+    delivery: ILinkDelivery;
+    kind: 'invite' | 'reset';
+  } | null>(null);
 
   // Resending and revoking are confirmed first: both kill the link the person may be using
   const [confirmResend, setConfirmResend] = useState<IManagedUser | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<IManagedUser | null>(null);
+  const [confirmReset, setConfirmReset] = useState<IManagedUser | null>(null);
   const [roleTarget, setRoleTarget] = useState<IManagedUser | null>(null);
   const [statusTarget, setStatusTarget] = useState<{
     user: IManagedUser;
@@ -102,10 +106,22 @@ export const UserManagement: React.FC = () => {
     setActionError(null);
     try {
       const delivery = await usersService.resendInvite(u.id);
-      setResent({ user: u, delivery });
+      setIssued({ user: u, delivery, kind: 'invite' });
       replaceUser({ ...u, inviteExpired: false });
     } catch (err: unknown) {
       setActionError(apiErrorMessage(err, 'Failed to send a new invitation.'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const issueResetLink = async (u: IManagedUser) => {
+    setBusyId(u.id);
+    setActionError(null);
+    try {
+      setIssued({ user: u, delivery: await usersService.issueResetLink(u.id), kind: 'reset' });
+    } catch (err: unknown) {
+      setActionError(apiErrorMessage(err, 'Failed to issue a reset link.'));
     } finally {
       setBusyId(null);
     }
@@ -179,11 +195,12 @@ export const UserManagement: React.FC = () => {
         ]}
       />
 
-      {resent && (
-        <ResentInviteNotice
-          email={resent.user.email}
-          delivery={resent.delivery}
-          onDismiss={() => setResent(null)}
+      {issued && (
+        <LinkIssuedNotice
+          email={issued.user.email}
+          delivery={issued.delivery}
+          kind={issued.kind}
+          onDismiss={() => setIssued(null)}
         />
       )}
 
@@ -245,6 +262,7 @@ export const UserManagement: React.FC = () => {
             busyId={busyId}
             onResendInvite={setConfirmResend}
             onRevokeInvite={setConfirmRevoke}
+            onIssueResetLink={setConfirmReset}
             onChangeRole={setRoleTarget}
             onSetEnabled={(user, enable) => setStatusTarget({ user, enable })}
             emptyText={
@@ -275,6 +293,17 @@ export const UserManagement: React.FC = () => {
             setConfirmRevoke(null);
           }}
           onCancel={() => setConfirmRevoke(null)}
+        />
+      )}
+
+      {confirmReset && (
+        <IssueResetLinkDialog
+          email={confirmReset.email}
+          onConfirm={async () => {
+            await issueResetLink(confirmReset);
+            setConfirmReset(null);
+          }}
+          onCancel={() => setConfirmReset(null)}
         />
       )}
 

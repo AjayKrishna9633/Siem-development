@@ -1,7 +1,7 @@
 import { api } from './api.ts';
 import type {
   IApiResponse,
-  IInviteDelivery,
+  ILinkDelivery,
   IInviteResult,
   IManagedUser,
   IPendingInvite,
@@ -44,9 +44,16 @@ export const usersService = {
   },
 
   // A new link valid for 48 hours; the previous one stops working
-  async resendInvite(userId: string): Promise<IInviteDelivery> {
+  async resendInvite(userId: string): Promise<ILinkDelivery> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
-    const res = await api.post<IApiResponse<IInviteDelivery>>(`/users/${userId}/invite/resend`);
+    const res = await api.post<IApiResponse<ILinkDelivery>>(`/users/${userId}/invite/resend`);
+    return res.data.data;
+  },
+
+  // Emailed to the user when possible; otherwise the link comes back for the admin
+  async issueResetLink(userId: string): Promise<ILinkDelivery> {
+    if (!isUuid(userId)) throw new Error('Invalid user ID.');
+    const res = await api.post<IApiResponse<ILinkDelivery>>(`/users/${userId}/password-reset`);
     return res.data.data;
   },
 

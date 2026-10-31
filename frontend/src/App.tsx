@@ -8,6 +8,7 @@ import { Login } from './pages/auth/Login.tsx';
 import { Setup } from './pages/auth/Setup.tsx';
 import { AcceptInvite } from './pages/auth/AcceptInvite.tsx';
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx';
+import { ResetPassword } from './pages/auth/ResetPassword.tsx';
 import { Unauthorized } from './pages/Unauthorized.tsx';
 import { UserManagement } from './pages/settings/UserManagement.tsx';
 import { InviteUser } from './pages/settings/InviteUser.tsx';
@@ -40,6 +41,7 @@ export const App: React.FC = () => {
         <Route path="/setup" element={<Setup />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Authenticated account pages */}
         <Route

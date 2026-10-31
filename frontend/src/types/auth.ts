@@ -47,7 +47,7 @@ export interface IManagedUser extends Omit<IUser, 'username' | 'permissions'> {
 }
 
 // After inviting or resending. `link` is only there when the email wasn't delivered.
-export interface IInviteDelivery {
+export interface ILinkDelivery {
   delivered: boolean;
   expiresAt: string;
   link?: string;
@@ -55,7 +55,7 @@ export interface IInviteDelivery {
 
 export interface IInviteResult {
   user: IManagedUser;
-  invite: IInviteDelivery;
+  invite: ILinkDelivery;
 }
 
 export interface IPendingInvite {
@@ -71,6 +71,12 @@ export interface IPendingInvite {
 export interface ICodeSent {
   sentTo: string;
   expiresInMinutes: number;
+}
+
+// Shown on the reset page to whoever holds the link
+export interface IPasswordResetPreview {
+  email: string;
+  expiresAt: string;
 }
 
 // Shown on the accept-invite page to whoever holds the link
