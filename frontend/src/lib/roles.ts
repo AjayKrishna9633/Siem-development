@@ -16,6 +16,3 @@ export const roleDescription: Record<UserRole, string> = {
 
 // Least access first, so a form defaults to the safest choice
 export const ALL_ROLES: UserRole[] = ['t1_analyst', 't2_analyst', 'admin'];
-
-// Where each role lands after sign-in
-export const homePathFor = (role: UserRole): string => (role === 'admin' ? '/users' : '/profile');

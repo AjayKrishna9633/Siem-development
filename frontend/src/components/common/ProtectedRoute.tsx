@@ -1,14 +1,16 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
 import { useAuthStore } from '../../store/auth.store.ts';
-import type { UserRole } from '../../types/auth.ts';
+import type { Permission } from '../../types/auth.ts';
+import { can } from '../../lib/permissions.ts';
 
 interface IProtectedRouteProps {
-  allowedRoles?: UserRole[];
+  // The page needs this permission; without it the user sees /unauthorized
+  permission?: Permission;
   children?: React.ReactNode;
 }
 
-export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({ allowedRoles, children }) => {
+export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({ permission, children }) => {
   const { user, isAuthenticated, isLoading } = useAuthStore();
   const location = useLocation();
 
@@ -27,7 +29,7 @@ export const ProtectedRoute: React.FC<IProtectedRouteProps> = ({ allowedRoles, c
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+  if (permission && !can(user, permission)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

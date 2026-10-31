@@ -14,6 +14,8 @@ import { usersService } from '../../services/users.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
 import { ResentActivationNotice } from '../../components/common/ResentActivationNotice.tsx';
 import { ResendActivationDialog } from '../../components/common/ResendActivationDialog.tsx';
+import { ChangeRoleDialog } from '../../components/users/ChangeRoleDialog.tsx';
+import { UserStatusDialog } from '../../components/users/UserStatusDialog.tsx';
 import type { IActivationGrant, IUser, UserRole, UserStatus } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { sortItems, type ISortField, type SortDirection } from '../../lib/sort.ts';
@@ -52,6 +54,7 @@ export const UserManagement: React.FC = () => {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const {
     items: users,
+    setItems: setUsers,
     loading,
     error,
     reload,
@@ -62,6 +65,24 @@ export const UserManagement: React.FC = () => {
 
   // Resending is confirmed first, since it invalidates the link the analyst may be using
   const [confirmResend, setConfirmResend] = useState<IUser | null>(null);
+  const [roleTarget, setRoleTarget] = useState<IUser | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{ user: IUser; enable: boolean } | null>(null);
+
+  // The server answers with the updated row; swap it in without reloading the list
+  const replaceUser = (updated: IUser) =>
+    setUsers((current) => current.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+
+  const runAction = async (u: IUser, action: () => Promise<IUser>, failure: string) => {
+    setBusyId(u.id);
+    setActionError(null);
+    try {
+      replaceUser(await action());
+    } catch (err: unknown) {
+      setActionError(apiErrorMessage(err, failure));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const resendActivation = async (u: IUser) => {
     setBusyId(u.id);
@@ -197,6 +218,8 @@ export const UserManagement: React.FC = () => {
             currentUserId={currentUserId}
             busyId={busyId}
             onResendActivation={setConfirmResend}
+            onChangeRole={setRoleTarget}
+            onSetEnabled={(user, enable) => setStatusTarget({ user, enable })}
             emptyText={
               filtersActive
                 ? 'No users match the current filters.'
@@ -215,6 +238,38 @@ export const UserManagement: React.FC = () => {
             setConfirmResend(null);
           }}
           onCancel={() => setConfirmResend(null)}
+        />
+      )}
+
+      {roleTarget && (
+        <ChangeRoleDialog
+          user={roleTarget}
+          onSave={async (role) => {
+            await runAction(
+              roleTarget,
+              () => usersService.changeRole(roleTarget.id, role),
+              'Failed to change the role.',
+            );
+            setRoleTarget(null);
+          }}
+          onCancel={() => setRoleTarget(null)}
+        />
+      )}
+
+      {statusTarget && (
+        <UserStatusDialog
+          user={statusTarget.user}
+          enable={statusTarget.enable}
+          onConfirm={async () => {
+            const { user, enable } = statusTarget;
+            await runAction(
+              user,
+              () => usersService.setEnabled(user.id, enable),
+              enable ? 'Failed to enable the user.' : 'Failed to disable the user.',
+            );
+            setStatusTarget(null);
+          }}
+          onCancel={() => setStatusTarget(null)}
         />
       )}
     </Page>

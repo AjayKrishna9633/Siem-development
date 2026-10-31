@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ban, Mail, Pencil, Send } from 'lucide-react';
+import { Ban, Mail, Pencil, Send, UserCheck } from 'lucide-react';
 import { StatusDot, Tag } from '../ui/Badge.tsx';
 import { Avatar } from '../ui/Misc.tsx';
 import { Table, THead, Th, Tr, Td } from '../ui/Table.tsx';
@@ -28,6 +28,8 @@ interface IUserTableProps {
   currentUserId?: string;
   busyId?: string | null;
   onResendActivation?: (user: IUser) => void;
+  onChangeRole?: (user: IUser) => void;
+  onSetEnabled?: (user: IUser, enabled: boolean) => void;
 }
 
 const COLUMNS = 5;
@@ -39,6 +41,8 @@ export const UserTable: React.FC<IUserTableProps> = ({
   currentUserId,
   busyId,
   onResendActivation,
+  onChangeRole,
+  onSetEnabled,
 }) => (
   <Table>
     <THead>
@@ -67,6 +71,8 @@ export const UserTable: React.FC<IUserTableProps> = ({
             isSelf={u.id === currentUserId}
             busy={busyId === u.id}
             onResendActivation={onResendActivation}
+            onChangeRole={onChangeRole}
+            onSetEnabled={onSetEnabled}
           />
         ))}
     </tbody>
@@ -78,12 +84,16 @@ const UserRow: React.FC<{
   isSelf: boolean;
   busy: boolean;
   onResendActivation?: (user: IUser) => void;
-}> = ({ user: u, isSelf, busy, onResendActivation }) => {
+  onChangeRole?: (user: IUser) => void;
+  onSetEnabled?: (user: IUser, enabled: boolean) => void;
+}> = ({ user: u, isSelf, busy, onResendActivation, onChangeRole, onSetEnabled }) => {
   const status = u.status ?? 'active';
   const invited = status === 'invited';
   const disabled = status === 'disabled';
   // Only someone who hasn't activated yet can get a new activation
   const canResend = invited && !!onResendActivation;
+  // The backend refuses changes to your own access; the buttons say so up front
+  const selfNote = "You can't change your own access";
 
   return (
     <Tr className={cn(disabled && 'opacity-60')}>
@@ -131,20 +141,34 @@ const UserRow: React.FC<{
           )}
           <button
             type="button"
-            title="Editing users is coming soon"
-            disabled
-            className="disabled:opacity-50"
+            title={isSelf ? selfNote : 'Change role'}
+            disabled={busy || isSelf || !onChangeRole}
+            onClick={() => onChangeRole?.(u)}
+            className="hover:text-ink disabled:opacity-40"
           >
             <Pencil className="size-3.5" />
           </button>
-          <button
-            type="button"
-            title="Disabling users is coming soon"
-            disabled
-            className="disabled:opacity-50"
-          >
-            <Ban className="size-3.5" />
-          </button>
+          {disabled ? (
+            <button
+              type="button"
+              title="Enable user"
+              disabled={busy || !onSetEnabled}
+              onClick={() => onSetEnabled?.(u, true)}
+              className="hover:text-ink disabled:opacity-40"
+            >
+              <UserCheck className="size-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              title={isSelf ? selfNote : 'Disable user'}
+              disabled={busy || isSelf || !onSetEnabled}
+              onClick={() => onSetEnabled?.(u, false)}
+              className="hover:text-critical disabled:opacity-40"
+            >
+              <Ban className="size-3.5" />
+            </button>
+          )}
         </div>
       </Td>
     </Tr>

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useAuthStore } from './store/auth.store.ts';
 import { ProtectedRoute } from './components/common/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
-import { homePathFor } from './lib/roles.ts';
+import { homePathFor } from './lib/permissions.ts';
 import { Login } from './pages/auth/Login.tsx';
 import { Setup } from './pages/auth/Setup.tsx';
 import { Activate } from './pages/auth/Activate.tsx';
@@ -13,15 +13,15 @@ import { UserManagement } from './pages/settings/UserManagement.tsx';
 import { AddUser } from './pages/settings/AddUser.tsx';
 import { Profile } from './pages/settings/Profile.tsx';
 
-// Admins land on user management, analysts on their profile
+// People who manage users land on user management, everyone else on their profile
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
-  return <Navigate to={homePathFor(user.role)} replace />;
+  return <Navigate to={homePathFor(user)} replace />;
 };
 
-const AdminOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ProtectedRoute allowedRoles={['admin']}>{children}</ProtectedRoute>
+const CanManageUsers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute permission="users.manage">{children}</ProtectedRoute>
 );
 
 export const App: React.FC = () => {
@@ -54,17 +54,17 @@ export const App: React.FC = () => {
           <Route
             path="/users"
             element={
-              <AdminOnly>
+              <CanManageUsers>
                 <UserManagement />
-              </AdminOnly>
+              </CanManageUsers>
             }
           />
           <Route
             path="/users/new"
             element={
-              <AdminOnly>
+              <CanManageUsers>
                 <AddUser />
-              </AdminOnly>
+              </CanManageUsers>
             }
           />
           <Route path="/unauthorized" element={<Unauthorized />} />

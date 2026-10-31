@@ -4,6 +4,7 @@ import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { cn } from '../../lib/cn.ts';
 import { roleLabel } from '../../lib/roles.ts';
+import { can } from '../../lib/permissions.ts';
 import { Avatar } from '../ui/Misc.tsx';
 
 export const TopNavBar: React.FC = () => {
@@ -27,7 +28,7 @@ export const TopNavBar: React.FC = () => {
   };
 
   const links = [
-    ...(user?.role === 'admin' ? [{ label: 'Users', to: '/users' }] : []),
+    ...(can(user, 'users.manage') ? [{ label: 'Users', to: '/users' }] : []),
     { label: 'Profile', to: '/profile' },
   ];
 

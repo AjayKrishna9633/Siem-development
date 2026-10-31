@@ -2,11 +2,24 @@ export type UserRole = 'admin' | 't2_analyst' | 't1_analyst';
 
 export type UserStatus = 'invited' | 'active' | 'disabled';
 
+// Mirrors the backend's Permission enum (domain/enums/Permission.ts)
+export type Permission =
+  | 'alerts.view'
+  | 'alerts.triage'
+  | 'alerts.close_fp'
+  | 'alerts.work_escalated'
+  | 'rules.edit'
+  | 'users.manage'
+  | 'settings.manage'
+  | 'audit.view';
+
 export interface IUser {
   id: string;
   email: string;
   username: string;
   role: UserRole;
+  // Sent with the session and /auth/me; absent on rows in the user list
+  permissions?: Permission[];
   status?: UserStatus;
   createdAt?: string;
   lastLoginAt?: string | null;

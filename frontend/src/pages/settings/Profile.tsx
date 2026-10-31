@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { roleLabel } from '../../lib/roles.ts';
+import { can } from '../../lib/permissions.ts';
 import { LocalTime } from '../../components/common/LocalTime.tsx';
 
 export const Profile: React.FC = () => {
@@ -18,7 +19,8 @@ export const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [dialog, setDialog] = useState<'password' | 'email' | null>(null);
-  const isAdmin = user?.role === 'admin';
+  // Analysts' addresses are managed for them; only user managers change their own
+  const canChangeEmail = can(user, 'users.manage');
 
   // Session payloads carry only identity fields; load audit timestamps from /me
   useEffect(() => {
@@ -103,7 +105,7 @@ export const Profile: React.FC = () => {
                   <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
                   <Input value={user.email} disabled className="pl-9" aria-label="Email address" />
                 </div>
-                {isAdmin && (
+                {canChangeEmail && (
                   <Button variant="outline" onClick={() => setDialog('email')}>
                     Change
                   </Button>
@@ -111,7 +113,7 @@ export const Profile: React.FC = () => {
               </div>
               <span className="flex items-center gap-1.5 text-[11px] text-subtle">
                 <TriangleAlert className="size-3" />
-                {isAdmin
+                {canChangeEmail
                   ? 'Changing your email needs your password and a code sent to the new address.'
                   : 'Your email is managed by an administrator.'}
               </span>
@@ -192,7 +194,9 @@ export const Profile: React.FC = () => {
       {/* Outside the profile form: React bubbles portal events, so a dialog's submit would
           otherwise also submit the profile form */}
       {dialog === 'password' && <ChangePasswordDialog onClose={() => setDialog(null)} />}
-      {dialog === 'email' && isAdmin && <ChangeEmailDialog onClose={() => setDialog(null)} />}
+      {dialog === 'email' && canChangeEmail && (
+        <ChangeEmailDialog onClose={() => setDialog(null)} />
+      )}
     </div>
   );
 };

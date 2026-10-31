@@ -24,6 +24,21 @@ export const usersService = {
     return res.data.data;
   },
 
+  // Applies to the user's next request; they stay signed in
+  async changeRole(userId: string, role: UserRole): Promise<IUser> {
+    if (!isUuid(userId)) throw new Error('Invalid user ID.');
+    const res = await api.patch<IApiResponse<IUser>>(`/users/${userId}/role`, { role });
+    return res.data.data;
+  },
+
+  // Disabling signs the user out everywhere at once
+  async setEnabled(userId: string, enabled: boolean): Promise<IUser> {
+    if (!isUuid(userId)) throw new Error('Invalid user ID.');
+    const action = enabled ? 'enable' : 'disable';
+    const res = await api.post<IApiResponse<IUser>>(`/users/${userId}/${action}`);
+    return res.data.data;
+  },
+
   // Issues a new link + temporary password; the previous ones stop working
   async resendActivation(userId: string): Promise<IActivationGrant> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
