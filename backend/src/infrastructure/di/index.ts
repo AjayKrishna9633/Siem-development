@@ -42,6 +42,8 @@ import { ActivateAccountUseCase } from '../../application/use-cases/activation/a
 import { ResendActivationUseCase } from '../../application/use-cases/activation/resend-activation.usecase.ts';
 import { RefreshSessionUseCase } from '../../application/use-cases/auth/refresh-session.usecase.ts';
 import { LogoutUseCase } from '../../application/use-cases/auth/logout.usecase.ts';
+import { ResolveSessionUserUseCase } from '../../application/use-cases/auth/resolve-session-user.usecase.ts';
+import type { IResolveSessionUserUseCase } from '../../application/interfaces/use-cases/resolve-session-user.interface.ts';
 import { IssueSetupTokenUseCase } from '../../application/use-cases/setup/issue-setup-token.usecase.ts';
 import { GetSetupStatusUseCase } from '../../application/use-cases/setup/get-setup-status.usecase.ts';
 import { VerifySetupTokenUseCase } from '../../application/use-cases/setup/verify-setup-token.usecase.ts';
@@ -105,6 +107,7 @@ container.bind(TYPES.ActivateAccountUseCase).to(ActivateAccountUseCase);
 container.bind(TYPES.ResendActivationUseCase).to(ResendActivationUseCase);
 container.bind(TYPES.RefreshSessionUseCase).to(RefreshSessionUseCase);
 container.bind(TYPES.LogoutUseCase).to(LogoutUseCase);
+container.bind(TYPES.ResolveSessionUserUseCase).to(ResolveSessionUserUseCase);
 container.bind(TYPES.RequestPasswordChangeUseCase).to(RequestPasswordChangeUseCase);
 container.bind(TYPES.ChangePasswordUseCase).to(ChangePasswordUseCase);
 container.bind(TYPES.RequestEmailChangeUseCase).to(RequestEmailChangeUseCase);
@@ -131,7 +134,10 @@ export const accountController = container.get<AccountController>(TYPES.AccountC
 export const activationController = container.get<ActivationController>(TYPES.ActivationController);
 export const teamController = container.get<TeamController>(TYPES.TeamController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
-export const authMiddleware = authenticate(tokenService);
+export const authMiddleware = authenticate(
+  tokenService,
+  container.get<IResolveSessionUserUseCase>(TYPES.ResolveSessionUserUseCase),
+);
 export const setupController = container.get<SetupController>(TYPES.SetupController);
 export const issueSetupToken = container.get<IIssueSetupTokenUseCase>(TYPES.IssueSetupTokenUseCase);
 const getSetupStatus = container.get<IGetSetupStatusUseCase>(TYPES.GetSetupStatusUseCase);

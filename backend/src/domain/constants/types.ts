@@ -14,6 +14,7 @@ const TYPES = {
   ResendActivationUseCase: Symbol.for('ResendActivationUseCase'),
   RefreshSessionUseCase: Symbol.for('RefreshSessionUseCase'),
   LogoutUseCase: Symbol.for('LogoutUseCase'),
+  ResolveSessionUserUseCase: Symbol.for('ResolveSessionUserUseCase'),
   RequestPasswordChangeUseCase: Symbol.for('RequestPasswordChangeUseCase'),
   ChangePasswordUseCase: Symbol.for('ChangePasswordUseCase'),
   RequestEmailChangeUseCase: Symbol.for('RequestEmailChangeUseCase'),
