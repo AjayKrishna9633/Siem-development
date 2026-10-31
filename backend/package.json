@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest",
+    "typecheck:tests": "tsc -p tsconfig.test.json",
     "migration:run": "tsx node_modules/typeorm/cli.js migration:run -d src/infrastructure/database/data-source.ts",
     "migration:revert": "tsx node_modules/typeorm/cli.js migration:revert -d src/infrastructure/database/data-source.ts",
     "migration:check": "tsx node_modules/typeorm/cli.js migration:generate src/infrastructure/database/migrations/Check --check -d src/infrastructure/database/data-source.ts",
