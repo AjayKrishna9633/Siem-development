@@ -13,8 +13,7 @@ import { AppDataSource } from '../database/data-source.ts';
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
 import { RedisCacheService } from '../redis/redis-cache.service.ts';
-import { createTransporter } from '../../config/mailer.ts';
-import { env } from '../../config/env.config.ts';
+import { createMailTransport } from '../../config/mailer.ts';
 import { EmailService } from '../services/email.service.ts';
 import { JwtTokenService } from '../services/jwt-token.service.ts';
 import { RefreshSessionService } from '../services/refresh-session.service.ts';
@@ -72,9 +71,10 @@ container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 const redisClient = createRedisClient();
 container.bind(TYPES.RedisClient).toConstantValue(redisClient);
 
-const mailTransporter = createTransporter();
-container.bind(TYPES.Transporter).toConstantValue(mailTransporter);
-container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
+// Null when email isn't configured; EmailService then reports nothing as delivered
+const mailTransport = createMailTransport();
+container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
+export const emailConfigured = mailTransport !== null;
 
 // 2. Bind Repositories & Mappers
 container.bind(TYPES.UserMapper).to(UserMapper);

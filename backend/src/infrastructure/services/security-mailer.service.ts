@@ -3,6 +3,9 @@ import TYPES from '../../domain/constants/types.ts';
 import type { IEmailService } from '../../application/interfaces/services/email.service.interface.ts';
 import type { ISecurityMailer } from '../../application/interfaces/services/security-mailer.interface.ts';
 import type { VerificationPurpose } from '../../application/interfaces/services/verification-code.service.interface.ts';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 import {
   securityEmailHtml,
   securityEmailText,
@@ -36,21 +39,18 @@ export class SecurityMailer implements ISecurityMailer {
   constructor(@inject(TYPES.EmailService) private readonly email: IEmailService) {}
 
   private send(to: string, subject: string, content: ISecurityEmailInput) {
-    return this.email.sendEmail(
+    return this.email.send({
       to,
       subject,
-      securityEmailText(content),
-      securityEmailHtml(content),
-    );
+      text: securityEmailText(content),
+      html: securityEmailHtml(content),
+    });
   }
 
-  // Notices must never undo or fail a change that already happened
+  // Notices must never undo or fail a change that already happened; a failed delivery
+  // is already logged by the email service
   private async sendNotice(to: string, subject: string, content: ISecurityEmailInput) {
-    try {
-      await this.send(to, subject, content);
-    } catch (err) {
-      console.error(`Security notice to ${to} failed:`, err);
-    }
+    await this.send(to, subject, content);
   }
 
   async sendVerificationCode(input: {
@@ -61,7 +61,7 @@ export class SecurityMailer implements ISecurityMailer {
     expiresInMinutes: number;
   }): Promise<void> {
     const copy = codeCopy[input.purpose];
-    await this.send(input.to, copy.subject, {
+    const { delivered } = await this.send(input.to, copy.subject, {
       eyebrow: copy.eyebrow,
       heading: `Your verification code, ${input.username}`,
       paragraphs: [
@@ -70,6 +70,10 @@ export class SecurityMailer implements ISecurityMailer {
       code: input.code,
       footnote: `Never share this code. SIEMple staff will never ask for it. ${NOT_YOU}`,
     });
+    // A code that never arrives leaves the person stuck, so say so instead of pretending
+    if (!delivered) {
+      throw new AppError(AppErrorCode.EMAIL_NOT_DELIVERED, ErrorMessage.EMAIL_NOT_DELIVERED);
+    }
   }
 
   async notifyPasswordChanged(input: { to: string; username: string }): Promise<void> {

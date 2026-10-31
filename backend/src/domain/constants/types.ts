@@ -57,8 +57,7 @@ const TYPES = {
   // External / Config
   DataSource: Symbol.for('DataSource'),
   RedisClient: Symbol.for('RedisClient'),
-  Transporter: Symbol.for('Transporter'),
-  SenderEmail: Symbol.for('SenderEmail'),
+  MailTransport: Symbol.for('MailTransport'),
 };
 
 export default TYPES;

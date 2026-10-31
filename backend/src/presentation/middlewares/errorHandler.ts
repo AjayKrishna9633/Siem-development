@@ -33,6 +33,7 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.SAME_EMAIL]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.EMAIL_TAKEN]: HttpStatusCode.CONFLICT,
   [AppErrorCode.LAST_ADMIN]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.EMAIL_NOT_DELIVERED]: HttpStatusCode.SERVICE_UNAVAILABLE,
   [AppErrorCode.CANNOT_CHANGE_OWN_ACCESS]: HttpStatusCode.FORBIDDEN,
 };
 

@@ -33,5 +33,6 @@ export enum ErrorMessage {
   LAST_ADMIN = 'This is the only active administrator. Make someone else an administrator first',
   CANNOT_CHANGE_OWN_ACCESS = "You can't change your own role or disable your own account. Ask another administrator",
   USER_ALREADY_DISABLED = 'This user is already disabled',
+  EMAIL_NOT_DELIVERED = "The email couldn't be sent. Ask an administrator to check this server's email settings",
   USER_NOT_DISABLED = 'This user is not disabled',
 }

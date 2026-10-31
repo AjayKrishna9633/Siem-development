@@ -1,22 +1,35 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../domain/constants/types.ts';
-import type { IEmailService } from '../../application/interfaces/services/email.service.interface.ts';
-import type { Transporter } from 'nodemailer';
+import type {
+  IEmailDelivery,
+  IEmailMessage,
+  IEmailService,
+} from '../../application/interfaces/services/email.service.interface.ts';
+import type { IMailTransport } from '../../config/mailer.ts';
 
 @injectable()
 export class EmailService implements IEmailService {
-  constructor(
-    @inject(TYPES.Transporter) private readonly transporter: Transporter,
-    @inject(TYPES.SenderEmail) private readonly senderEmail: string,
-  ) {}
+  constructor(@inject(TYPES.MailTransport) private readonly transport: IMailTransport | null) {}
 
-  async sendEmail(to: string, subject: string, text: string, html?: string): Promise<void> {
-    await this.transporter.sendMail({
-      from: `SIEMple <${this.senderEmail}>`,
-      to,
-      subject,
-      text,
-      ...(html && { html }),
-    });
+  get isConfigured(): boolean {
+    return this.transport !== null;
+  }
+
+  async send(message: IEmailMessage): Promise<IEmailDelivery> {
+    if (!this.transport) return { delivered: false };
+
+    try {
+      await this.transport.transporter.sendMail({
+        from: this.transport.from,
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+        ...(message.html && { html: message.html }),
+      });
+      return { delivered: true };
+    } catch (err) {
+      console.error(`Email to ${message.to} failed:`, err);
+      return { delivered: false };
+    }
   }
 }

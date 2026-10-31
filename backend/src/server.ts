@@ -1,7 +1,7 @@
 import app from './app.ts';
 import { env } from './config/env.config.ts';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
-import { issueSetupToken, redisClient } from './infrastructure/di/index.ts';
+import { emailConfigured, issueSetupToken, redisClient } from './infrastructure/di/index.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
 
 // TypeORM's own connection pool is the only one; a failed connect stops startup here
@@ -24,6 +24,12 @@ if (setup.status === 'issued') {
       'run "npm run setup-token" if you no longer have it.',
   );
 }
+
+console.log(
+  emailConfigured
+    ? 'Email is configured.'
+    : 'Email is not configured (SMTP_HOST): invite and reset links will be shown to admins to pass on.',
+);
 
 // Connect now rather than on the first request, so the Redis status is logged at startup.
 // A failure is already reported by the client's error listener.

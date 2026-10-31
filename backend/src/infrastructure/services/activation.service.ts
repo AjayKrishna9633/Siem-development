@@ -84,18 +84,13 @@ export class ActivationService implements IActivationService {
   // Delivery is best-effort: a failure is logged and reported back, and the creator
   // still receives the link and temporary password to share by hand
   private async sendActivationEmail(content: IActivationEmailInput): Promise<boolean> {
-    try {
-      await this.email.sendEmail(
-        content.email,
-        activationEmailSubject(content),
-        activationEmailText(content),
-        activationEmailHtml(content),
-      );
-      return true;
-    } catch (err) {
-      console.error(`Activation email to ${content.email} failed:`, err);
-      return false;
-    }
+    const { delivered } = await this.email.send({
+      to: content.email,
+      subject: activationEmailSubject(content),
+      text: activationEmailText(content),
+      html: activationEmailHtml(content),
+    });
+    return delivered;
   }
 
   find(activationId: string): Promise<IActivationRecord | null> {
