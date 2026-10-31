@@ -1,12 +1,9 @@
-import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
-import type { IActor } from '../../types/use-case/company.types.ts';
-import type { User } from '../../../domain/entities/user.entity.ts';
-import type { Company } from '../../../domain/entities/company.entity.ts';
+import type { IActor } from '../../types/use-case/actor.types.ts';
 import type { UserRole } from '../../../domain/enums/UserRole.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { minPasswordLength } from '../../../domain/policies/credentials.policy.ts';
+import { PASSWORD_MIN_LENGTH } from '../../../domain/policies/credentials.policy.ts';
 
 // Routes already guard roles; use cases re-check so they are safe to call from anywhere
 export const assertRole = (actor: IActor, ...roles: UserRole[]): void => {
@@ -15,35 +12,13 @@ export const assertRole = (actor: IActor, ...roles: UserRole[]): void => {
   }
 };
 
-export const loadCompany = async (companies: ICompanyRepository, id: string): Promise<Company> => {
-  const company = await companies.findById(id);
-  if (!company) {
-    throw new AppError(AppErrorCode.COMPANY_NOT_FOUND, ErrorMessage.COMPANY_NOT_FOUND);
-  }
-  return company;
-};
-
-// Members of a deactivated company cannot sign in, refresh or activate.
-// The platform super admin has no company and is never blocked here.
-export const assertCompanyActive = async (
-  companies: ICompanyRepository,
-  user: User,
-): Promise<void> => {
-  if (!user.organizationId) return;
-  const company = await companies.findById(user.organizationId);
-  if (!company || !company.isActive) {
-    throw new AppError(AppErrorCode.COMPANY_DEACTIVATED, ErrorMessage.COMPANY_DEACTIVATED);
-  }
-};
-
-// Request validation applies the general minimum; this adds the role-specific one,
-// e.g. a super admin needs a longer password however it is being set
-export const assertPasswordPolicy = (user: User, newPassword: string): void => {
-  const minLength = minPasswordLength(user.role);
-  if (newPassword.length < minLength) {
+// Request validation already enforces the minimum; this repeats it for callers that
+// don't go through HTTP, such as the command-line admin password reset
+export const assertPasswordPolicy = (newPassword: string): void => {
+  if (newPassword.length < PASSWORD_MIN_LENGTH) {
     throw new AppError(
       AppErrorCode.VALIDATION_ERROR,
-      `Password must be at least ${minLength} characters`,
+      `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
     );
   }
 };

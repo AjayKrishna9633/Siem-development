@@ -5,10 +5,10 @@ import { requireRoles } from '../middlewares/auth.middleware.ts';
 import { UserRole } from '../../domain/enums/UserRole.ts';
 import { addTeamMemberSchema } from '../validators/user-mgmt.schema.ts';
 
-// A company admin's own people — scoped to their company by the use cases
+// Everyone in the install — admins only
 export function teamRoutes(controller: TeamController, authMiddleware: RequestHandler): Router {
   const router = Router();
-  router.use(authMiddleware, requireRoles(UserRole.ORG_ADMIN));
+  router.use(authMiddleware, requireRoles(UserRole.ADMIN));
 
   router.get('/', controller.list);
   router.post('/', validate(addTeamMemberSchema), controller.add);

@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
 } from 'typeorm';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
@@ -13,10 +12,6 @@ import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 export class UserModel {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
-
-  @Index()
-  @Column({ type: 'uuid', name: 'organization_id', nullable: true })
-  organizationId!: string | null;
 
   @Column({ type: 'varchar', unique: true })
   email!: string;

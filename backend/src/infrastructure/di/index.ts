@@ -4,8 +4,6 @@ import TYPES from '../../domain/constants/types.ts';
 // Repositories & Mappers
 import { TypeOrmUserRepository } from '../database/repositories/user.repository.ts';
 import { UserMapper } from '../database/mappers/user.mapper.ts';
-import { TypeOrmCompanyRepository } from '../database/repositories/company.repository.ts';
-import { CompanyMapper } from '../database/mappers/company.mapper.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 // Services
@@ -26,19 +24,12 @@ import { ChangeEmailUseCase } from '../../application/use-cases/account/change-e
 import { ActivationService } from '../services/activation.service.ts';
 
 // UseCases
-import { RegisterSuperAdminUseCase } from '../../application/use-cases/admin/create-super-admin.usecase.ts';
 import { SendOtpUseCase } from '../../application/use-cases/auth/send-otp.usecase.ts';
 import { VerifyOtpUseCase } from '../../application/use-cases/auth/verify-otp.usecase.ts';
 import { LoginUseCase } from '../../application/use-cases/auth/login.usecase.ts';
 import { GetCurrentUserUseCase } from '../../application/use-cases/auth/get-current-user.usecase.ts';
 import { ResetPasswordUseCase } from '../../application/use-cases/auth/reset-password.usecase.ts';
 import { UpdateProfileUseCase } from '../../application/use-cases/auth/update-profile.usecase.ts';
-import { CreateCompanyUseCase } from '../../application/use-cases/company/create-company.usecase.ts';
-import { ListCompaniesUseCase } from '../../application/use-cases/company/list-companies.usecase.ts';
-import { UpdateCompanyUseCase } from '../../application/use-cases/company/update-company.usecase.ts';
-import { SetCompanyStatusUseCase } from '../../application/use-cases/company/set-company-status.usecase.ts';
-import { ReplaceCompanyAdminUseCase } from '../../application/use-cases/company/replace-company-admin.usecase.ts';
-import { ResendAdminActivationUseCase } from '../../application/use-cases/company/resend-admin-activation.usecase.ts';
 import { AddTeamMemberUseCase } from '../../application/use-cases/team/add-team-member.usecase.ts';
 import { ListTeamMembersUseCase } from '../../application/use-cases/team/list-team-members.usecase.ts';
 import { GetActivationUseCase } from '../../application/use-cases/activation/get-activation.usecase.ts';
@@ -51,12 +42,10 @@ import type { ITokenService } from '../../application/interfaces/services/token.
 import { authenticate } from '../../presentation/middlewares/auth.middleware.ts';
 
 // Controllers
-import { AdminController } from '../../presentation/controllers/admin.controller.ts';
 import { SessionController } from '../../presentation/controllers/session.controller.ts';
 import { PasswordResetController } from '../../presentation/controllers/password-reset.controller.ts';
 import { AccountController } from '../../presentation/controllers/account.controller.ts';
 import { ActivationController } from '../../presentation/controllers/activation.controller.ts';
-import { CompanyController } from '../../presentation/controllers/company.controller.ts';
 import { TeamController } from '../../presentation/controllers/team.controller.ts';
 
 // 1. Bind external constants/factories
@@ -72,8 +61,6 @@ container.bind(TYPES.SenderEmail).toConstantValue(env.OTP_EMAIL);
 // 2. Bind Repositories & Mappers
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
-container.bind(TYPES.CompanyMapper).to(CompanyMapper);
-container.bind(TYPES.CompanyRepository).to(TypeOrmCompanyRepository);
 
 // 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
@@ -86,19 +73,12 @@ container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
 container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 
 // 4. Bind UseCases
-container.bind(TYPES.RegisterSuperAdminUseCase).to(RegisterSuperAdminUseCase);
 container.bind(TYPES.SendOtpUseCase).to(SendOtpUseCase);
 container.bind(TYPES.VerifyOtpUseCase).to(VerifyOtpUseCase);
 container.bind(TYPES.LoginUseCase).to(LoginUseCase);
 container.bind(TYPES.GetCurrentUserUseCase).to(GetCurrentUserUseCase);
 container.bind(TYPES.ResetPasswordUseCase).to(ResetPasswordUseCase);
 container.bind(TYPES.UpdateProfileUseCase).to(UpdateProfileUseCase);
-container.bind(TYPES.CreateCompanyUseCase).to(CreateCompanyUseCase);
-container.bind(TYPES.ListCompaniesUseCase).to(ListCompaniesUseCase);
-container.bind(TYPES.UpdateCompanyUseCase).to(UpdateCompanyUseCase);
-container.bind(TYPES.SetCompanyStatusUseCase).to(SetCompanyStatusUseCase);
-container.bind(TYPES.ReplaceCompanyAdminUseCase).to(ReplaceCompanyAdminUseCase);
-container.bind(TYPES.ResendAdminActivationUseCase).to(ResendAdminActivationUseCase);
 container.bind(TYPES.AddTeamMemberUseCase).to(AddTeamMemberUseCase);
 container.bind(TYPES.ListTeamMembersUseCase).to(ListTeamMembersUseCase);
 container.bind(TYPES.GetActivationUseCase).to(GetActivationUseCase);
@@ -113,23 +93,19 @@ container.bind(TYPES.RequestEmailChangeUseCase).to(RequestEmailChangeUseCase);
 container.bind(TYPES.ChangeEmailUseCase).to(ChangeEmailUseCase);
 
 // 5. Bind Controllers
-container.bind(TYPES.AdminController).to(AdminController);
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
 container.bind(TYPES.ActivationController).to(ActivationController);
-container.bind(TYPES.CompanyController).to(CompanyController);
 container.bind(TYPES.TeamController).to(TeamController);
 
 // Resolve the controllers & services
-export const adminController = container.get<AdminController>(TYPES.AdminController);
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
   TYPES.PasswordResetController,
 );
 export const accountController = container.get<AccountController>(TYPES.AccountController);
 export const activationController = container.get<ActivationController>(TYPES.ActivationController);
-export const companyController = container.get<CompanyController>(TYPES.CompanyController);
 export const teamController = container.get<TeamController>(TYPES.TeamController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const authMiddleware = authenticate(tokenService);
@@ -137,12 +113,10 @@ export const authMiddleware = authenticate(tokenService);
 export { redisClient };
 
 export const di = {
-  adminController,
   sessionController,
   passwordResetController,
   accountController,
   activationController,
-  companyController,
   teamController,
   authMiddleware,
   tokenService,

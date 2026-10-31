@@ -1,7 +1,6 @@
 import { injectable, inject } from 'inversify';
 import { startSession } from '../shared/user-views.ts';
 import TYPES from '../../../domain/constants/types.ts';
-import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IActivationService } from '../../interfaces/services/activation.service.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
@@ -13,7 +12,6 @@ import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { assertCompanyActive } from '../shared/access.ts';
 
 // The activation ID (from the link, or handed back after the temporary password
 // was verified) proves identity; the new password activates the account and the
@@ -23,7 +21,6 @@ export class ActivateAccountUseCase implements IActivateAccountUseCase {
   constructor(
     @inject(TYPES.ActivationService) private readonly activations: IActivationService,
     @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
     @inject(TYPES.HashService) private readonly hasher: IHashService,
     @inject(TYPES.SessionService) private readonly sessions: ISessionService,
   ) {}
@@ -39,7 +36,6 @@ export class ActivateAccountUseCase implements IActivateAccountUseCase {
       await this.activations.consume(input.activationId, record.userId);
       throw invalid;
     }
-    await assertCompanyActive(this.companies, user);
 
     const now = new Date();
     user.acceptInvite(await this.hasher.hash(input.newPassword), now);

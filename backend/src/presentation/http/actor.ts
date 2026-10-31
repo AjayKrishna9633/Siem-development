@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { z } from 'zod';
-import type { IActor } from '../../application/types/use-case/company.types.ts';
+import type { IActor } from '../../application/types/use-case/actor.types.ts';
 import type { UserRole } from '../../domain/enums/UserRole.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
@@ -14,11 +14,10 @@ export const actorFrom = (req: Request): IActor => {
   return {
     userId: req.user.userId,
     role: req.user.role as UserRole,
-    organizationId: req.user.organizationId,
   };
 };
 
-// Every route ID (:companyId, :userId) is a UUID. Checking here returns a clear 400
+// Every route ID (e.g. :userId) is a UUID. Checking here returns a clear 400
 // before the database sees a malformed value and fails with a 500.
 export const idParamFrom = (req: Request, name: string): string => {
   const value = req.params[name];

@@ -27,7 +27,7 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
   ) {}
 
   async execute(input: IChangeEmailInput): Promise<ILoginResponse> {
-    assertRole(input.actor, UserRole.SUPER_ADMIN);
+    assertRole(input.actor, UserRole.ADMIN);
     const user = await loadActiveUser(this.users, input.actor.userId);
 
     const pending = await this.codes.check<IPendingEmailChange>(

@@ -2,12 +2,8 @@ import type { IBaseRepository } from './base.repository.interface.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 
 export interface IUserRepository extends IBaseRepository<User> {
-  createSuperAdmin(user: User): Promise<'created' | 'already_exists'>;
-  countSuperAdmins(): Promise<number>;
   findByEmail(email: string): Promise<User | null>;
-  findAll(options?: { organizationId?: string }): Promise<User[]>;
+  // Everyone in this install, newest first
+  findAll(): Promise<User[]>;
   findByIds(ids: string[]): Promise<User[]>;
-  countInOrganization(organizationId: string): Promise<number>;
-  // Member count per company, keyed by organization id
-  countByOrganization(): Promise<Map<string, number>>;
 }

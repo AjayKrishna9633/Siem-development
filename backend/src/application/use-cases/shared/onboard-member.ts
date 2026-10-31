@@ -4,7 +4,6 @@ import type {
   IActivationGrant,
   IActivationService,
 } from '../../interfaces/services/activation.service.interface.ts';
-import type { Company } from '../../../domain/entities/company.entity.ts';
 import { User } from '../../../domain/entities/user.entity.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
@@ -12,16 +11,14 @@ import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 interface IOnboardMemberInput {
-  company: Company;
-  role: UserRole.ORG_ADMIN | UserRole.ANALYST;
+  role: UserRole;
   username: string;
   email: string;
   invitedById: string;
   now: Date;
 }
 
-// Shared by "create company", "replace admin" and "add analyst": the person is
-// created as INVITED and receives an activation link plus temporary password.
+// Used when an admin adds someone: the person is created as INVITED and receives an activation link plus temporary password.
 export const onboardMember = async (
   users: IUserRepository,
   activations: IActivationService,
@@ -35,7 +32,6 @@ export const onboardMember = async (
 
   const user = User.createInvited({
     id: randomUUID(),
-    organizationId: input.company.id,
     email,
     username: input.username,
     role: input.role,
@@ -49,7 +45,6 @@ export const onboardMember = async (
     email: user.email,
     username: user.username,
     role: user.role,
-    companyName: input.company.name,
   });
 
   return { user, activation };

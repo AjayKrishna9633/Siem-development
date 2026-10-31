@@ -34,7 +34,7 @@ export class ResetPasswordUseCase implements IResetPasswordUseCase {
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new AppError(AppErrorCode.INVALID_RESET_TOKEN, ErrorMessage.INVALID_RESET_TOKEN);
     }
-    assertPasswordPolicy(user, input.newPassword);
+    assertPasswordPolicy(input.newPassword);
 
     const now = new Date();
     const newHash = await this.hasher.hash(input.newPassword);

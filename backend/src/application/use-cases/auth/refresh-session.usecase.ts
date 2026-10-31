@@ -3,8 +3,6 @@ import { startSession } from '../shared/user-views.ts';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
-import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
-import { assertCompanyActive } from '../shared/access.ts';
 import type {
   IRefreshSessionInput,
   IRefreshSessionUseCase,
@@ -20,7 +18,6 @@ export class RefreshSessionUseCase implements IRefreshSessionUseCase {
   constructor(
     @inject(TYPES.UserRepository) private readonly users: IUserRepository,
     @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
   ) {}
 
   async execute(input: IRefreshSessionInput): Promise<ILoginResponse> {
@@ -31,13 +28,6 @@ export class RefreshSessionUseCase implements IRefreshSessionUseCase {
     if (!user || user.status !== UserStatus.ACTIVE || user.tokenVersion !== record.tokenVersion) {
       await this.sessions.revokeFamily(record.familyId);
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
-    }
-
-    try {
-      await assertCompanyActive(this.companies, user);
-    } catch (err) {
-      await this.sessions.revokeFamily(record.familyId);
-      throw err;
     }
 
     return startSession(this.sessions, user, record.familyId);

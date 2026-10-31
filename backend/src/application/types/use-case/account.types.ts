@@ -1,4 +1,4 @@
-import type { IActor } from './company.types.ts';
+import type { IActor } from './actor.types.ts';
 
 // Where the code went, so the UI can say "We sent a code to j***@gmail.com"
 export interface ICodeSentResponse {

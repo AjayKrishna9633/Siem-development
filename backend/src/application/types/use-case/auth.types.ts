@@ -33,7 +33,6 @@ export interface ILoginResponse {
     email: string;
     username: string;
     role: string;
-    organizationId: string | null;
   };
 }
 export type LoginResponse = ILoginResponse;
@@ -44,9 +43,6 @@ export interface IUserProfileResponse {
   username: string;
   role: string;
   status: string;
-  organizationId: string | null;
-  // Shown on the profile page; null for the super admin, who belongs to no company
-  companyName: string | null;
   isEmailVerified: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;

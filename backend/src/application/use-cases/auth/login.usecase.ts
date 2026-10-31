@@ -5,8 +5,6 @@ import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
-import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
-import { assertCompanyActive } from '../shared/access.ts';
 import type { ILoginInput, ILoginResponse } from '../../types/use-case/auth.types.ts';
 import type { ILoginUseCase } from '../../interfaces/use-cases/login.interface.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
@@ -20,7 +18,6 @@ export class LoginUseCase implements ILoginUseCase {
     @inject(TYPES.UserRepository) private readonly users: IUserRepository,
     @inject(TYPES.HashService) private readonly hasher: IHashService,
     @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
   ) {}
 
   // A real bcrypt hash of a random value: an unknown email is checked against it, so it
@@ -50,11 +47,10 @@ export class LoginUseCase implements ILoginUseCase {
       throw invalidCredentials;
     }
 
-    // Only someone who knows the password learns that the account or company is inactive
+    // Only someone who knows the password learns that the account is inactive
     if (user.status !== UserStatus.ACTIVE) {
       throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
     }
-    await assertCompanyActive(this.companies, user);
 
     user.recordSuccessfulLogin(input.ip ?? null, now);
     await this.users.save(user);

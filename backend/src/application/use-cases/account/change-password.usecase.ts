@@ -44,7 +44,7 @@ export class ChangePasswordUseCase implements IChangePasswordUseCase {
     if (await this.hasher.compare(input.newPassword, passwordHash)) {
       throw new AppError(AppErrorCode.SAME_PASSWORD, ErrorMessage.SAME_PASSWORD);
     }
-    assertPasswordPolicy(user, input.newPassword);
+    assertPasswordPolicy(input.newPassword);
 
     user.changePassword(await this.hasher.hash(input.newPassword), new Date());
     await this.users.save(user);

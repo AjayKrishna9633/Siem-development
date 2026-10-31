@@ -27,7 +27,6 @@ export interface IIssueActivationInput {
   email: string;
   username: string;
   role: UserRole;
-  companyName: string;
 }
 
 export interface IActivationService {

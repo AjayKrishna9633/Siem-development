@@ -8,7 +8,6 @@ import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 const statusByCode: Record<AppErrorCode, number> = {
-  [AppErrorCode.SETUP_ALREADY_DONE]: HttpStatusCode.CONFLICT,
   [AppErrorCode.OTP_INVALID]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.ACCOUNT_INACTIVE]: HttpStatusCode.FORBIDDEN,
@@ -22,9 +21,6 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.VALIDATION_ERROR]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_REFRESH_TOKEN]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.SESSION_REVOKED]: HttpStatusCode.UNAUTHORIZED,
-  [AppErrorCode.COMPANY_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
-  [AppErrorCode.COMPANY_NAME_TAKEN]: HttpStatusCode.CONFLICT,
-  [AppErrorCode.COMPANY_DEACTIVATED]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.INVALID_ACTIVATION]: HttpStatusCode.BAD_REQUEST,
   // 400 rather than 401: a wrong current password must not look like an expired session
   [AppErrorCode.INVALID_VERIFICATION_CODE]: HttpStatusCode.BAD_REQUEST,
@@ -53,7 +49,6 @@ const duplicateMessage = (err: unknown): string => {
       : '';
   const column = /^Key \((\w+)\)/.exec(detail)?.[1];
   if (column === 'email') return ErrorMessage.USER_ALREADY_EXISTS;
-  if (column === 'name') return ErrorMessage.COMPANY_NAME_TAKEN;
   return ErrorMessage.DUPLICATE_VALUE;
 };
 

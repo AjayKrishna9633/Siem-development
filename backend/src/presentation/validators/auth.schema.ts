@@ -22,7 +22,6 @@ export const loginSchema = z.object({
   password: secretField('Password'),
 });
 
-// A super admin's longer minimum is enforced in the use case, which knows the role
 export const resetPasswordSchema = z.object({
   email: emailField,
   resetToken: z.string().min(1, 'Reset token is required'),

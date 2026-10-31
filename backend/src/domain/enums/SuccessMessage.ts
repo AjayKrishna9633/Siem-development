@@ -1,5 +1,4 @@
 export enum SuccessMessage {
-  SUPER_ADMIN_CREATED = 'Super Admin Created Successfully',
   OTP_SENT = 'OTP sent successfully',
   OTP_VERIFIED = 'OTP verified successfully',
   LOGIN_SUCCESSFUL = 'Login successful',
@@ -9,10 +8,6 @@ export enum SuccessMessage {
   USERS_FETCHED = 'Users retrieved successfully',
   SESSION_REFRESHED = 'Session refreshed successfully',
   LOGOUT_SUCCESSFUL = 'Logged out successfully',
-  COMPANY_CREATED = 'Company created successfully',
-  COMPANIES_FETCHED = 'Companies retrieved successfully',
-  COMPANY_UPDATED = 'Company updated successfully',
-  COMPANY_ADMIN_REPLACED = 'Company admin replaced successfully',
   ACTIVATION_ISSUED = 'New activation issued successfully',
   ACTIVATION_FETCHED = 'Activation details retrieved successfully',
   ACTIVATION_VERIFIED = 'Temporary password verified successfully',

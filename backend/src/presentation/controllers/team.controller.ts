@@ -33,6 +33,7 @@ export class TeamController {
   add = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const result = await this.addTeamMember.execute({
       actor: actorFrom(req),
+      role: req.body.role,
       username: req.body.username,
       email: req.body.email,
     });

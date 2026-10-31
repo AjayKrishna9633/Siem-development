@@ -1,6 +1,5 @@
 import { injectable, inject } from 'inversify';
-import { loadUserProfile } from '../shared/user-views.ts';
-import type { ICompanyRepository } from '../../interfaces/repositories/company.repository.interface.ts';
+import { toUserProfile } from '../shared/user-views.ts';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type {
@@ -15,10 +14,7 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class GetCurrentUserUseCase implements IGetCurrentUserUseCase {
-  constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.CompanyRepository) private readonly companies: ICompanyRepository,
-  ) {}
+  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
 
   async execute(input: IGetCurrentUserInput): Promise<IUserProfileResponse> {
     const user = await this.users.findById(input.userId);
@@ -35,6 +31,6 @@ export class GetCurrentUserUseCase implements IGetCurrentUserUseCase {
       throw new AppError(AppErrorCode.TOKEN_EXPIRED, ErrorMessage.TOKEN_EXPIRED);
     }
 
-    return loadUserProfile(this.companies, user);
+    return toUserProfile(user);
   }
 }

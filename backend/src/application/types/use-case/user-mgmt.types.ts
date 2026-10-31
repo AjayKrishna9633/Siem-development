@@ -1,7 +1,7 @@
 import type { UserRole } from '../../../domain/enums/UserRole.ts';
 import type { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import type { IActivationGrant } from '../../interfaces/services/activation.service.interface.ts';
-import type { IActor } from './company.types.ts';
+import type { IActor } from './actor.types.ts';
 
 export interface ITeamMember {
   id: string;
@@ -15,6 +15,7 @@ export interface ITeamMember {
 
 export interface IAddTeamMemberInput {
   actor: IActor;
+  role: UserRole;
   username: string;
   email: string;
 }
@@ -36,7 +37,6 @@ export interface IResendActivationInput {
 // Shown on the set-password step; only someone holding the link (or the
 // email + temporary password that unlock it) can see it
 export interface IActivationPreview {
-  companyName: string;
   username: string;
   email: string;
   role: UserRole;

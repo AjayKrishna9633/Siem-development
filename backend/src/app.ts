@@ -5,12 +5,10 @@ import helmet from 'helmet';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { env } from './config/env.config.ts';
 import { di } from './infrastructure/di/index.ts';
-import { adminRoutes } from './presentation/routes/admin.routes.ts';
 import { sessionRoutes } from './presentation/routes/session.routes.ts';
 import { passwordResetRoutes } from './presentation/routes/password-reset.routes.ts';
 import { accountRoutes } from './presentation/routes/account.routes.ts';
 import { activationRoutes } from './presentation/routes/activation.routes.ts';
-import { companyRoutes } from './presentation/routes/company.routes.ts';
 import { teamRoutes } from './presentation/routes/team.routes.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
 
@@ -29,13 +27,11 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-app.use('/api/admin', adminRoutes(di.adminController));
 // Auth endpoints share one prefix but are split by concern
 app.use('/api/auth', sessionRoutes(di.sessionController));
 app.use('/api/auth', passwordResetRoutes(di.passwordResetController));
 app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
 app.use('/api/auth', activationRoutes(di.activationController));
-app.use('/api/companies', companyRoutes(di.companyController, di.authMiddleware));
 app.use('/api/team', teamRoutes(di.teamController, di.authMiddleware));
 
 app.use(notFoundHandler);

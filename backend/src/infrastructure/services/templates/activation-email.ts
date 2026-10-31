@@ -4,7 +4,6 @@
 
 export interface IActivationEmailInput {
   username: string;
-  companyName: string;
   roleTitle: string;
   email: string;
   activationLink: string;
@@ -31,8 +30,8 @@ const MONO = "'JetBrains Mono', 'SFMono-Regular', Consolas, 'Courier New', monos
 // A resend gets a different subject, so the inbox makes clear which email is the live one
 export const activationEmailSubject = (input: IActivationEmailInput) =>
   input.replacesEarlier
-    ? `New activation link for your SIEMple account (${input.companyName})`
-    : `Activate your SIEMple account for ${input.companyName}`;
+    ? 'New activation link for your SIEMple account'
+    : 'Activate your SIEMple account';
 
 const REPLACES_NOTICE =
   'This is a new activation link. Any earlier activation email for this account no longer works, so use this one.';
@@ -42,7 +41,7 @@ export const activationEmailText = (input: IActivationEmailInput) =>
     `Hello ${input.username},`,
     '',
     ...(input.replacesEarlier ? [REPLACES_NOTICE, ''] : []),
-    `You have been added to ${input.companyName} on SIEMple as ${input.roleTitle}.`,
+    `You have been added to SIEMple as ${input.roleTitle}.`,
     '',
     'Activate your account and choose a password:',
     input.activationLink,
@@ -58,7 +57,6 @@ export const activationEmailText = (input: IActivationEmailInput) =>
 export const activationEmailHtml = (input: IActivationEmailInput) => {
   const e = {
     username: escapeHtml(input.username),
-    companyName: escapeHtml(input.companyName),
     roleTitle: escapeHtml(input.roleTitle),
     email: escapeHtml(input.email),
     activationLink: escapeHtml(input.activationLink),
@@ -81,7 +79,7 @@ export const activationEmailHtml = (input: IActivationEmailInput) => {
 <title>Activate your SIEMple account</title>
 </head>
 <body style="margin:0;padding:0;background:#0b1326;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${input.replacesEarlier ? REPLACES_NOTICE : `You've been added to ${e.companyName} as ${e.roleTitle}. Activate your account to sign in.`}</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${input.replacesEarlier ? REPLACES_NOTICE : `You've been added to SIEMple as ${e.roleTitle}. Activate your account to sign in.`}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0b1326;">
   <tr>
     <td align="center" style="padding:40px 16px;">
@@ -94,7 +92,7 @@ export const activationEmailHtml = (input: IActivationEmailInput) => {
         <tr>
           <td style="background:#131b2e;border:1px solid #334155;border-radius:6px;padding:32px 28px;">
             <p style="margin:0 0 6px;font-family:${MONO};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#94a3b8;">${input.replacesEarlier ? 'New activation link' : 'Account activation'}</p>
-            <h1 style="margin:0 0 16px;font-family:${FONT};font-size:22px;line-height:30px;font-weight:600;color:#f8fafc;">Welcome to ${e.companyName}, ${e.username}</h1>
+            <h1 style="margin:0 0 16px;font-family:${FONT};font-size:22px;line-height:30px;font-weight:600;color:#f8fafc;">Welcome to SIEMple, ${e.username}</h1>
             ${replacesNotice}
             <p style="margin:0 0 24px;font-family:${FONT};font-size:14px;line-height:22px;color:#94a3b8;">
               You've been added as <strong style="color:#f8fafc;font-weight:600;">${e.roleTitle}</strong>.
@@ -134,7 +132,7 @@ export const activationEmailHtml = (input: IActivationEmailInput) => {
         </tr>
         <tr>
           <td style="padding:16px 4px 0;font-family:${FONT};font-size:11px;line-height:16px;color:#64748b;">
-            Sent by SIEMple on behalf of ${e.companyName}.
+            Sent by SIEMple.
           </td>
         </tr>
       </table>

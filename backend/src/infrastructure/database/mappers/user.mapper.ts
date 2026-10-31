@@ -8,7 +8,6 @@ export class UserMapper implements IMapper<User, UserModel> {
   toDomain(model: UserModel): User {
     return User.reconstitute({
       id: model.id,
-      organizationId: model.organizationId,
       email: model.email,
       username: model.username,
       passwordHash: model.passwordHash,

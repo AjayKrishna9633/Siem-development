@@ -20,8 +20,8 @@ export interface IPendingEmailChange {
   newEmail: string;
 }
 
-// Step 1 of changing the super admin's email. Company users' addresses are managed by
-// their admins, so this is super admin only. The code goes to the NEW address, which
+// Step 1 of an admin changing their own email. Analysts' addresses are managed by
+// admins, so this is admin only. The code goes to the NEW address, which
 // proves it exists and belongs to them before anything changes.
 @injectable()
 export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
@@ -33,7 +33,7 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
   ) {}
 
   async execute(input: IRequestEmailChangeInput): Promise<ICodeSentResponse> {
-    assertRole(input.actor, UserRole.SUPER_ADMIN);
+    assertRole(input.actor, UserRole.ADMIN);
     const user = await loadActiveUser(this.users, input.actor.userId);
 
     if (!(await this.hasher.compare(input.currentPassword, user.passwordHash as string))) {

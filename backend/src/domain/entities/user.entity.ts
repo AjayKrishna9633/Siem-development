@@ -1,10 +1,5 @@
 import { DomainError } from '../errors/DomainError.ts';
-import type {
-  ICreateInvitedUserProps,
-  ICreateSuperAdminProps,
-  UserProps,
-} from '../types/user.types.ts';
-import { UserRole } from '../enums/UserRole.ts';
+import type { ICreateInvitedUserProps, UserProps } from '../types/user.types.ts';
 import { UserStatus } from '../enums/UserStatus.ts';
 import { LOGIN_LOCKOUT } from '../constants/security.ts';
 import { normalizeEmail } from '../policies/credentials.policy.ts';
@@ -16,7 +11,6 @@ export class User {
   static createInvited(input: ICreateInvitedUserProps): User {
     return new User({
       id: input.id,
-      organizationId: input.organizationId,
       email: normalizeEmail(input.email),
       username: input.username.trim(),
       passwordHash: null,
@@ -54,36 +48,11 @@ export class User {
   get status() {
     return this.props.status;
   }
-  get organizationId() {
-    return this.props.organizationId;
-  }
   get passwordHash() {
     return this.props.passwordHash;
   }
   get tokenVersion() {
     return this.props.tokenVersion;
-  }
-
-  static createSuperAdmin(input: ICreateSuperAdminProps): User {
-    return new User({
-      id: input.id,
-      organizationId: null,
-      email: normalizeEmail(input.email),
-      username: input.username.trim(),
-      passwordHash: input.passwordHash,
-      role: UserRole.SUPER_ADMIN,
-      status: UserStatus.ACTIVE,
-      isEmailVerified: true,
-      tokenVersion: 0,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      passwordChangedAt: input.now,
-      lastLoginAt: null,
-      lastLoginIp: null,
-      invitedById: null,
-      createdAt: input.now,
-      updatedAt: input.now,
-    });
   }
 
   toSnapshot(): Readonly<UserProps> {

@@ -1,18 +1,11 @@
 const TYPES = {
   // Use Cases
-  RegisterSuperAdminUseCase: Symbol.for('RegisterSuperAdminUseCase'),
   SendOtpUseCase: Symbol.for('SendOtpUseCase'),
   VerifyOtpUseCase: Symbol.for('VerifyOtpUseCase'),
   LoginUseCase: Symbol.for('LoginUseCase'),
   GetCurrentUserUseCase: Symbol.for('GetCurrentUserUseCase'),
   ResetPasswordUseCase: Symbol.for('ResetPasswordUseCase'),
   UpdateProfileUseCase: Symbol.for('UpdateProfileUseCase'),
-  CreateCompanyUseCase: Symbol.for('CreateCompanyUseCase'),
-  ListCompaniesUseCase: Symbol.for('ListCompaniesUseCase'),
-  UpdateCompanyUseCase: Symbol.for('UpdateCompanyUseCase'),
-  SetCompanyStatusUseCase: Symbol.for('SetCompanyStatusUseCase'),
-  ReplaceCompanyAdminUseCase: Symbol.for('ReplaceCompanyAdminUseCase'),
-  ResendAdminActivationUseCase: Symbol.for('ResendAdminActivationUseCase'),
   AddTeamMemberUseCase: Symbol.for('AddTeamMemberUseCase'),
   ListTeamMembersUseCase: Symbol.for('ListTeamMembersUseCase'),
   GetActivationUseCase: Symbol.for('GetActivationUseCase'),
@@ -28,8 +21,6 @@ const TYPES = {
   // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
-  CompanyRepository: Symbol.for('CompanyRepository'),
-  CompanyMapper: Symbol.for('CompanyMapper'),
 
   // Services
   CacheService: Symbol.for('CacheService'),
@@ -45,12 +36,10 @@ const TYPES = {
   AuthMiddleware: Symbol.for('AuthMiddleware'),
 
   // Controllers
-  AdminController: Symbol.for('AdminController'),
   SessionController: Symbol.for('SessionController'),
   PasswordResetController: Symbol.for('PasswordResetController'),
   AccountController: Symbol.for('AccountController'),
   ActivationController: Symbol.for('ActivationController'),
-  CompanyController: Symbol.for('CompanyController'),
   TeamController: Symbol.for('TeamController'),
 
   // External / Config

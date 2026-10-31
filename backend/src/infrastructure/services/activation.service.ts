@@ -26,9 +26,9 @@ const TEMP_PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz2
 const TEMP_PASSWORD_LENGTH = 12;
 
 const roleTitle: Record<UserRole, string> = {
-  [UserRole.SUPER_ADMIN]: 'Super Admin',
-  [UserRole.ORG_ADMIN]: 'Company Admin',
-  [UserRole.ANALYST]: 'Analyst',
+  [UserRole.ADMIN]: 'Administrator',
+  [UserRole.T2_ANALYST]: 'Tier 2 Analyst',
+  [UserRole.T1_ANALYST]: 'Tier 1 Analyst',
 };
 
 const generateTemporaryPassword = () =>
@@ -69,7 +69,6 @@ export class ActivationService implements IActivationService {
     const activationLink = `${env.FRONTEND_URL}/activate?id=${activationId}`;
     const emailSent = await this.sendActivationEmail({
       username: input.username,
-      companyName: input.companyName,
       roleTitle: roleTitle[input.role],
       email: input.email,
       activationLink,

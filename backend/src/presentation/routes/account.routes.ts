@@ -24,7 +24,7 @@ export function accountRoutes(
     'Too many verification codes requested, please try again later.',
   );
   const changeLimiter = createRateLimiter(10, 'Too many attempts, please try again later.');
-  const superAdminOnly = requireRoles(UserRole.SUPER_ADMIN);
+  const adminOnly = requireRoles(UserRole.ADMIN);
 
   router.get('/me', authMiddleware, controller.getMe);
   router.put('/profile', authMiddleware, validate(updateProfileSchema), controller.updateProfile);
@@ -38,11 +38,11 @@ export function accountRoutes(
     controller.changePassword,
   );
 
-  // Company users' emails are managed by their admins, so only the super admin changes their own
+  // Analysts' emails are managed by admins, so only an admin changes their own
   router.post(
     '/email/code',
     authMiddleware,
-    superAdminOnly,
+    adminOnly,
     codeLimiter,
     validate(requestEmailChangeSchema),
     controller.requestEmailChange,
@@ -50,7 +50,7 @@ export function accountRoutes(
   router.post(
     '/email',
     authMiddleware,
-    superAdminOnly,
+    adminOnly,
     changeLimiter,
     validate(changeEmailSchema),
     controller.changeEmail,
