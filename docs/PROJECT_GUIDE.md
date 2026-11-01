@@ -182,9 +182,10 @@ Example: an administrator invites an analyst. The browser sends `POST /api/users
 **2 — Global middleware** ([app.ts](../backend/src/app.ts)), in order:
 
 1. `trust proxy` (only if `TRUST_PROXY` is set) — makes `req.ip` the real client behind a reverse proxy.
-2. `helmet()` security headers; `cors()` restricted to `FRONTEND_URL`.
-3. **`setupGuard`** ([setup-guard.middleware.ts](../backend/src/presentation/middlewares/setup-guard.middleware.ts)) — if first-run setup isn't done, every API call except `/api/setup/*` gets `403 SETUP_REQUIRED`. Here setup is done, so it passes.
-4. `express.json({ limit: '100kb' })`, `cookieParser()`.
+2. **`httpLogger`** ([http-logger.ts](../backend/src/infrastructure/logging/http-logger.ts)) — gives the request an id (returned as `X-Request-Id`) and logs one line when it finishes: method, path **without the query string**, status, time, IP. See [Logging](#logging).
+3. `helmet()` security headers; `cors()` restricted to `FRONTEND_URL`.
+4. **`setupGuard`** ([setup-guard.middleware.ts](../backend/src/presentation/middlewares/setup-guard.middleware.ts)) — if first-run setup isn't done, every API call except `/api/setup/*` gets `403 SETUP_REQUIRED`. Here setup is done, so it passes.
+5. `express.json({ limit: '100kb' })`, `cookieParser()`.
 
 **3 — Route middleware** ([users.routes.ts](../backend/src/presentation/routes/users.routes.ts)):
 
@@ -352,7 +353,7 @@ If Redis is unreachable, the cache silently uses memory and the terminal says so
 | Access token              | 15 minutes, HS256                   | [jwt-token.service.ts](../backend/src/infrastructure/services/jwt-token.service.ts)             |
 | Refresh token             | 7 days, rotated on every use        | [refresh-session.service.ts](../backend/src/infrastructure/services/refresh-session.service.ts) |
 
-Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `FRONTEND_URL`, `TRUST_PROXY`, `SMTP_*`. The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
+Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `FRONTEND_URL`, `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`. The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
 
 ---
 
@@ -549,6 +550,19 @@ The concurrency guarantees each have a test: setup ([setup-race.test.ts](../back
 | Behind nginx/Traefik | Set `TRUST_PROXY` (e.g. `1`) so audit IPs are real                                   |
 | No mail server       | Leave `SMTP_HOST` empty: admins get copy-link boxes; "forgot password" sends nothing |
 | Migrations by hand   | `npm run migration:run` / `migration:revert` / `migration:show`                      |
+| More or less logging | `LOG_LEVEL=debug` (or `warn`, `error`…); logs are JSON lines on stdout               |
+
+### Logging
+
+The backend logs with **pino** ([logger.ts](../backend/src/infrastructure/logging/logger.ts)) to stdout: one JSON object per line in production, so customers can ship it to their own log tooling; coloured readable lines when `NODE_ENV=development` (via `pino-pretty`, a dev dependency); nothing during tests.
+
+- **Application code** depends on the `ILogger` port ([logger.interface.ts](../backend/src/application/interfaces/services/logger.interface.ts)), injected as `TYPES.Logger`; `logger.child({ module: 'email' })` tags entries. Pino itself stays in infrastructure.
+- **Requests** get one line each from `pino-http`, with a request id. A well-formed `X-Request-Id` from the proxy is reused, so proxy and app logs line up. `/health` is not logged. 4xx logs as `warn`, 5xx as `error`.
+- **Unhandled errors** are logged by the error handler through `req.log`, so the stack carries the request id.
+- **Secrets stay out:** request headers, cookies and bodies are never logged; query strings are dropped (invite and reset links carry `?token=`); and fields named `password`, `token`, `refreshToken`, `link`… are replaced with `[REDACTED]` as a second line of defence.
+- **Plain console output on purpose:** the setup-token banner (the one place a raw token is printed, for a person), the CLI commands, and the invalid-config message (printed before the logger exists).
+
+The audit log is something else: a permanent, database-backed record of security events for admins. Logs are for operating and debugging the server.
 
 ---
 
