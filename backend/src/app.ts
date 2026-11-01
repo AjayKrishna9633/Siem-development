@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { env } from './config/env.config.ts';
+import { httpLogger } from './infrastructure/logging/http-logger.ts';
 import { di } from './infrastructure/di/index.ts';
 import { sessionRoutes } from './presentation/routes/session.routes.ts';
 import { passwordResetRoutes } from './presentation/routes/password-reset.routes.ts';
@@ -16,6 +17,8 @@ import { errorHandler, notFoundHandler } from './presentation/middlewares/errorH
 const app = express();
 // Without this behind a proxy, every request would appear to come from the proxy's IP
 if (env.TRUST_PROXY !== undefined) app.set('trust proxy', env.TRUST_PROXY);
+// First, so requests rejected by any later middleware are logged too
+app.use(httpLogger);
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 // Before any API route: blocks the API until first-run setup is done, then closes setup

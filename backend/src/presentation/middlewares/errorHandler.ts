@@ -73,7 +73,7 @@ export const notFoundHandler: RequestHandler = (_req, res): void => {
     .json(new ApiResponse(HttpStatusCode.NOT_FOUND, null, ErrorMessage.ROUTE_NOT_FOUND));
 };
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next): void => {
   const parserError = bodyParserErrorType(err);
   if (parserError === 'entity.parse.failed') {
     res
@@ -131,7 +131,8 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next): void =
     return;
   }
 
-  console.error('[Unhandled Exception]:', err);
+  // req.log carries this request's id, so the stack can be matched to its request line
+  req.log.error({ err }, 'Unhandled exception');
   res
     .status(HttpStatusCode.INTERNAL_SERVER_ERROR)
     .json(
