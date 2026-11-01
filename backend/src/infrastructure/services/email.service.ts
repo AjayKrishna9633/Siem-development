@@ -5,11 +5,19 @@ import type {
   IEmailMessage,
   IEmailService,
 } from '../../application/interfaces/services/email.service.interface.ts';
+import type { ILogger } from '../../application/interfaces/services/logger.interface.ts';
 import type { IMailTransport } from '../../config/mailer.ts';
 
 @injectable()
 export class EmailService implements IEmailService {
-  constructor(@inject(TYPES.MailTransport) private readonly transport: IMailTransport | null) {}
+  private readonly logger: ILogger;
+
+  constructor(
+    @inject(TYPES.MailTransport) private readonly transport: IMailTransport | null,
+    @inject(TYPES.Logger) logger: ILogger,
+  ) {
+    this.logger = logger.child({ module: 'email' });
+  }
 
   get isConfigured(): boolean {
     return this.transport !== null;
@@ -28,7 +36,11 @@ export class EmailService implements IEmailService {
       });
       return { delivered: true };
     } catch (err) {
-      console.error(`Email to ${message.to} failed:`, err);
+      this.logger.error('Email could not be sent', {
+        to: message.to,
+        subject: message.subject,
+        err,
+      });
       return { delivered: false };
     }
   }

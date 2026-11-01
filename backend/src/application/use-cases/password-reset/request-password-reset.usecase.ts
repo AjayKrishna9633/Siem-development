@@ -6,6 +6,7 @@ import type { IAuditLogRepository } from '../../interfaces/repositories/audit-lo
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interface.ts';
 import type { IEmailService } from '../../interfaces/services/email.service.interface.ts';
+import type { ILogger } from '../../interfaces/services/logger.interface.ts';
 import type { IRequestPasswordResetUseCase } from '../../interfaces/use-cases/password-reset.interface.ts';
 import type { IRequestPasswordResetInput } from '../../types/use-case/password-reset.types.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
@@ -25,6 +26,7 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
     @inject(TYPES.AuthMailer) private readonly mailer: IAuthMailer,
     @inject(TYPES.EmailService) private readonly email: IEmailService,
     @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.Logger) private readonly logger: ILogger,
   ) {}
 
   async execute(input: IRequestPasswordResetInput): Promise<void> {
@@ -37,7 +39,7 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
     // Not awaited: issuing the link and talking to the mail server take time, and
     // waiting would reveal through the response time that the account exists
     void this.sendLink(user, input).catch((err: unknown) =>
-      console.error('Password reset link could not be sent:', err),
+      this.logger.error('Password reset link could not be sent', { userId: user.id, err }),
     );
   }
 
