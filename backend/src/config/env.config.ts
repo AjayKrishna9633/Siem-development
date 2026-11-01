@@ -11,6 +11,11 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   REDIS_URL: z.string().url(),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  // Unset: 'info', or 'silent' while tests run. 'debug' and 'trace' are for troubleshooting.
+  LOG_LEVEL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
+  ),
   // Set when SIEMple runs behind a reverse proxy (nginx, Traefik...), so req.ip is the
   // real client: 'true', a hop count like '1', or addresses like 'loopback' or
   // '10.0.0.0/8'. Unset means connections come straight from clients.

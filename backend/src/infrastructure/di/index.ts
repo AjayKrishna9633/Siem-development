@@ -13,6 +13,7 @@ import { AppDataSource } from '../database/data-source.ts';
 // Services
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
+import { logger } from '../logging/logger.ts';
 import { RedisCacheService } from '../redis/redis-cache.service.ts';
 import { createMailTransport } from '../../config/mailer.ts';
 import { EmailService } from '../services/email.service.ts';
@@ -72,8 +73,9 @@ import { SetupController } from '../../presentation/controllers/setup.controller
 
 // 1. Bind external constants/factories
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
+container.bind(TYPES.Logger).toConstantValue(logger);
 
-const redisClient = createRedisClient();
+const redisClient = createRedisClient(logger.child({ module: 'redis' }));
 container.bind(TYPES.RedisClient).toConstantValue(redisClient);
 
 // Null when email isn't configured; EmailService then reports nothing as delivered
