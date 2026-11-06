@@ -7,7 +7,6 @@ type IPasswordInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'ty
   invalid?: boolean;
 };
 
-// Password field with a show/hide toggle
 export const PasswordInput: React.FC<IPasswordInputProps> = ({ className, ...rest }) => {
   const [visible, setVisible] = useState(false);
   return (

@@ -78,7 +78,6 @@ export interface ITab {
   to: string;
 }
 
-// Module sub-navigation (Dashboard / Inventory / Events)
 export const ModuleTabs: React.FC<{ tabs: ITab[]; className?: string }> = ({ tabs, className }) => (
   <nav className={cn('flex gap-6 border-b border-line', className)}>
     {tabs.map((tab) => (
@@ -99,7 +98,6 @@ export const ModuleTabs: React.FC<{ tabs: ITab[]; className?: string }> = ({ tab
   </nav>
 );
 
-// Boxed "DASHBOARD | EVENTS" switch shown top-right on some module pages
 export const ViewToggle: React.FC<{ tabs: ITab[] }> = ({ tabs }) => (
   <nav className="inline-flex rounded border border-line-strong bg-canvas p-0.5">
     {tabs.map((tab) => (

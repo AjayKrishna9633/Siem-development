@@ -11,7 +11,6 @@ interface ISortControlProps<T, K extends string> {
   onDirectionChange: (direction: SortDirection) => void;
 }
 
-// "Sort by: [Name ▾] [A → Z]" for a list toolbar; the button flips the direction
 export const SortControl = <T, K extends string>({
   fields,
   field,

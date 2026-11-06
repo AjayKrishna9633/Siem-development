@@ -9,8 +9,6 @@ interface ISvgIconProps {
   className?: string;
 }
 
-// Renders a Figma-exported SVG as a mask so it inherits currentColor.
-// The url is quoted because Vite inlines small SVGs as unencoded data URIs.
 export const SvgIcon: React.FC<ISvgIconProps> = ({ src, width, height, className }) => (
   <span
     aria-hidden
@@ -44,7 +42,6 @@ const chipTone = {
   accent: 'border-accent/40 bg-accent/10 text-accent',
 };
 
-// "manager.name: wazuh-server ×" filter pill
 export const FilterChip: React.FC<IFilterChipProps> = ({
   field,
   value,
@@ -109,7 +106,6 @@ export const Avatar: React.FC<{ name: string; className?: string }> = ({ name, c
   );
 };
 
-// Thin horizontal bar used for inline intensity cells
 export const Meter: React.FC<{
   value: number;
   max: number;

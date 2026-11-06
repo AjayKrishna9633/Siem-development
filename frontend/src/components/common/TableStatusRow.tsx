@@ -1,7 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/cn.ts';
 
-// Full-width row for "Loading…" or "Nothing here" inside a table body
 export const TableStatusRow: React.FC<{
   colSpan: number;
   children: React.ReactNode;

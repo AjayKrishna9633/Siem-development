@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/cn.ts';
 
-// Open dialogs, innermost last, so Escape only closes the one on top
 const openStack: string[] = [];
 
 interface IModalProps {
@@ -12,13 +11,10 @@ interface IModalProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
-  // Shown left of the title, e.g. a warning icon on a confirmation
   icon?: React.ReactNode;
-  // Confirmations sit a little higher and narrower than forms
   size?: 'sm' | 'md';
 }
 
-// Centered dialog rendered over the whole app; Escape or a click on the backdrop closes it
 export const Modal: React.FC<IModalProps> = ({
   title,
   description,

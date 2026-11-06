@@ -38,9 +38,6 @@ const copy = {
   reset: { noun: 'reset link', label: 'Reset link', action: 'choose a new password' },
 } as const;
 
-// Whether a single-use link (invitation or password reset) reached their inbox. When it
-// didn't (no email set up on this server, or the mail server refused it), the backend
-// hands the link back to copy.
 export const LinkDeliveryDetails: React.FC<{
   delivery: ILinkDelivery;
   email?: string;

@@ -9,7 +9,6 @@ import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
 
-// Current password + new password. Works on every install, with or without email.
 export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user, login } = useAuthStore();
   const [done, setDone] = useState(false);
@@ -34,7 +33,6 @@ export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClos
     setBusy(true);
     setError(null);
     try {
-      // Other devices are signed out; this session continues with fresh tokens
       const session = await authService.changePassword({ currentPassword, newPassword });
       login(session.accessToken, { ...user, ...session.user });
       setDone(true);

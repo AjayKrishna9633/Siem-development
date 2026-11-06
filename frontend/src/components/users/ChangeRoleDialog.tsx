@@ -5,7 +5,6 @@ import { Field, Select } from '../ui/Form.tsx';
 import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
 import type { IManagedUser, UserRole } from '../../types/auth.ts';
 
-// The new role applies to the user's very next request, without signing them out
 export const ChangeRoleDialog: React.FC<{
   user: IManagedUser;
   onSave: (role: UserRole) => Promise<void>;

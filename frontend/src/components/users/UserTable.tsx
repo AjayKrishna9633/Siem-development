@@ -107,9 +107,7 @@ const UserRow: React.FC<{
   const status = u.status ?? 'active';
   const invited = status === 'invited';
   const disabled = status === 'disabled';
-  // Resending fixes an expired (or never-issued) link
   const inviteExpired = invited && u.inviteExpired === true;
-  // The backend refuses changes to your own access; the buttons say so up front
   const selfNote = "You can't change your own access";
 
   return (

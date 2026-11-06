@@ -17,7 +17,6 @@ interface IPanelHeaderProps {
   className?: string;
 }
 
-// Mono, uppercase section header used by most dashboard panels
 export const PanelHeader: React.FC<IPanelHeaderProps> = ({
   title,
   icon,
@@ -42,14 +41,12 @@ export const PanelHeader: React.FC<IPanelHeaderProps> = ({
   </header>
 );
 
-// Pill that sits on the top border of a panel ("AGENTS SUMMARY")
 export const FloatingLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl border border-line bg-canvas px-3 pt-1 pb-0.5 font-mono text-[10px] uppercase tracking-[0.5px] text-muted">
     {children}
   </div>
 );
 
-// Centered pill divider between card groups ("ENDPOINT SECURITY")
 export const SectionDivider: React.FC<{ label: string }> = ({ label }) => (
   <div className="flex justify-center">
     <span className="rounded-xl border border-line bg-canvas px-4 py-0.5 font-mono text-[11px] uppercase text-muted">

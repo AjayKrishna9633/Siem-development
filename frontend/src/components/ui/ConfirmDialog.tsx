@@ -8,14 +8,11 @@ interface IConfirmDialogProps {
   title: string;
   children: React.ReactNode;
   confirmLabel: string;
-  // 'danger' for anything that removes access; 'primary' for routine confirmations
   tone?: 'danger' | 'primary';
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
 
-// Themed replacement for window.confirm. While onConfirm runs, both buttons lock
-// and the confirm button shows progress; the caller closes the dialog when done.
 export const ConfirmDialog: React.FC<IConfirmDialogProps> = ({
   title,
   children,

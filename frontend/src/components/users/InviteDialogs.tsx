@@ -5,8 +5,6 @@ import { Panel } from '../ui/Panel.tsx';
 import { LinkDeliveryDetails } from '../common/LinkDeliveryDetails.tsx';
 import type { ILinkDelivery } from '../../types/auth.ts';
 
-// Resending kills the current link at once, so it is confirmed first: the person may be
-// about to open the old one
 export const ResendInviteDialog: React.FC<{
   email: string;
   onConfirm: () => Promise<void>;
@@ -65,8 +63,6 @@ export const IssueResetLinkDialog: React.FC<{
   </ConfirmDialog>
 );
 
-// Shown above the user list after a resend or reset link: where it went, and the link if
-// it wasn't emailed
 export const LinkIssuedNotice: React.FC<{
   email: string;
   delivery: ILinkDelivery;

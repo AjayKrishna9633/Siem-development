@@ -9,7 +9,6 @@ import type { IInviteResult, UserRole } from '../../types/auth.ts';
 import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 
-// An admin invites someone by email and role; the person picks their own name on accepting
 export const InviteUserForm: React.FC<{
   onInvited: (result: IInviteResult) => void;
   onCancel: () => void;
@@ -18,7 +17,6 @@ export const InviteUserForm: React.FC<{
   const [role, setRole] = useState<UserRole>('t1_analyst');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Set by the first submit: from then on an invalid email shows its message
   const [attempted, setAttempted] = useState(false);
 
   const emailError = !email.trim()

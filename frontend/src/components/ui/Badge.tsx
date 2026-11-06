@@ -67,7 +67,6 @@ interface IStatusBadgeProps {
   className?: string;
 }
 
-// Bordered mono status chip ("ACTIVE ALERT", "PASSED")
 export const StatusBadge: React.FC<IStatusBadgeProps> = ({ tone, children, dot, className }) => (
   <span
     className={cn(
@@ -81,7 +80,6 @@ export const StatusBadge: React.FC<IStatusBadgeProps> = ({ tone, children, dot, 
   </span>
 );
 
-// Plain dot + text status ("● Active")
 export const StatusDot: React.FC<{ tone: Tone; children: React.ReactNode; className?: string }> = ({
   tone,
   children,
@@ -93,7 +91,6 @@ export const StatusDot: React.FC<{ tone: Tone; children: React.ReactNode; classN
   </span>
 );
 
-// Small mono tag used on hub cards and tables ("TRENDS", "default")
 export const Tag: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className,
@@ -108,7 +105,6 @@ export const Tag: React.FC<{ children: React.ReactNode; className?: string }> = 
   </span>
 );
 
-// Technique / CVE id chip
 export const CodeChip: React.FC<{ children: React.ReactNode; className?: string }> = ({
   children,
   className,

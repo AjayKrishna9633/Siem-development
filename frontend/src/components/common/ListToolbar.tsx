@@ -12,7 +12,6 @@ interface IListToolbarProps {
   loading: boolean;
   onRefresh: () => void;
   paging: IPaging;
-  // Filter dropdowns sit between the search box and the paging controls
   children?: React.ReactNode;
 }
 
@@ -79,7 +78,6 @@ interface IFilterSelectProps<T extends string> {
   className?: string;
 }
 
-// A labelled "Role: All Roles ▾" dropdown for the toolbar
 export const FilterSelect = <T extends string>({
   label,
   value,

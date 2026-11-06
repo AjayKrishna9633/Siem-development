@@ -2,8 +2,6 @@ import React from 'react';
 import { ConfirmDialog } from '../ui/ConfirmDialog.tsx';
 import type { IManagedUser } from '../../types/auth.ts';
 
-// Disabling removes access immediately, so it is confirmed; enabling is confirmed too,
-// since it restores access with the person's old password
 export const UserStatusDialog: React.FC<{
   user: IManagedUser;
   enable: boolean;

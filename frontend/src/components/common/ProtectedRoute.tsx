@@ -5,7 +5,6 @@ import type { Permission } from '../../types/auth.ts';
 import { can } from '../../lib/permissions.ts';
 
 interface IProtectedRouteProps {
-  // The page needs this permission; without it the user sees /unauthorized
   permission?: Permission;
   children?: React.ReactNode;
 }

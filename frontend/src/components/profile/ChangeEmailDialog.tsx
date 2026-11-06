@@ -13,7 +13,6 @@ import { isEmail } from '../../lib/validation.ts';
 
 type Step = 'details' | 'verify' | 'done';
 
-// Super admin only: 1) new email + current password  2) code sent to the NEW inbox  3) done
 export const ChangeEmailDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user, login } = useAuthStore();
   const [step, setStep] = useState<Step>('details');

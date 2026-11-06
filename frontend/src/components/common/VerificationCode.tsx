@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Input } from '../ui/Form.tsx';
 
-// Six-digit code box: digits only, large spaced mono text, and the browser offers
-// codes it reads from SMS/email (autocomplete="one-time-code")
 export const CodeInput: React.FC<{
   value: string;
   onChange: (value: string) => void;
@@ -22,7 +20,6 @@ export const CodeInput: React.FC<{
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
-// "Resend code" link that waits a minute between sends, so people don't trip the rate limit
 export const ResendCode: React.FC<{ onResend: () => Promise<void> }> = ({ onResend }) => {
   const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
   const [sending, setSending] = useState(false);

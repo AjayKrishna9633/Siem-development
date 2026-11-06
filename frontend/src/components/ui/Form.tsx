@@ -155,7 +155,6 @@ interface ISegmentedProps<T extends string> {
   className?: string;
 }
 
-// "1H / 24H / 7D" style toggle group
 export const Segmented = <T extends string>({
   options,
   value,
