@@ -1,7 +1,3 @@
-// `npm run reset-admin -- admin@acme.com`: lockout recovery. Prints a single-use link,
-// valid 30 minutes, that lets that administrator choose a new password. For when no
-// admin can sign in and email can't deliver a reset link. No password is ever typed
-// into the shell, so none ends up in its history.
 import { AppDataSource } from '../infrastructure/database/data-source.ts';
 import { di } from '../infrastructure/di/index.ts';
 import { AppError } from '../domain/errors/AppError.ts';
@@ -34,7 +30,6 @@ try {
     ].join('\n'),
   );
 } catch (err) {
-  // Expected problems (no such admin, account disabled) are explained, not dumped
   if (!(err instanceof AppError)) throw err;
   console.error(err.message);
   process.exitCode = 1;

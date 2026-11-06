@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
-// An empty line in .env (`SMTP_HOST=`) means "not set", not "set to empty"
 const optionalText = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
 const envSchema = z.object({
@@ -11,14 +10,10 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   REDIS_URL: z.string().url(),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
-  // Unset: 'info', or 'silent' while tests run. 'debug' and 'trace' are for troubleshooting.
   LOG_LEVEL: z.preprocess(
     (v) => (v === '' ? undefined : v),
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   ),
-  // Set when SIEMple runs behind a reverse proxy (nginx, Traefik...), so req.ip is the
-  // real client: 'true', a hop count like '1', or addresses like 'loopback' or
-  // '10.0.0.0/8'. Unset means connections come straight from clients.
   TRUST_PROXY: z.preprocess(
     (v) => {
       if (v === undefined || v === '' || v === 'false') return undefined;
@@ -28,8 +23,6 @@ const envSchema = z.object({
     z.union([z.boolean(), z.number().int().nonnegative(), z.string()]).optional(),
   ),
 
-  // Email is optional: without it, invite and reset links are shown to the admin to
-  // pass on by hand. SMTP_SECURE defaults to true on port 465 (implicit TLS).
   SMTP_HOST: optionalText,
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_SECURE: z.preprocess(
@@ -38,9 +31,7 @@ const envSchema = z.object({
   ),
   SMTP_USER: optionalText,
   SMTP_PASSWORD: optionalText,
-  // e.g. "SIEMple <siem@acme.com>"; defaults to SMTP_USER
   SMTP_FROM: optionalText,
-  // Gmail settings from before SMTP_* existed; only used when SMTP_HOST is not set
   OTP_EMAIL: optionalText,
   OTP_PASSWORD: optionalText,
 });

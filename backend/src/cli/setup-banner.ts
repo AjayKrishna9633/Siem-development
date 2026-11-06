@@ -1,5 +1,3 @@
-// The one place a raw setup token is ever written anywhere: the operator's terminal.
-// It is not stored (only its hash is), so this output is the only copy.
 export const printSetupTokenBanner = (token: string, expiresAt: Date): void => {
   const rule = '='.repeat(72);
   console.log(

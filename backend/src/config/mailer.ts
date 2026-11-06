@@ -6,7 +6,6 @@ export interface IMailTransport {
   from: string;
 }
 
-// Null when this install has no email set up; callers then hand links over by hand
 export const createMailTransport = (): IMailTransport | null => {
   if (env.SMTP_HOST) {
     const sender = env.SMTP_FROM ?? env.SMTP_USER ?? 'siemple@localhost';
