@@ -1,4 +1,5 @@
 export interface IRedisClient {
+  readonly status: string;
   set(
     key: string,
     value: string,
