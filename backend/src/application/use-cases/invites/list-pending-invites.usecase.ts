@@ -10,7 +10,6 @@ import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuthTokenType } from '../../../domain/enums/AuthTokenType.ts';
 import { assertPermission } from '../shared/access.ts';
 
-// Everyone invited but not yet accepted, with when their link expires
 @injectable()
 export class ListPendingInvitesUseCase implements IListPendingInvitesUseCase {
   constructor(
@@ -25,7 +24,6 @@ export class ListPendingInvitesUseCase implements IListPendingInvitesUseCase {
       this.users.findAll(),
       this.tokens.findUnusedByType(AuthTokenType.INVITE),
     ]);
-    // Newest first, and issuing a link deletes the older ones, so the first is the live one
     const linkByUser = new Map(links.map((link) => [link.userId, link] as const).reverse());
     const now = new Date();
 

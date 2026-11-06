@@ -24,7 +24,6 @@ export class RefreshSessionUseCase implements IRefreshSessionUseCase {
     const record = await this.sessions.consume(input.refreshToken);
     const user = await this.users.findById(record.userId);
 
-    // A password change, disable or deletion ends every session for the user
     if (!user || user.status !== UserStatus.ACTIVE || user.tokenVersion !== record.tokenVersion) {
       await this.sessions.revokeFamily(record.familyId);
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);

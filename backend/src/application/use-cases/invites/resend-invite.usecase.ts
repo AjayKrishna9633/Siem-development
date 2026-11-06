@@ -16,7 +16,6 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { assertPermission } from '../shared/access.ts';
 import { deliverInvite, inviteNotPending } from './invite-delivery.ts';
 
-// A fresh link with a fresh 48 hours; the previous link stops working at once
 @injectable()
 export class ResendInviteUseCase implements IResendInviteUseCase {
   constructor(

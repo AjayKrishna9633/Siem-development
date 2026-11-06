@@ -4,8 +4,6 @@ import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
-// An admin demoting or disabling themselves mid-session is almost always a mistake,
-// so another admin has to do it
 export const assertNotSelf = (actor: IActor, userId: string): void => {
   if (actor.userId === userId) {
     throw new AppError(
@@ -15,9 +13,6 @@ export const assertNotSelf = (actor: IActor, userId: string): void => {
   }
 };
 
-// Called inside changeWithAdminLock, after the change. `activeAdminsBefore` was counted
-// under the lock, so it can't be stale. Two admins demoting each other at the same
-// moment both pass every earlier check; this is what stops the second one.
 export const assertAnAdminRemains = (
   wasActiveAdmin: boolean,
   user: User,

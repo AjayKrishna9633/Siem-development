@@ -13,7 +13,6 @@ export class LogoutUseCase implements ILogoutUseCase {
   ) {}
 
   async execute(input: ILogoutInput): Promise<void> {
-    // Logout is idempotent: a missing or expired cookie is already logged out
     if (!input.refreshToken) return;
     const userId = await this.sessions.revoke(input.refreshToken);
     if (!userId) return;

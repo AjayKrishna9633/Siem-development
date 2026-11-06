@@ -34,7 +34,6 @@ export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
     });
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
 
-    // Picking the role the user already has changes nothing worth recording
     if (previousRole !== input.role) {
       await this.audit.append({
         actorUserId: input.actor.userId,

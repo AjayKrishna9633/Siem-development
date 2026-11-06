@@ -19,9 +19,6 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { assertPermission } from '../shared/access.ts';
 import { createResetLink } from './reset-link.ts';
 
-// For someone who forgot their password on an install without email, or whose email
-// isn't arriving: the link is emailed to them if possible, otherwise shown to the admin.
-// The admin never learns or sets the password itself.
 @injectable()
 export class IssueResetLinkUseCase implements IIssueResetLinkUseCase {
   constructor(

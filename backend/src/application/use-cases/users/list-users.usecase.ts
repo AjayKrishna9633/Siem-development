@@ -7,7 +7,6 @@ import { assertPermission } from '../shared/access.ts';
 import { Permission } from '../../../domain/enums/Permission.ts';
 import { toManagedUser } from './managed-user.ts';
 
-// Admins see everyone in the install
 @injectable()
 export class ListUsersUseCase implements IListUsersUseCase {
   constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}

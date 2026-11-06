@@ -6,7 +6,6 @@ import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
-// A fresh 30-minute reset link for `user`; any earlier unused reset link stops working
 export const createResetLink = async (
   settings: ISystemSettingsRepository,
   tokens: IAuthTokenService,

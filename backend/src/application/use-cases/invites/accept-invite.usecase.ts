@@ -14,8 +14,6 @@ import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.
 import { startSession } from '../shared/user-views.ts';
 import { invalidInvite } from './invite-delivery.ts';
 
-// The invited person chooses their name and password; the account becomes active and
-// they are signed in. The link is spent in one atomic step, so it works exactly once.
 @injectable()
 export class AcceptInviteUseCase implements IAcceptInviteUseCase {
   constructor(
@@ -31,10 +29,8 @@ export class AcceptInviteUseCase implements IAcceptInviteUseCase {
     const user = link ? await this.users.findById(link.userId) : null;
     if (!link || !user || user.status !== UserStatus.INVITED) throw invalidInvite();
 
-    // Slow on purpose, so done before spending the link
     const passwordHash = await this.hasher.hash(input.password);
 
-    // Two tabs submitting the same link: only one gets past this
     if (!(await this.tokens.consume(link))) throw invalidInvite();
 
     const now = new Date();

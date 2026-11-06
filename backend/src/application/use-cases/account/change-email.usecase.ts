@@ -16,7 +16,6 @@ import { invalidCode, loadActiveUser } from './account-helpers.ts';
 import { startSession } from '../shared/user-views.ts';
 import type { IPendingEmailChange } from './request-email-change.usecase.ts';
 
-// Step 2: the code from the new inbox switches the sign-in email
 @injectable()
 export class ChangeEmailUseCase implements IChangeEmailUseCase {
   constructor(
@@ -37,7 +36,6 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
     );
     if (!pending) throw invalidCode();
 
-    // Someone may have taken the address in the minutes since the code was sent
     if (await this.users.findByEmail(pending.newEmail)) {
       await this.codes.consume('email-change', user.id);
       throw new AppError(AppErrorCode.EMAIL_TAKEN, ErrorMessage.EMAIL_TAKEN);

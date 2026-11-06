@@ -13,8 +13,6 @@ import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.
 import { assertPasswordPolicy } from '../shared/access.ts';
 import { invalidResetLink } from './reset-link.ts';
 
-// Sets the new password and signs the account out everywhere. The person then signs in
-// normally, which proves the new password works.
 @injectable()
 export class ResetPasswordUseCase implements IResetPasswordUseCase {
   constructor(
@@ -30,11 +28,9 @@ export class ResetPasswordUseCase implements IResetPasswordUseCase {
 
     const link = await this.tokens.findUsable(input.token, AuthTokenType.RESET);
     const user = link ? await this.users.findById(link.userId) : null;
-    // The account may have been disabled since the link was sent
     if (!link || !user || user.status !== UserStatus.ACTIVE) throw invalidResetLink();
 
     const passwordHash = await this.hasher.hash(input.password);
-    // Two submissions of the same link: only one gets past this
     if (!(await this.tokens.consume(link))) throw invalidResetLink();
 
     user.resetPassword(passwordHash, new Date());

@@ -20,9 +20,6 @@ export interface IPendingEmailChange {
   newEmail: string;
 }
 
-// Step 1 of an admin changing their own email. Analysts' addresses are managed by
-// admins, so this is admin only. The code goes to the NEW address, which
-// proves it exists and belongs to them before anything changes.
 @injectable()
 export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
   constructor(
@@ -43,7 +40,7 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
       );
     }
 
-    const { newEmail } = input; // already trimmed and lowercased by the request schema
+    const { newEmail } = input;
     if (newEmail === user.email) {
       throw new AppError(AppErrorCode.SAME_EMAIL, ErrorMessage.SAME_EMAIL);
     }
@@ -61,7 +58,6 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
       expiresInMinutes,
     });
 
-    // The user just typed this address, so it is shown in full
     return { sentTo: newEmail, expiresInMinutes };
   }
 }

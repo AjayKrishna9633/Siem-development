@@ -20,9 +20,6 @@ import {
   setupAlreadyCompleted,
 } from './setup-token.ts';
 
-// Setup step 2: creates the first admin and closes setup for good, then signs them in.
-// Everything that decides the outcome happens inside one transaction holding a lock on
-// the settings row, so two simultaneous requests can never both create an admin.
 @injectable()
 export class CompleteSetupUseCase implements ICompleteSetupUseCase {
   constructor(
@@ -35,7 +32,6 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
   ) {}
 
   async execute(input: ICompleteSetupInput): Promise<ILoginResponse> {
-    // Hashing is deliberately slow, so it happens before the lock is taken
     const passwordHash = await this.hasher.hash(input.password);
     const now = new Date();
     let tokenRejected = false;
@@ -62,7 +58,6 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
         });
       });
     } catch (err) {
-      // Recorded after the rollback; written inside the transaction it would be undone too
       if (tokenRejected) await recordRejectedSetupToken(this.audit, input.context);
       throw err;
     }

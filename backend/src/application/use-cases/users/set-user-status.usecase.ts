@@ -13,8 +13,6 @@ import { assertPermission } from '../shared/access.ts';
 import { assertAnAdminRemains, assertNotSelf } from './admin-guard.ts';
 import { toManagedUser } from './managed-user.ts';
 
-// Disabling signs the user out everywhere at once (tokenVersion moves, and every
-// request re-checks it). Enabling lets them sign in again with their old password.
 @injectable()
 export class SetUserStatusUseCase implements ISetUserStatusUseCase {
   constructor(

@@ -3,9 +3,6 @@ import type { ILoginResponse, IUserProfileResponse } from '../../types/use-case/
 import type { User } from '../../../domain/entities/user.entity.ts';
 import { permissionsFor } from '../../../domain/policies/permissions.policy.ts';
 
-// Issues tokens for `user` and builds the session response the frontend stores.
-// Shared by login, refresh, setup, accepting an invite and password/email changes. Pass `familyId`
-// when rotating, so the new refresh token joins the existing session family.
 export const startSession = async (
   sessions: ISessionService,
   user: User,
@@ -28,13 +25,11 @@ export const startSession = async (
       email: user.email,
       username: user.displayName,
       role: user.role,
-      // The UI shows and hides features from this list; the API still checks every call
       permissions: permissionsFor(user.role),
     },
   };
 };
 
-// The signed-in user's own profile, as /me and profile updates return it
 export const toUserProfile = (user: User): IUserProfileResponse => {
   const snapshot = user.toSnapshot();
   return {

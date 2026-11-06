@@ -15,8 +15,6 @@ import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
-// Why a sign-in failed, for the audit log only. The caller always gets the same
-// "invalid email or password" (except a correct password on a disabled account).
 type FailureReason = 'unknown_account' | 'not_activated' | 'locked' | 'wrong_password' | 'disabled';
 
 @injectable()
@@ -28,8 +26,6 @@ export class LoginUseCase implements ILoginUseCase {
     @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
   ) {}
 
-  // A real bcrypt hash of a random value: an unknown email is checked against it, so it
-  // takes as long to reject as a wrong password does
   private timingHash: Promise<string> | null = null;
 
   async execute(input: ILoginInput): Promise<ILoginResponse> {
@@ -40,9 +36,6 @@ export class LoginUseCase implements ILoginUseCase {
     const user = await this.users.findByEmail(input.email);
     const now = new Date();
 
-    // Unknown, never-activated and locked accounts all look exactly like a wrong
-    // password. A locked account's password is not checked, so the lock can't be
-    // used to keep testing guesses.
     if (!user || !user.passwordHash || user.isLocked(now)) {
       this.timingHash ??= this.hasher.hash(randomBytes(16).toString('hex'));
       await this.hasher.compare(input.password, await this.timingHash);
@@ -58,13 +51,11 @@ export class LoginUseCase implements ILoginUseCase {
       throw invalidCredentials;
     }
 
-    // Only someone who knows the password learns that the account is inactive
     if (user.status !== UserStatus.ACTIVE) {
       await this.recordFailure(input, user, 'disabled');
       throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
     }
 
-    // Hashes made with a lower bcrypt cost are upgraded while the password is at hand
     if (this.hasher.needsRehash(user.passwordHash)) {
       user.upgradePasswordHash(await this.hasher.hash(input.password));
     }

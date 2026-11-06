@@ -14,9 +14,6 @@ import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { createResetLink } from './reset-link.ts';
 
-// Lockout recovery for when no admin can sign in (forgotten password, no email set up).
-// Only reachable from the server's terminal, which already implies full control of the
-// install. Restricted to admins: analysts are recovered by an admin in the UI.
 @injectable()
 export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
   constructor(

@@ -7,7 +7,6 @@ import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
-// Shared by "verify token" and "complete setup", so both apply the same rule
 export const isSetupTokenValid = (
   settings: SystemSettings,
   token: string,
@@ -22,6 +21,5 @@ export const invalidSetupToken = () =>
 export const setupAlreadyCompleted = () =>
   new AppError(AppErrorCode.SETUP_ALREADY_COMPLETED, ErrorMessage.SETUP_ALREADY_COMPLETED);
 
-// Wrong guesses are recorded so an operator can spot someone probing the setup page
 export const recordRejectedSetupToken = (audit: IAuditLogRepository, context: IRequestContext) =>
   audit.append({ actorUserId: null, action: AuditAction.SETUP_TOKEN_REJECTED, context });

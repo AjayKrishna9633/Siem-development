@@ -9,8 +9,6 @@ import { AuthTokenType } from '../../../domain/enums/AuthTokenType.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { invalidInvite } from './invite-delivery.ts';
 
-// The accept page opens with this: holding a live link is enough to see who it's for.
-// Any problem (unknown, expired, used, revoked) gets the same answer.
 @injectable()
 export class GetInviteUseCase implements IGetInviteUseCase {
   constructor(

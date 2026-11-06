@@ -16,8 +16,6 @@ import { loadActiveUser } from './account-helpers.ts';
 import { assertPasswordPolicy } from '../shared/access.ts';
 import { startSession } from '../shared/user-views.ts';
 
-// The current password proves it's really the account owner at the keyboard, not someone
-// with a stolen session. Works on every install: no email needed.
 @injectable()
 export class ChangePasswordUseCase implements IChangePasswordUseCase {
   constructor(
@@ -52,7 +50,6 @@ export class ChangePasswordUseCase implements IChangePasswordUseCase {
       targetId: user.id,
       context: input.context,
     });
-    // Best-effort: tells the real owner if this wasn't them
     await this.mailer.notifyPasswordChanged({ to: user.email, username: user.displayName });
 
     return startSession(this.sessions, user);

@@ -12,8 +12,6 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import { assertPermission } from '../shared/access.ts';
 import { inviteNotPending } from './invite-delivery.ts';
 
-// The invited person never had access, so their row is deleted outright (their links go
-// with it). The email can then be invited again; the audit log keeps the history.
 @injectable()
 export class RevokeInviteUseCase implements IRevokeInviteUseCase {
   constructor(
@@ -27,7 +25,6 @@ export class RevokeInviteUseCase implements IRevokeInviteUseCase {
     const user = await this.users.findById(input.userId);
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
 
-    // Deletes only while still invited, so an invite accepted a moment ago survives
     if (!(await this.users.deleteInvited(user.id))) throw inviteNotPending();
 
     await this.audit.append({

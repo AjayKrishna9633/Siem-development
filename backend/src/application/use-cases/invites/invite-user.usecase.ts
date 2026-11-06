@@ -18,7 +18,6 @@ import { assertPermission } from '../shared/access.ts';
 import { toManagedUser } from '../users/managed-user.ts';
 import { deliverInvite } from './invite-delivery.ts';
 
-// The invited person exists as "invited" — they can't sign in until they accept
 @injectable()
 export class InviteUserUseCase implements IInviteUserUseCase {
   constructor(
@@ -32,7 +31,6 @@ export class InviteUserUseCase implements IInviteUserUseCase {
   async execute(input: IInviteUserInput): Promise<IInviteResult> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
-    // The unique index on email still catches two simultaneous invites (409)
     if (await this.users.findByEmail(input.email)) {
       throw new AppError(AppErrorCode.USER_ALREADY_EXISTS, ErrorMessage.USER_ALREADY_EXISTS);
     }

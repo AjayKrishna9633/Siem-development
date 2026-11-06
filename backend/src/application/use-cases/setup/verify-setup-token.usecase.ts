@@ -12,8 +12,6 @@ import {
   setupAlreadyCompleted,
 } from './setup-token.ts';
 
-// Setup step 1: lets the page check the token before showing the account form.
-// It changes nothing; "complete setup" checks the token again under a lock.
 @injectable()
 export class VerifySetupTokenUseCase implements IVerifySetupTokenUseCase {
   constructor(

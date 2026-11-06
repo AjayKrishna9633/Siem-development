@@ -8,7 +8,6 @@ import { AuthTokenType } from '../../../domain/enums/AuthTokenType.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { invalidResetLink } from './reset-link.ts';
 
-// The reset page opens with this, so the person sees which account they're resetting
 @injectable()
 export class GetPasswordResetUseCase implements IGetPasswordResetUseCase {
   constructor(

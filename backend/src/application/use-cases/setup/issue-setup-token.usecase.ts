@@ -9,8 +9,6 @@ import type {
   IssueSetupTokenResult,
 } from '../../types/use-case/setup.types.ts';
 
-// Runs on every server start (keeping a live token) and from `npm run setup-token`
-// (always replacing it). The raw token is returned once for printing and never stored.
 @injectable()
 export class IssueSetupTokenUseCase implements IIssueSetupTokenUseCase {
   constructor(

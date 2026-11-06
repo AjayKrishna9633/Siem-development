@@ -14,9 +14,6 @@ import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
 import { createResetLink } from './reset-link.ts';
 
-// "Forgot password". The caller always gets the same answer and the same response time,
-// whether or not the account exists, so this can't be used to discover accounts.
-// Without email on this server nothing is sent; an admin generates the link instead.
 @injectable()
 export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase {
   constructor(
@@ -33,11 +30,8 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
     if (!this.email.isConfigured) return;
 
     const user = await this.users.findByEmail(input.email);
-    // Invited people accept their invite instead; disabled ones must not regain access
     if (!user || user.status !== UserStatus.ACTIVE) return;
 
-    // Not awaited: issuing the link and talking to the mail server take time, and
-    // waiting would reveal through the response time that the account exists
     void this.sendLink(user, input).catch((err: unknown) =>
       this.logger.error('Password reset link could not be sent', { userId: user.id, err }),
     );

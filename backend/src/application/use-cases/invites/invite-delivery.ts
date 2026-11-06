@@ -14,9 +14,6 @@ export interface IInviteDeliveryDeps {
   mailer: IAuthMailer;
 }
 
-// Shared by "invite" and "resend": a new single-use link (the earlier one stops working),
-// emailed if this install can send email. Same code path with or without email; the
-// only difference is whether the link comes back for the admin to pass on.
 export const deliverInvite = async (
   deps: IInviteDeliveryDeps,
   user: User,
