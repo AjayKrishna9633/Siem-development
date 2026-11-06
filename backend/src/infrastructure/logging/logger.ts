@@ -2,9 +2,6 @@ import { pino, stdSerializers, type Logger, type LoggerOptions } from 'pino';
 import { env } from '../../config/env.config.ts';
 import type { ILogger, LogFields } from '../../application/interfaces/services/logger.interface.ts';
 
-// A second line of defence: these fields are masked wherever they show up in a log
-// entry, so a careless `logger.info('...', { password })` still can't leak one.
-// Request bodies are never logged at all (see http-logger.ts).
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -27,7 +24,6 @@ const REDACT_PATHS = [
   '*.link',
 ];
 
-// Everything except level and output, shared with the tests that check redaction
 export const baseLoggerOptions: LoggerOptions = {
   base: { service: 'siemple-backend' },
   timestamp: pino.stdTimeFunctions.isoTime,
@@ -35,9 +31,6 @@ export const baseLoggerOptions: LoggerOptions = {
   serializers: { err: stdSerializers.err },
 };
 
-// JSON lines in production so operators can feed them to their own log tooling;
-// readable coloured lines while developing. pino-pretty is a dev dependency, which is
-// why it is only loaded in development.
 export const rootLogger: Logger = pino({
   ...baseLoggerOptions,
   level: env.LOG_LEVEL ?? (env.NODE_ENV === 'test' ? 'silent' : 'info'),
@@ -49,8 +42,6 @@ export const rootLogger: Logger = pino({
   }),
 });
 
-// Adapts pino to the application's ILogger, so use cases never depend on pino itself.
-// The message comes first, unlike pino's own (fields, message) order.
 export class PinoLogger implements ILogger {
   constructor(private readonly logger: Logger = rootLogger) {}
 

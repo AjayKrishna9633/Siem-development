@@ -17,8 +17,6 @@ import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-// Two tabs can refresh with the same cookie at once; a reuse this soon after
-// rotation is a race, not theft, so it is rejected without revoking the family.
 const REUSE_GRACE_MS = 10_000;
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -39,7 +37,6 @@ export class RefreshSessionService implements ISessionService {
       tokenVersion: payload.tokenVersion,
     };
 
-    // Only the hash is stored, so a cache dump does not leak usable tokens
     await this.cache.set(`refresh:${hashToken(refreshToken)}`, record, REFRESH_TTL_SECONDS);
     await this.cache.set(
       `refresh-family:${familyId}`,
@@ -63,9 +60,6 @@ export class RefreshSessionService implements ISessionService {
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
     }
 
-    // "Is it unused?" and "mark it used" happen in one atomic claim, so of two
-    // simultaneous refreshes with the same token exactly one wins. The claim is kept
-    // until the token would have expired, so a later replay is still detected.
     const usedKey = `refresh-used:${hashToken(refreshToken)}` as const;
     const claimed = await this.cache.setIfAbsent(usedKey, Date.now(), REFRESH_TTL_SECONDS);
     if (!claimed) {

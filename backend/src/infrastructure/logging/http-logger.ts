@@ -4,16 +4,10 @@ import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import { rootLogger } from './logger.ts';
 
-// An id from the reverse proxy is reused, so its logs and ours can be matched up;
-// anything else (missing, too long, odd characters) is replaced so it can't pollute logs
 const REQUEST_ID = /^[\w.-]{1,128}$/;
 
-// The query string is dropped: invite and reset links send their token as ?token=...
 const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0];
 
-// One line per finished request, carrying a request id that every log written while
-// handling it (req.log) shares. Only method, path, status, timing, IP and user agent
-// are kept; headers, cookies and bodies never reach the log.
 export const createHttpLogger = (logger: Logger) =>
   pinoHttp({
     logger,
@@ -24,7 +18,6 @@ export const createHttpLogger = (logger: Logger) =>
       res.setHeader('X-Request-Id', id);
       return id;
     },
-    // Health checks from Docker or a load balancer arrive every few seconds
     autoLogging: { ignore: (req) => pathOnly(req.url) === '/health' },
     customLogLevel(_req, res, err) {
       if (err || res.statusCode >= 500) return 'error';
@@ -38,7 +31,6 @@ export const createHttpLogger = (logger: Logger) =>
         id: req.id,
         method: req.method,
         path: pathOnly(req.url),
-        // Express sets req.ip, honouring TRUST_PROXY; the socket address is the fallback
         ip: (req.raw as IncomingMessage & { ip?: string }).ip ?? req.raw.socket.remoteAddress,
         userAgent: req.raw.headers['user-agent'],
       }),

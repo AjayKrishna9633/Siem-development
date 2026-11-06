@@ -37,8 +37,6 @@ export class SecurityMailer implements ISecurityMailer {
     });
   }
 
-  // Notices must never undo or fail a change that already happened; a failed delivery
-  // is already logged by the email service
   private async sendNotice(to: string, subject: string, content: ISecurityEmailInput) {
     await this.send(to, subject, content);
   }
@@ -60,7 +58,6 @@ export class SecurityMailer implements ISecurityMailer {
       code: input.code,
       footnote: `Never share this code. SIEMple staff will never ask for it. ${NOT_YOU}`,
     });
-    // A code that never arrives leaves the person stuck, so say so instead of pretending
     if (!delivered) {
       throw new AppError(AppErrorCode.EMAIL_NOT_DELIVERED, ErrorMessage.EMAIL_NOT_DELIVERED);
     }
@@ -84,7 +81,6 @@ export class SecurityMailer implements ISecurityMailer {
     newEmail: string;
     username: string;
   }): Promise<void> {
-    // Goes to the OLD address, so the real owner hears about a takeover attempt
     await this.sendNotice(input.oldEmail, 'Your SIEMple sign-in email was changed', {
       eyebrow: 'Security notice',
       heading: 'Your sign-in email was changed',

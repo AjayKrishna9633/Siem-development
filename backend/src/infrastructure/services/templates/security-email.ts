@@ -1,16 +1,9 @@
-// Account emails (invitations, reset links, verification codes and "your account changed"
-// notices) in the dark SIEMple look. Inline styles only, for Gmail/Outlook.
-
 export interface ISecurityEmailInput {
-  // Small uppercase label above the heading, e.g. "Password change"
   eyebrow: string;
   heading: string;
   paragraphs: string[];
   code?: string;
-  // A button, e.g. { label: 'Accept invitation', url }; the URL is also printed as text
-  // for mail clients that block buttons
   action?: { label: string; url: string };
-  // Shown under the code or at the bottom, e.g. "Didn't request this? ..."
   footnote: string;
 }
 
@@ -43,7 +36,6 @@ export const securityEmailHtml = (input: ISecurityEmailInput) => {
     )
     .join('');
 
-  // Digits spaced out so the code is easy to read and retype
   const code = input.code
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 22px;">
         <tr>

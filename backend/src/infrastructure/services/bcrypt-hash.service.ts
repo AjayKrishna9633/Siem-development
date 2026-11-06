@@ -15,7 +15,6 @@ export class BcryptHashService implements IHashService {
     return bcrypt.compare(plain, hash);
   }
 
-  // Every bcrypt hash records the cost it was made with, so older ones are recognisable
   needsRehash(hash: string): boolean {
     try {
       return bcrypt.getRounds(hash) < this.saltRounds;

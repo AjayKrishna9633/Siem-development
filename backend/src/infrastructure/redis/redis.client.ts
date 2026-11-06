@@ -2,7 +2,6 @@ import { Redis } from 'ioredis';
 import { env } from '../../config/env.config.ts';
 import type { ILogger } from '../../application/interfaces/services/logger.interface.ts';
 
-// The URL with its password hidden, so it is safe to print
 const safeUrl = (url: string) => url.replace(/\/\/([^@]*)@/, '//***@');
 
 export const createRedisClient = (logger: ILogger) => {
@@ -16,8 +15,6 @@ export const createRedisClient = (logger: ILogger) => {
     lazyConnect: true,
   });
 
-  // The cache falls back to memory when Redis is down, so the log is the only
-  // place this shows. Logged on state changes only, not on every retry.
   let connected: boolean | null = null;
 
   client.on('ready', () => {

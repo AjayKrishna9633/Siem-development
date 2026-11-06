@@ -20,7 +20,6 @@ interface IStoredCode<T> {
   data: T;
 }
 
-// A six-digit code is only ~20 bits, so it is stored hashed and limited to a few guesses
 const hashCode = (code: string) => createHash('sha256').update(code).digest();
 
 @injectable()

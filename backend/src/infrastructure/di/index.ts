@@ -1,7 +1,6 @@
 import { container } from './container.ts';
 import TYPES from '../../domain/constants/types.ts';
 
-// Repositories & Mappers
 import { TypeOrmUserRepository } from '../database/repositories/user.repository.ts';
 import { UserMapper } from '../database/mappers/user.mapper.ts';
 import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.repository.ts';
@@ -10,7 +9,6 @@ import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper
 import { TypeOrmAuthTokenRepository } from '../database/repositories/auth-token.repository.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
-// Services
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
 import { logger } from '../logging/logger.ts';
@@ -28,7 +26,6 @@ import { AuthTokenService } from '../services/auth-token.service.ts';
 import { AuthMailer } from '../services/auth-mailer.service.ts';
 import { OpaqueTokenService } from '../services/opaque-token.service.ts';
 
-// UseCases
 import { RequestPasswordResetUseCase } from '../../application/use-cases/password-reset/request-password-reset.usecase.ts';
 import { GetPasswordResetUseCase } from '../../application/use-cases/password-reset/get-password-reset.usecase.ts';
 import { IssueResetLinkUseCase } from '../../application/use-cases/password-reset/issue-reset-link.usecase.ts';
@@ -63,7 +60,6 @@ import { setupGuard } from '../../presentation/middlewares/setup-guard.middlewar
 import type { ITokenService } from '../../application/interfaces/services/token.service.interface.ts';
 import { authenticate } from '../../presentation/middlewares/auth.middleware.ts';
 
-// Controllers
 import { SessionController } from '../../presentation/controllers/session.controller.ts';
 import { PasswordResetController } from '../../presentation/controllers/password-reset.controller.ts';
 import { AccountController } from '../../presentation/controllers/account.controller.ts';
@@ -71,19 +67,16 @@ import { InviteController } from '../../presentation/controllers/invite.controll
 import { UsersController } from '../../presentation/controllers/users.controller.ts';
 import { SetupController } from '../../presentation/controllers/setup.controller.ts';
 
-// 1. Bind external constants/factories
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 container.bind(TYPES.Logger).toConstantValue(logger);
 
 const redisClient = createRedisClient(logger.child({ module: 'redis' }));
 container.bind(TYPES.RedisClient).toConstantValue(redisClient);
 
-// Null when email isn't configured; EmailService then reports nothing as delivered
 const mailTransport = createMailTransport();
 container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
 export const emailConfigured = mailTransport !== null;
 
-// 2. Bind Repositories & Mappers
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
@@ -91,7 +84,6 @@ container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
 container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
 container.bind(TYPES.AuthTokenRepository).to(TypeOrmAuthTokenRepository);
 
-// 3. Bind Services
 container.bind(TYPES.HashService).to(BcryptHashService);
 container.bind(TYPES.CacheService).to(RedisCacheService);
 container.bind(TYPES.EmailService).to(EmailService);
@@ -103,7 +95,6 @@ container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
 container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 container.bind(TYPES.OpaqueTokenService).to(OpaqueTokenService);
 
-// 4. Bind UseCases
 container.bind(TYPES.RequestPasswordResetUseCase).to(RequestPasswordResetUseCase);
 container.bind(TYPES.GetPasswordResetUseCase).to(GetPasswordResetUseCase);
 container.bind(TYPES.IssueResetLinkUseCase).to(IssueResetLinkUseCase);
@@ -132,7 +123,6 @@ container.bind(TYPES.GetSetupStatusUseCase).to(GetSetupStatusUseCase);
 container.bind(TYPES.VerifySetupTokenUseCase).to(VerifySetupTokenUseCase);
 container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 
-// 5. Bind Controllers
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
@@ -140,7 +130,6 @@ container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 
-// Resolve the controllers & services
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
   TYPES.PasswordResetController,

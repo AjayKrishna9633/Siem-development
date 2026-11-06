@@ -38,8 +38,6 @@ export class AuthTokenService implements IAuthTokenService {
     return { token, expiresAt };
   }
 
-  // Looked up by hash: the hash is a unique index, and finding the row already proves
-  // the token matches, so no separate comparison is needed
   findUsable(token: string, type: AuthTokenType): Promise<IAuthTokenRecord | null> {
     return this.tokens.findUsableByHash(this.opaque.hash(token), type, new Date());
   }
