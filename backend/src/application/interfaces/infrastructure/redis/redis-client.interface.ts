@@ -5,7 +5,6 @@ export interface IRedisClient {
     mode: 'EX' | 'PX' | 'EXAT' | 'PXAT' | 'KEEPTTL',
     duration: number,
   ): Promise<string | null>;
-  // SET ... EX <ttl> NX: resolves 'OK' when stored, null when the key already existed
   set(
     key: string,
     value: string,

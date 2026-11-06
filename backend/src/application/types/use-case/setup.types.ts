@@ -1,7 +1,6 @@
 import type { IRequestContext } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 
 export interface IIssueSetupTokenInput {
-  // False on server start (keep a live token); true for `npm run setup-token`
   replaceExisting: boolean;
 }
 

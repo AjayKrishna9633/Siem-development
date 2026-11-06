@@ -3,8 +3,6 @@ import type { IRequestContext } from '../../interfaces/repositories/audit-log.re
 import type { IActor } from './actor.types.ts';
 import type { IManagedUser } from './user-mgmt.types.ts';
 
-// What the admin sees after inviting or resending. `link` is present only when the
-// email wasn't delivered, so the admin can pass it on themselves.
 export interface IInviteDelivery {
   delivered: boolean;
   expiresAt: Date;
@@ -23,7 +21,6 @@ export interface IInviteResult {
   invite: IInviteDelivery;
 }
 
-// Resend or revoke one person's invitation
 export interface IManageInviteInput {
   actor: IActor;
   userId: string;
@@ -36,12 +33,10 @@ export interface IPendingInvite {
   role: UserRole;
   invitedById: string | null;
   invitedAt: Date;
-  // Null if the person has no live link (e.g. it was never issued); resend fixes it
   expiresAt: Date | null;
   expired: boolean;
 }
 
-// Shown on the accept page, to whoever holds the link
 export interface IInvitePreview {
   email: string;
   role: UserRole;

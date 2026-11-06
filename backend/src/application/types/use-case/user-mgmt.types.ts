@@ -3,7 +3,6 @@ import type { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import type { IActor } from './actor.types.ts';
 import type { IRequestContext } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 
-// A row in user management. username is null for someone who hasn't accepted yet.
 export interface IManagedUser {
   id: string;
   email: string;

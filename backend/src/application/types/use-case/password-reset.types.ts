@@ -6,7 +6,6 @@ export interface IRequestPasswordResetInput {
   context: IRequestContext;
 }
 
-// Shown on the reset page, to whoever holds the link
 export interface IPasswordResetPreview {
   email: string;
   expiresAt: Date;
@@ -24,14 +23,12 @@ export interface IIssueResetLinkInput {
   context: IRequestContext;
 }
 
-// What the admin sees: `link` only when the email to the user wasn't delivered
 export interface IResetLinkDelivery {
   delivered: boolean;
   expiresAt: Date;
   link?: string;
 }
 
-// For the reset-admin command: always the link, since it is printed in the terminal
 export interface IRecoveryLink {
   link: string;
   expiresAt: Date;

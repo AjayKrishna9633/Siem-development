@@ -1,7 +1,5 @@
 import type { VerificationPurpose } from './verification-code.service.interface.ts';
 
-// Account-security emails. Codes must arrive, so an undelivered one throws;
-// "your account changed" notices are best-effort and never fail the change itself.
 export interface ISecurityMailer {
   sendVerificationCode(input: {
     to: string;

@@ -5,7 +5,6 @@ export interface IResolveSessionUserInput {
   tokenVersion: number;
 }
 
-// Turns a verified access token into the user as they are right now
 export interface IResolveSessionUserUseCase {
   execute(input: IResolveSessionUserInput): Promise<ITokenPayload>;
 }
