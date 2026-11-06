@@ -14,7 +14,6 @@ export const severityBg: Record<Severity, string> = {
   low: 'bg-low',
 };
 
-// Wazuh rule level → severity band, matching the dashboard legend
 export const levelToSeverity = (level: number): Severity => {
   if (level >= 15) return 'critical';
   if (level >= 12) return 'high';

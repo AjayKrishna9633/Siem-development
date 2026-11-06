@@ -17,7 +17,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // The accept page opens with this; any problem with the link is one generic error
   async getInvite(token: string): Promise<IInvitePreview> {
     const res = await api.get<IApiResponse<IInvitePreview>>('/auth/invite', {
       params: { token },
@@ -25,7 +24,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // Spends the link, activates the account and signs the person in
   async acceptInvite(data: {
     token: string;
     name: string;
@@ -35,7 +33,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // Always answers the same, whether or not the account exists
   async requestPasswordReset(email: string): Promise<void> {
     await api.post<IApiResponse<null>>('/auth/password-reset/request', { email });
   },
@@ -47,7 +44,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // Signs the account out everywhere; the person then signs in with the new password
   async resetPassword(data: { token: string; password: string }): Promise<void> {
     await api.post<IApiResponse<null>>('/auth/password-reset', data);
   },
@@ -66,7 +62,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // Other devices are signed out; the returned session keeps this one signed in
   async changePassword(data: {
     currentPassword: string;
     newPassword: string;
@@ -75,7 +70,6 @@ export const authService = {
     return res.data.data;
   },
 
-  // Admin only. Step 1: the code goes to the NEW address
   async requestEmailChange(data: {
     newEmail: string;
     currentPassword: string;

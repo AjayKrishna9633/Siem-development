@@ -1,7 +1,5 @@
 export type SortDirection = 'asc' | 'desc';
 
-// One sortable column: how to read its value, and what kind of value it is so the
-// direction can be labelled "A → Z", "0 → 9" or "Oldest first"
 export interface ISortField<T, K extends string = string> {
   value: K;
   label: string;
@@ -23,8 +21,6 @@ const toComparable = (
   return raw;
 };
 
-// Case-insensitive and number-aware ("Team 2" before "Team 10"). Empty values always
-// go last, whichever direction is chosen, so "never logged in" never crowds the top.
 export const sortItems = <T>(items: T[], field: ISortField<T>, direction: SortDirection): T[] => {
   const factor = direction === 'asc' ? 1 : -1;
   return [...items].sort((a, b) => {

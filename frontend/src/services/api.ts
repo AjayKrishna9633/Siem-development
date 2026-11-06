@@ -9,7 +9,6 @@ export const api = axios.create({
   },
 });
 
-// The access token lives only in memory; the refresh token is an httpOnly cookie
 let accessToken: string | null = null;
 let onSessionChange: ((session: ILoginResponse | null) => void) | null = null;
 let refreshInFlight: Promise<ILoginResponse | null> | null = null;
@@ -22,8 +21,6 @@ export const setSessionListener = (listener: (session: ILoginResponse | null) =>
   onSessionChange = listener;
 };
 
-// Single-flight: concurrent 401s (and StrictMode's double effects) share one
-// refresh call, since a rotated refresh token is only valid once.
 export const refreshSession = (): Promise<ILoginResponse | null> => {
   if (!refreshInFlight) {
     refreshInFlight = api
@@ -49,11 +46,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auth endpoints report bad credentials with 401 too; those must not trigger a refresh
 const SKIP_REFRESH = /\/auth\/(login|refresh|logout)/;
 
-// Until first-run setup is done the backend answers every API call with SETUP_REQUIRED;
-// any page that hits it is sent to the setup page instead of showing an error
 const isSetupRequired = (error: unknown) =>
   axios.isAxiosError<IApiResponse>(error) &&
   error.response?.status === 403 &&

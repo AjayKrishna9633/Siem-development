@@ -9,9 +9,7 @@ import type {
 } from '../types/auth.ts';
 import { isUuid } from '../lib/validation.ts';
 
-// Everyone in the install. Admins only; the backend enforces it.
 export const usersService = {
-  // Everyone, with whether each invited person's link has expired merged in
   async list(): Promise<IManagedUser[]> {
     const [users, invites] = await Promise.all([
       api.get<IApiResponse<IManagedUser[]>>('/users'),
@@ -28,14 +26,12 @@ export const usersService = {
     return res.data.data;
   },
 
-  // Applies to the user's next request; they stay signed in
   async changeRole(userId: string, role: UserRole): Promise<IManagedUser> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
     const res = await api.patch<IApiResponse<IManagedUser>>(`/users/${userId}/role`, { role });
     return res.data.data;
   },
 
-  // Disabling signs the user out everywhere at once
   async setEnabled(userId: string, enabled: boolean): Promise<IManagedUser> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
     const action = enabled ? 'enable' : 'disable';
@@ -43,21 +39,18 @@ export const usersService = {
     return res.data.data;
   },
 
-  // A new link valid for 48 hours; the previous one stops working
   async resendInvite(userId: string): Promise<ILinkDelivery> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
     const res = await api.post<IApiResponse<ILinkDelivery>>(`/users/${userId}/invite/resend`);
     return res.data.data;
   },
 
-  // Emailed to the user when possible; otherwise the link comes back for the admin
   async issueResetLink(userId: string): Promise<ILinkDelivery> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
     const res = await api.post<IApiResponse<ILinkDelivery>>(`/users/${userId}/password-reset`);
     return res.data.data;
   },
 
-  // The invited person is removed; the same email can be invited again
   async revokeInvite(userId: string): Promise<void> {
     if (!isUuid(userId)) throw new Error('Invalid user ID.');
     await api.delete<IApiResponse<null>>(`/users/${userId}/invite`);

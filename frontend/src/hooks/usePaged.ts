@@ -9,7 +9,6 @@ export interface IPaging {
   setPage: (page: number) => void;
 }
 
-// Client-side paging; the page clamps itself when filters shrink the list
 export const usePaged = <T>(items: T[], pageSize = 10) => {
   const [page, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(items.length / pageSize));

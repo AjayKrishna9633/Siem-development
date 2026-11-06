@@ -6,7 +6,6 @@ import { refreshSession, setAccessToken, setSessionListener } from '../services/
 interface IAuthState {
   user: IUser | null;
   isAuthenticated: boolean;
-  // True until the startup refresh has decided whether a session exists
   isLoading: boolean;
 
   login: (token: string, user: IUser) => void;
@@ -15,13 +14,10 @@ interface IAuthState {
   restoreSession: () => Promise<void>;
 }
 
-// Tokens used to be persisted here; clear leftovers from older builds
 try {
   localStorage.removeItem('siem_access_token');
   localStorage.removeItem('siem_user');
-} catch {
-  // Storage unavailable — nothing to clean up
-}
+} catch {}
 
 export const useAuthStore = create<IAuthState>((set) => ({
   user: null,
@@ -36,7 +32,6 @@ export const useAuthStore = create<IAuthState>((set) => ({
   logout: () => {
     setAccessToken(null);
     set({ user: null, isAuthenticated: false });
-    // Revokes the refresh-token family server-side and clears the cookie
     authService.logout().catch(() => {});
   },
 
@@ -48,7 +43,6 @@ export const useAuthStore = create<IAuthState>((set) => ({
   },
 }));
 
-// Every refresh (startup or a retried 401) updates or ends the session here
 setSessionListener((session) => {
   if (session) {
     useAuthStore.setState({ user: session.user, isAuthenticated: true });

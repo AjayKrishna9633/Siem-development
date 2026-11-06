@@ -1,7 +1,5 @@
-// Mirrors the backend's credentials policy (domain/policies/credentials.policy.ts)
 export const PASSWORD_MIN_LENGTH = 12;
 
-// The first problem with a new password and its confirmation, or null when it's fine
 export const newPasswordError = (
   password: string,
   confirmation: string,
