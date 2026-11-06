@@ -15,21 +15,24 @@ export const createRedisClient = (logger: ILogger) => {
     lazyConnect: true,
   });
 
-  let connected: boolean | null = null;
+  let lastError: string | null = null;
 
   client.on('ready', () => {
-    if (connected !== true) logger.info('Redis connected', { url: safeUrl(env.REDIS_URL) });
-    connected = true;
+    logger.info('Redis connected', { url: safeUrl(env.REDIS_URL) });
+    lastError = null;
   });
 
   client.on('error', (err: Error) => {
-    if (connected !== false) {
-      logger.warn(
-        'Redis not connected. Using the in-memory cache: sessions and verification codes are lost when the backend restarts.',
-        { url: safeUrl(env.REDIS_URL), reason: err.message },
-      );
-    }
-    connected = false;
+    if (err.message === lastError) return;
+    lastError = err.message;
+    logger.warn(
+      'Redis error. Using the in-memory cache: sessions and verification codes are lost when the backend restarts.',
+      { url: safeUrl(env.REDIS_URL), err },
+    );
+  });
+
+  client.on('reconnecting', (delayMs: number) => {
+    logger.info('Redis reconnecting', { delayMs });
   });
 
   client.on('end', () => {
