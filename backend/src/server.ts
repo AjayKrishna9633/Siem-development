@@ -32,16 +32,39 @@ if (emailConfigured) {
 
 redisClient.connect().catch(() => {});
 
-const server = app.listen(env.PORT, () => logger.info('Server listening', { port: env.PORT }));
-
-const shutdown = async () => {
-  logger.info('Shutting down');
-  server.close();
-  if (AppDataSource.isInitialized) {
-    await AppDataSource.destroy();
+const server = app.listen(env.PORT, (err?: Error) => {
+  if (err) {
+    logger.error('Server failed to start', { port: env.PORT, err });
+    process.exit(1);
   }
-  await redisClient.quit().catch(() => {});
-  process.exit(0);
+  logger.info('Server listening', { port: env.PORT });
+});
+
+let shuttingDown = false;
+
+const shutdown = async (signal: NodeJS.Signals) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info('Shutting down', { signal });
+
+  const forceExit = setTimeout(() => {
+    logger.error('Shutdown timed out, forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    if (AppDataSource.isInitialized) await AppDataSource.destroy();
+    if (redisClient.status === 'ready') await redisClient.quit();
+    else redisClient.disconnect();
+    process.exit(0);
+  } catch (err) {
+    logger.error('Shutdown failed', { err });
+    process.exit(1);
+  }
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
