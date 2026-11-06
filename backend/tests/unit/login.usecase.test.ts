@@ -10,7 +10,6 @@ import type { ISessionService } from '../../src/application/interfaces/services/
 const now = new Date('2026-11-01T10:00:00Z');
 const context = { ip: '203.0.113.7', userAgent: 'test' };
 
-// A fake hasher: "hash:<plain>" is the hash of <plain>; "old:" hashes need upgrading
 const hasher: IHashService = {
   hash: async (plain) => `hash:${plain}`,
   compare: async (plain, hash) => hash === `hash:${plain}` || hash === `old:${plain}`,

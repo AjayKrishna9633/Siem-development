@@ -9,7 +9,6 @@ export interface ISignedInUser {
   token: string;
 }
 
-// Completes first-run setup and returns the first admin, signed in
 export const setupFirstAdmin = async (app: Express, email = 'admin@example.com') => {
   const res = await request(app)
     .post('/api/setup/complete')
@@ -26,14 +25,12 @@ export const setupFirstAdmin = async (app: Express, email = 'admin@example.com')
   return { id: res.body.data.user.id, token: res.body.data.accessToken } as ISignedInUser;
 };
 
-// The token inside an invite link (tests run without email, so the link is returned)
 export const tokenFromLink = (link: string): string => {
   const token = new URL(link).searchParams.get('token');
   if (!token) throw new Error(`No token in ${link}`);
   return token;
 };
 
-// An admin invites someone, who accepts and is signed in
 export const addActiveUser = async (
   app: Express,
   admin: ISignedInUser,

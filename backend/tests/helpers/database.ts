@@ -1,8 +1,6 @@
 import { AppDataSource } from '../../src/infrastructure/database/data-source.ts';
 import { di } from '../../src/infrastructure/di/index.ts';
 
-// The last line of defence before DROP SCHEMA: the app must be connected to the test
-// database, never the development one
 const assertTestDatabase = () => {
   const connectedTo = (AppDataSource.options as { url?: string }).url;
   if (!process.env.TEST_DATABASE_URL || connectedTo !== process.env.TEST_DATABASE_URL) {
@@ -12,7 +10,6 @@ const assertTestDatabase = () => {
   }
 };
 
-// A fresh install: empty schema, then every migration, exactly as a customer's server
 export const recreateDatabase = async (): Promise<void> => {
   assertTestDatabase();
   if (!AppDataSource.isInitialized) await AppDataSource.initialize();
@@ -25,7 +22,6 @@ export const closeDatabase = async (): Promise<void> => {
   if (AppDataSource.isInitialized) await AppDataSource.destroy();
 };
 
-// What the operator would copy from the server log
 export const issueSetupToken = async (): Promise<string> => {
   const result = await di.issueSetupToken.execute({ replaceExisting: true });
   if (result.status !== 'issued')

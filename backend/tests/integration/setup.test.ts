@@ -11,9 +11,6 @@ import {
 } from '../helpers/database.ts';
 import { di } from '../../src/infrastructure/di/index.ts';
 
-// One fresh install, walked through in order. The steps share state on purpose: the
-// setup guard remembers "completed" for the life of the process, exactly as in
-// production, so "before setup" checks must run before setup is completed.
 describe('first-run setup', () => {
   const admin = {
     adminName: 'Ada Admin',

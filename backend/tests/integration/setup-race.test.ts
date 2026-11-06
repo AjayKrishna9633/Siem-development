@@ -8,7 +8,6 @@ import {
   recreateDatabase,
 } from '../helpers/database.ts';
 
-// Its own file, so it gets a fresh app (setup guard and rate limiter) and a fresh install
 describe('first-run setup under concurrency', () => {
   let token: string;
 
@@ -34,8 +33,6 @@ describe('first-run setup under concurrency', () => {
     );
     const statuses = (await Promise.all(attempts)).map((res) => res.status);
 
-    // The losers see "already completed" (404) once the winner commits, or are turned
-    // away by the failed-attempt rate limit (429) — never a 500, never a second admin
     expect(statuses.filter((s) => s === 201)).toHaveLength(1);
     expect(statuses.every((s) => [201, 404, 429].includes(s))).toBe(true);
     expect(await countUsers()).toBe(1);

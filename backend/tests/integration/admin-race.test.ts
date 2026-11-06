@@ -8,10 +8,6 @@ import type { IChangeUserRoleUseCase } from '../../src/application/interfaces/us
 import { closeDatabase, recreateDatabase } from '../helpers/database.ts';
 import { addActiveUser, setupFirstAdmin } from '../helpers/users.ts';
 
-// Over HTTP, timing decides whether the per-request role check or the lock stops the
-// second of two mutual demotions. Calling the use case directly with two actors who are
-// both admins makes sure both get past every earlier check, so only the advisory lock
-// and the active-admin count taken under it can stop the second one.
 describe('last-admin protection under the lock', () => {
   let adminA: string;
   let adminB: string;

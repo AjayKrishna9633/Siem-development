@@ -9,7 +9,6 @@ import type { ITokenPayload } from '../../src/application/interfaces/services/to
 const asUser = (role: string) =>
   ({ user: { userId: 'u1', email: 'u@x.co', role, tokenVersion: 0 } }) as unknown as Request;
 
-// Runs a middleware and returns what it passed to next(): undefined means "allowed"
 const run = async (
   middleware: (req: Request, res: Response, next: NextFunction) => unknown,
   req: Request,

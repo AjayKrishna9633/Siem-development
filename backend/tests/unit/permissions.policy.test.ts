@@ -5,7 +5,6 @@ import { UserRole } from '../../src/domain/enums/UserRole.ts';
 
 const { ADMIN, T2_ANALYST, T1_ANALYST } = UserRole;
 
-// The matrix from the spec, row by row: [permission, admin, t2, t1]
 const MATRIX: [Permission, boolean, boolean, boolean][] = [
   [Permission.ALERTS_VIEW, true, true, true],
   [Permission.ALERTS_TRIAGE, true, true, true],

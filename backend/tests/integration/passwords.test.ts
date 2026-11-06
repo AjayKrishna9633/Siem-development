@@ -65,7 +65,6 @@ describe('passwords: change, reset links and recovery', () => {
     expect((await login('ana@example.com', winner)).status).toBe(200);
     expect((await login('ana@example.com', 'changed-passphrase')).status).toBe(401);
 
-    // The reset signed out the session the analyst had before
     const before = await request(app)
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${analyst.token}`);

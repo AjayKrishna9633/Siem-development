@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import { baseLoggerOptions, PinoLogger } from '../../src/infrastructure/logging/logger.ts';
 import { createHttpLogger } from '../../src/infrastructure/logging/http-logger.ts';
 
-// A pino logger with the app's real options that writes JSON lines into an array
 const captureLogger = () => {
   const lines: Record<string, unknown>[] = [];
   const stream = new Writable({
@@ -79,7 +78,7 @@ describe('HTTP request logging', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       msg: 'GET /api/auth/invite 400',
-      level: 40, // warn, because the status is 4xx
+      level: 40,
       req: { method: 'GET', path: '/api/auth/invite' },
       res: { statusCode: 400 },
     });
