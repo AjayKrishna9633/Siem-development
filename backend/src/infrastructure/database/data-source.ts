@@ -10,15 +10,11 @@ import { CreateAuditLogs1793577600000 } from './migrations/1793577600000-CreateA
 import { CreateSystemSettings1793664000000 } from './migrations/1793664000000-CreateSystemSettings.ts';
 import { CreateAuthTokens1793750400000 } from './migrations/1793750400000-CreateAuthTokens.ts';
 
-// The schema only ever changes through migrations, never `synchronize`, so every
-// customer install and every upgrade ends up with exactly the same tables.
-// Migrations are listed explicitly (not a glob) so the same list works under tsx and
-// from the compiled dist/ folder.
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: env.DATABASE_URL,
   synchronize: false,
-  logging: false, // <-- set this to false to hide query lines
+  logging: false,
   entities: [UserModel, AuditLogModel, SystemSettingsModel, AuthTokenModel],
   migrations: [
     Baseline1793404800000,

@@ -1,8 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Install-wide settings in a single row. The row is created here, not by the app, so
-// setup can always lock it (SELECT ... FOR UPDATE) — there is never a moment where
-// two requests race to create it.
 export class CreateSystemSettings1793664000000 implements MigrationInterface {
   name = 'CreateSystemSettings1793664000000';
 

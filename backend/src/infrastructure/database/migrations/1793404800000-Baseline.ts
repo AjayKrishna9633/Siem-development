@@ -1,8 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-// The schema as it stood when the project switched from `synchronize` to migrations
-// (multi-tenant: users + companies). Constraint and index names are the ones TypeORM
-// generated, so a database built by `synchronize` and one built by this migration match.
 export class Baseline1793404800000 implements MigrationInterface {
   name = 'Baseline1793404800000';
 

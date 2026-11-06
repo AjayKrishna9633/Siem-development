@@ -1,8 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Security events (sign-ins, setup, invitations, role changes, ...). The app only ever
-// inserts; the trigger makes that a database guarantee, so a bug or a compromised app
-// account can't quietly rewrite or erase the history.
 export class CreateAuditLogs1793577600000 implements MigrationInterface {
   name = 'CreateAuditLogs1793577600000';
 
@@ -37,7 +34,6 @@ export class CreateAuditLogs1793577600000 implements MigrationInterface {
       CREATE TRIGGER "audit_logs_append_only"
       BEFORE UPDATE OR DELETE ON "audit_logs"
       FOR EACH ROW EXECUTE FUNCTION "audit_logs_reject_change"()`);
-    // TRUNCATE skips row triggers, so it needs its own statement-level trigger
     await queryRunner.query(`
       CREATE TRIGGER "audit_logs_no_truncate"
       BEFORE TRUNCATE ON "audit_logs"
@@ -45,7 +41,6 @@ export class CreateAuditLogs1793577600000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Dropping the table also drops its triggers
     await queryRunner.query(`DROP TABLE "audit_logs"`);
     await queryRunner.query(`DROP FUNCTION "audit_logs_reject_change"()`);
   }

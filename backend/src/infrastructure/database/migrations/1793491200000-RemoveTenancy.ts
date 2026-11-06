@@ -1,11 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Single-tenant: one install is one organization, so companies and users.organization_id
-// go, and the roles become admin / t2_analyst / t1_analyst.
-//
-// Existing users are deleted rather than mapped: the multi-tenant accounts (several
-// companies' admins, a platform super admin) have no meaningful place in one
-// organization, and the first admin is now created through the setup flow.
 export class RemoveTenancy1793491200000 implements MigrationInterface {
   name = 'RemoveTenancy1793491200000';
 
@@ -19,8 +13,6 @@ export class RemoveTenancy1793491200000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "companies"`);
     await queryRunner.query(`DROP TYPE "public"."companies_status_enum"`);
 
-    // Postgres can't remove values from an enum, so the type is replaced. The table is
-    // empty at this point, so the cast never meets an old value.
     await queryRunner.query(
       `ALTER TYPE "public"."users_role_enum" RENAME TO "users_role_enum_old"`,
     );
@@ -33,9 +25,6 @@ export class RemoveTenancy1793491200000 implements MigrationInterface {
     await queryRunner.query(`DROP TYPE "public"."users_role_enum_old"`);
   }
 
-  // Restores the multi-tenant schema. Lossy by nature: deleted users and companies
-  // can't come back, and remaining users are mapped admin -> org_admin,
-  // t1/t2 -> analyst with no company.
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `ALTER TYPE "public"."users_role_enum" RENAME TO "users_role_enum_old"`,

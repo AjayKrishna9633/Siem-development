@@ -16,7 +16,6 @@ export class UserModel {
   @Column({ type: 'varchar', unique: true })
   email!: string;
 
-  // Null until an invited person accepts and chooses their name
   @Column({ type: 'varchar', nullable: true })
   username!: string | null;
 

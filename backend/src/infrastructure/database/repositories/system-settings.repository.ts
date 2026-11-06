@@ -27,7 +27,6 @@ export class TypeOrmSystemSettingsRepository implements ISystemSettingsRepositor
 
   completeSetup(decide: (locked: SystemSettings) => User): Promise<User> {
     return this.db.transaction(async (manager) => {
-      // FOR UPDATE: a second setup request waits here until the first commits or rolls back
       const settings = this.mapper.toDomain(await this.loadRow(manager, true));
       const admin = decide(settings);
 
@@ -42,7 +41,6 @@ export class TypeOrmSystemSettingsRepository implements ISystemSettingsRepositor
       where: { id: SETTINGS_ROW_ID },
       ...(lock && { lock: { mode: 'pessimistic_write' as const } }),
     });
-    // The CreateSystemSettings migration inserts it; missing means the database is broken
     if (!row) throw new Error('The system_settings row is missing. Run the database migrations.');
     return row;
   }

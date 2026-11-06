@@ -3,7 +3,6 @@ import type { IMapper } from '../../../application/interfaces/IMapper.ts';
 import { SystemSettings } from '../../../domain/entities/system-settings.entity.ts';
 import { SystemSettingsModel } from '../models/system-settings.model.ts';
 
-// The table's only row; the CHECK constraint refuses any other id
 export const SETTINGS_ROW_ID = 1;
 
 @injectable()

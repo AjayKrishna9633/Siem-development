@@ -13,7 +13,6 @@ export class TypeOrmAuditLogRepository implements IAuditLogRepository {
 
   async append(entry: IAuditEntry): Promise<void> {
     const repository = this.db.getRepository(AuditLogModel);
-    // insert(), never save(): save() may issue an UPDATE, which the table rejects
     await repository.insert(
       repository.create({
         actorUserId: entry.actorUserId,

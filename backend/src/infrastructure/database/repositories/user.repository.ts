@@ -52,8 +52,6 @@ export class TypeOrmUserRepository
     change: (user: User, activeAdminCount: number) => void,
   ): Promise<User | null> {
     return this.db.transaction(async (manager) => {
-      // A transaction-scoped advisory lock: released on commit or rollback, and taken by
-      // every admin-affecting change, so two of them can never interleave
       await manager.query(`SELECT pg_advisory_xact_lock(hashtext('users_admin_change'))`);
 
       const model = await manager.findOne(UserModel, { where: { id: userId } });

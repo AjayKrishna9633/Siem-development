@@ -1,8 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Single-use links for invitations and password resets, replacing the activation
-// records that lived in Redis (and vanished whenever Redis was down or restarted).
-// Invited people now choose their own name on acceptance, so username may be null.
 export class CreateAuthTokens1793750400000 implements MigrationInterface {
   name = 'CreateAuthTokens1793750400000';
 
@@ -36,7 +33,6 @@ export class CreateAuthTokens1793750400000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Invited people who never chose a name get their email, so NOT NULL can return
     await queryRunner.query(`UPDATE "users" SET "username" = "email" WHERE "username" IS NULL`);
     await queryRunner.query(`ALTER TABLE "users" ALTER COLUMN "username" SET NOT NULL`);
 

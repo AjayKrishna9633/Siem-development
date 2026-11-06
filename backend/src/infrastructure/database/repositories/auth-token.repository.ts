@@ -45,8 +45,6 @@ export class TypeOrmAuthTokenRepository implements IAuthTokenRepository {
   }
 
   async consume(id: string, now: Date): Promise<boolean> {
-    // The WHERE clause is the check: Postgres row-locks the row for the UPDATE, so a
-    // second simultaneous call finds used_at already set and updates nothing
     const result = await this.db
       .createQueryBuilder()
       .update(AuthTokenModel)
