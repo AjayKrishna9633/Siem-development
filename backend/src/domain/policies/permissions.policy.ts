@@ -13,8 +13,6 @@ const TIER_2: readonly Permission[] = [
   Permission.RULES_EDIT,
 ];
 
-// The single source of truth for who can do what. Admins can do everything,
-// including working alerts.
 export const ROLE_PERMISSIONS: Readonly<Record<UserRole, readonly Permission[]>> = {
   [UserRole.T1_ANALYST]: TIER_1,
   [UserRole.T2_ANALYST]: TIER_2,

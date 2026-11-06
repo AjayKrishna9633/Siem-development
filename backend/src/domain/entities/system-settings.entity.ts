@@ -2,8 +2,6 @@ import { DomainError } from '../errors/DomainError.ts';
 import { ErrorMessage } from '../enums/ErrorMessage.ts';
 import type { IOrganizationDetails, SystemSettingsProps } from '../types/system-settings.types.ts';
 
-// The install's single settings record. Setup is a one-way switch: once completed it
-// can never be undone, and the setup token is gone for good.
 export class SystemSettings {
   private constructor(private props: SystemSettingsProps) {}
 
@@ -34,8 +32,6 @@ export class SystemSettings {
     return { ...this.props };
   }
 
-  // A live token is reused across restarts, so restarting the server doesn't silently
-  // invalidate a token the operator has already copied from the log
   hasLiveSetupToken(now: Date): boolean {
     return (
       this.props.setupTokenHash !== null &&
@@ -44,7 +40,6 @@ export class SystemSettings {
     );
   }
 
-  // Replaces any earlier token; only its hash is kept
   issueSetupToken(tokenHash: string, expiresAt: Date, now: Date): void {
     this.assertSetupPending();
     this.props.setupTokenHash = tokenHash;

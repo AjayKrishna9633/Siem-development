@@ -10,7 +10,6 @@ export interface ISystemSettingsProps {
 }
 export type SystemSettingsProps = ISystemSettingsProps;
 
-// Entered by the first admin on the setup page
 export interface IOrganizationDetails {
   orgName: string;
   baseUrl: string;

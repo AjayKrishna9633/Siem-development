@@ -4,7 +4,6 @@ import type { UserStatus } from '../enums/UserStatus.ts';
 export interface IUserProps {
   id: string;
   email: string;
-  // Null until an invited person accepts and chooses their name
   username: string | null;
   passwordHash: string | null;
   role: UserRole;
@@ -22,9 +21,6 @@ export interface IUserProps {
 }
 export type UserProps = IUserProps;
 
-// What the domain needs to create each kind of user. Defined here, not in the
-// application layer, so the entity depends on nothing outside the domain.
-// The admin created by first-run setup: active immediately, with the password they chose
 export interface ICreateFirstAdminProps {
   id: string;
   email: string;
@@ -33,7 +29,6 @@ export interface ICreateFirstAdminProps {
   now: Date;
 }
 
-// The person chooses their own name when they accept
 export interface ICreateInvitedUserProps {
   id: string;
   email: string;

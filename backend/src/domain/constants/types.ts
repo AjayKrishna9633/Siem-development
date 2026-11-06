@@ -1,5 +1,4 @@
 const TYPES = {
-  // Use Cases
   RequestPasswordResetUseCase: Symbol.for('RequestPasswordResetUseCase'),
   GetPasswordResetUseCase: Symbol.for('GetPasswordResetUseCase'),
   IssueResetLinkUseCase: Symbol.for('IssueResetLinkUseCase'),
@@ -27,7 +26,6 @@ const TYPES = {
   GetSetupStatusUseCase: Symbol.for('GetSetupStatusUseCase'),
   VerifySetupTokenUseCase: Symbol.for('VerifySetupTokenUseCase'),
   CompleteSetupUseCase: Symbol.for('CompleteSetupUseCase'),
-  // Repositories & Mappers
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
   AuditLogRepository: Symbol.for('AuditLogRepository'),
@@ -35,7 +33,6 @@ const TYPES = {
   SystemSettingsMapper: Symbol.for('SystemSettingsMapper'),
   AuthTokenRepository: Symbol.for('AuthTokenRepository'),
 
-  // Services
   CacheService: Symbol.for('CacheService'),
   EmailService: Symbol.for('EmailService'),
   HashService: Symbol.for('HashService'),
@@ -47,10 +44,8 @@ const TYPES = {
   SecurityMailer: Symbol.for('SecurityMailer'),
   OpaqueTokenService: Symbol.for('OpaqueTokenService'),
 
-  // Middleware
   AuthMiddleware: Symbol.for('AuthMiddleware'),
 
-  // Controllers
   SessionController: Symbol.for('SessionController'),
   PasswordResetController: Symbol.for('PasswordResetController'),
   AccountController: Symbol.for('AccountController'),
@@ -58,7 +53,6 @@ const TYPES = {
   UsersController: Symbol.for('UsersController'),
   SetupController: Symbol.for('SetupController'),
 
-  // External / Config
   DataSource: Symbol.for('DataSource'),
   RedisClient: Symbol.for('RedisClient'),
   MailTransport: Symbol.for('MailTransport'),

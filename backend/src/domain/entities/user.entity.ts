@@ -68,8 +68,6 @@ export class User {
   get username() {
     return this.props.username;
   }
-  // What to call the person in emails and the UI: their name, or their email until
-  // they've accepted an invitation and chosen one
   get displayName(): string {
     return this.props.username ?? this.props.email;
   }
@@ -85,7 +83,6 @@ export class User {
   get tokenVersion() {
     return this.props.tokenVersion;
   }
-  // Counts toward "there must always be one": an admin who can actually sign in
   get isActiveAdmin() {
     return this.props.role === UserRole.ADMIN && this.props.status === UserStatus.ACTIVE;
   }
@@ -141,21 +138,16 @@ export class User {
     this.touch(now);
   }
 
-  // Same password, stronger hash: sessions stay valid, unlike a real password change
   upgradePasswordHash(newHash: string): void {
     this.props.passwordHash = newHash;
   }
 
-  // Through a reset link: also lifts a sign-in lockout, since locked-out is often exactly
-  // why someone is resetting
   resetPassword(newHash: string, now: Date): void {
     this.changePassword(newHash, now);
     this.props.failedLoginAttempts = 0;
     this.props.lockedUntil = null;
   }
 
-  // The new address was proven with a code sent to it. Bumping tokenVersion signs out
-  // every session, since access tokens carry the old email.
   changeEmail(newEmail: string, now: Date): void {
     this.props.email = normalizeEmail(newEmail);
     this.props.isEmailVerified = true;
@@ -163,13 +155,11 @@ export class User {
     this.touch(now);
   }
 
-  // Takes effect on the next request: the session check reads the role from the database
   changeRole(role: UserRole, now: Date): void {
     this.props.role = role;
     this.touch(now);
   }
 
-  // Bumping tokenVersion ends every session the user has
   disable(now: Date): void {
     if (this.props.status === UserStatus.DISABLED) {
       throw new DomainError(ErrorMessage.USER_ALREADY_DISABLED);
@@ -179,7 +169,6 @@ export class User {
     this.touch(now);
   }
 
-  // Someone disabled before accepting their invite goes back to "invited"
   enable(now: Date): void {
     if (this.props.status !== UserStatus.DISABLED) {
       throw new DomainError(ErrorMessage.USER_NOT_DISABLED);
