@@ -14,7 +14,6 @@ import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 
-// Signing in and out, and keeping a session alive with the refresh cookie
 @injectable()
 export class SessionController {
   constructor(
@@ -28,7 +27,6 @@ export class SessionController {
     const { refreshToken, ...session } = await this.loginUseCase.execute({
       email: req.body.email,
       password: req.body.password,
-      // req.ip, not X-Forwarded-For, which any client can fake (see TRUST_PROXY)
       context: requestContextFrom(req),
     });
 

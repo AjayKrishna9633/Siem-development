@@ -16,7 +16,6 @@ import type {
   IResetPasswordUseCase,
 } from '../../application/interfaces/use-cases/password-reset.interface.ts';
 
-// Forgot password, for someone who is signed out: request a link, open it, set a password
 @injectable()
 export class PasswordResetController {
   constructor(
@@ -33,7 +32,6 @@ export class PasswordResetController {
       context: requestContextFrom(req),
     });
 
-    // The same answer whether or not the account exists or email is configured
     res
       .status(HttpStatusCode.OK)
       .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.PASSWORD_RESET_REQUESTED));

@@ -16,8 +16,6 @@ import type {
   IGetInviteUseCase,
 } from '../../application/interfaces/use-cases/invites.interface.ts';
 
-// The invited person's side: open the link, then accept. No sign-in needed — the
-// single-use link is the credential.
 @injectable()
 export class InviteController {
   constructor(
@@ -27,7 +25,6 @@ export class InviteController {
 
   preview = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const token = typeof req.query.token === 'string' ? req.query.token.trim().toLowerCase() : '';
-    // A mangled link is rejected before any lookup
     if (!LINK_TOKEN_PATTERN.test(token)) {
       throw new AppError(AppErrorCode.INVALID_INVITE, ErrorMessage.INVALID_INVITE);
     }

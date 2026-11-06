@@ -4,9 +4,6 @@ import { REFRESH_TTL_SECONDS } from '../../infrastructure/services/refresh-sessi
 
 export const REFRESH_COOKIE = 'refreshToken';
 
-// httpOnly keeps it out of reach of injected scripts; SameSite=strict means
-// cross-site pages cannot make the browser send it (CSRF). Scoped to /api/auth
-// so it only travels with refresh and logout calls.
 const cookieOptions: CookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',

@@ -19,7 +19,6 @@ import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
-// The signed-in user's own account: profile, password and email
 @injectable()
 export class AccountController {
   constructor(
@@ -62,7 +61,6 @@ export class AccountController {
       .json(new ApiResponse(HttpStatusCode.OK, updatedProfile, SuccessMessage.PROFILE_UPDATED));
   });
 
-  // Other devices are signed out; this one gets a fresh session cookie
   changePassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const { refreshToken, ...session } = await this.changePasswordUseCase.execute({
       actor: actorFrom(req),

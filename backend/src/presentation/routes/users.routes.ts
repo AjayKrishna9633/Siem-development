@@ -5,7 +5,6 @@ import { authorize } from '../middlewares/auth.middleware.ts';
 import { Permission } from '../../domain/enums/Permission.ts';
 import { changeRoleSchema, inviteUserSchema } from '../validators/user-mgmt.schema.ts';
 
-// Everyone in the install — for users who manage users
 export function usersRoutes(controller: UsersController, authMiddleware: RequestHandler): Router {
   const router = Router();
   router.use(authMiddleware, authorize(Permission.USERS_MANAGE));

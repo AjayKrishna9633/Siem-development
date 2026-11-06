@@ -1,9 +1,5 @@
 import { rateLimit } from 'express-rate-limit';
 
-// Per-IP limit over a sliding window. A rejected request gets the API's usual JSON
-// error shape, so the frontend shows `message` like any other error.
-// `countFailuresOnly`: successful requests (status < 400) are not counted, so the limit
-// applies to wrong guesses rather than to normal use
 export const createRateLimiter = (
   limit: number,
   message: string,

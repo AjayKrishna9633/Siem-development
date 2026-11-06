@@ -4,11 +4,9 @@ import { validate } from '../middlewares/validate.middleware.ts';
 import { requestPasswordResetSchema, resetPasswordSchema } from '../validators/auth.schema.ts';
 import { createRateLimiter } from '../http/rate-limit.ts';
 
-// Mounted at /api/auth
 export function passwordResetRoutes(controller: PasswordResetController): Router {
   const router = Router();
 
-  // Requests send email, so they get the tightest budget
   const requestLimiter = createRateLimiter(5, 'Too many reset requests, please try again later.');
   const linkLimiter = createRateLimiter(
     20,

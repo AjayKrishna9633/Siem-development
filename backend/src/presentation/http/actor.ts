@@ -6,7 +6,6 @@ import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
-// The signed-in user, as set by the authenticate middleware
 export const actorFrom = (req: Request): IActor => {
   if (!req.user) {
     throw new AppError(AppErrorCode.UNAUTHORIZED, ErrorMessage.UNAUTHORIZED);
@@ -17,8 +16,6 @@ export const actorFrom = (req: Request): IActor => {
   };
 };
 
-// Every route ID (e.g. :userId) is a UUID. Checking here returns a clear 400
-// before the database sees a malformed value and fails with a 500.
 export const idParamFrom = (req: Request, name: string): string => {
   const value = req.params[name];
   if (typeof value !== 'string' || !z.uuid().safeParse(value).success) {

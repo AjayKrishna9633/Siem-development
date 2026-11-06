@@ -6,7 +6,6 @@ export const changeRoleSchema = z.object({
   role: z.enum(UserRole, 'Choose a role'),
 });
 
-// The invited person picks their own name when they accept
 export const inviteUserSchema = z.object({
   email: emailField,
   role: z.enum(UserRole, 'Choose a role'),

@@ -4,7 +4,6 @@ import {
   PASSWORD_MIN_LENGTH,
 } from '../../domain/policies/credentials.policy.ts';
 
-// Invite and reset links carry 32 random bytes as hex
 export const LINK_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
 export const linkTokenField = z
@@ -15,8 +14,6 @@ export const linkTokenField = z
 
 const byteLength = (s: string) => new TextEncoder().encode(s).length;
 
-// Trimmed and lowercased before the format check, so " Jane@Acme.co " arrives as
-// "jane@acme.co" and use cases never normalize emails themselves
 export const emailField = z
   .string()
   .trim()
@@ -38,5 +35,4 @@ export const personNameField = z
   .min(2, 'Name must be at least 2 characters')
   .max(100);
 
-// An existing password or temporary password being checked, not set
 export const secretField = (label: string) => z.string().min(1, `${label} is required`).max(128);

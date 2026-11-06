@@ -12,8 +12,6 @@ import type {
   IVerifySetupTokenUseCase,
 } from '../../application/interfaces/use-cases/setup.interface.ts';
 
-// First-run setup: the operator proves server access with the logged token, then
-// creates the first admin. These routes 404 once setup is done (see setupGuard).
 @injectable()
 export class SetupController {
   constructor(
@@ -45,7 +43,6 @@ export class SetupController {
       context: requestContextFrom(req),
     });
 
-    // The new admin is signed in straight away, like someone accepting an invite
     setRefreshCookie(res, refreshToken);
     res
       .status(HttpStatusCode.CREATED)

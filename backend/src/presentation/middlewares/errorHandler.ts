@@ -9,7 +9,6 @@ import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 
 const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.SETUP_REQUIRED]: HttpStatusCode.FORBIDDEN,
-  // Setup routes stop existing once setup is done, so they answer like an unknown route
   [AppErrorCode.SETUP_ALREADY_COMPLETED]: HttpStatusCode.NOT_FOUND,
   [AppErrorCode.INVALID_SETUP_TOKEN]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CREDENTIALS]: HttpStatusCode.UNAUTHORIZED,
@@ -27,7 +26,6 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.SESSION_REVOKED]: HttpStatusCode.UNAUTHORIZED,
   [AppErrorCode.INVALID_INVITE]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVITE_NOT_PENDING]: HttpStatusCode.CONFLICT,
-  // 400 rather than 401: a wrong current password must not look like an expired session
   [AppErrorCode.INVALID_VERIFICATION_CODE]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.INVALID_CURRENT_PASSWORD]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.SAME_PASSWORD]: HttpStatusCode.BAD_REQUEST,
@@ -38,18 +36,12 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.CANNOT_CHANGE_OWN_ACCESS]: HttpStatusCode.FORBIDDEN,
 };
 
-// Postgres error 22P02, e.g. "invalid input syntax for type uuid"
 const PG_INVALID_TEXT_REPRESENTATION = '22P02';
-// Postgres error 23505: a unique index rejected a duplicate
 const PG_UNIQUE_VIOLATION = '23505';
 
-// TypeORM copies the driver's error code onto its QueryFailedError
 const isPostgresError = (err: unknown, code: string): boolean =>
   typeof err === 'object' && err !== null && 'code' in err && err.code === code;
 
-// Two requests can both pass a "does it exist?" check before either saves; the unique
-// index then rejects the second. The column comes from Postgres's detail text,
-// e.g. "Key (email)=(a@b.co) already exists."
 const duplicateMessage = (err: unknown): string => {
   const detail =
     typeof err === 'object' && err !== null && 'detail' in err && typeof err.detail === 'string'
@@ -60,13 +52,11 @@ const duplicateMessage = (err: unknown): string => {
   return ErrorMessage.DUPLICATE_VALUE;
 };
 
-// express.json() tags its own failures with a `type`
 const bodyParserErrorType = (err: unknown): string | undefined =>
   typeof err === 'object' && err !== null && 'type' in err && typeof err.type === 'string'
     ? err.type
     : undefined;
 
-// Unmatched routes answer in the same JSON shape as every other error
 export const notFoundHandler: RequestHandler = (_req, res): void => {
   res
     .status(HttpStatusCode.NOT_FOUND)
@@ -116,7 +106,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next): void =>
     return;
   }
 
-  // Safety net: a malformed UUID that slipped past request validation reached Postgres
   if (isPostgresError(err, PG_INVALID_TEXT_REPRESENTATION)) {
     res
       .status(HttpStatusCode.BAD_REQUEST)
@@ -131,7 +120,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next): void =>
     return;
   }
 
-  // req.log carries this request's id, so the stack can be matched to its request line
   req.log.error({ err }, 'Unhandled exception');
   res
     .status(HttpStatusCode.INTERNAL_SERVER_ERROR)

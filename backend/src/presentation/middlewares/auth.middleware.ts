@@ -12,8 +12,6 @@ import type { Permission } from '../../domain/enums/Permission.ts';
 import type { UserRole } from '../../domain/enums/UserRole.ts';
 import { hasPermission } from '../../domain/policies/permissions.policy.ts';
 
-// Verifies the access token, then loads the user so a disabled account or changed
-// role takes effect on the next request rather than when the token expires
 export function authenticate(
   tokenService: ITokenService,
   sessionUsers: IResolveSessionUserUseCase,
@@ -55,7 +53,6 @@ export function authenticate(
   };
 }
 
-// Every listed permission is required. Runs after `authenticate`.
 export function authorize(...required: Permission[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
