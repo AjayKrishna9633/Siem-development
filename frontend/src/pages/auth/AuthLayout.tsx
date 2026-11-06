@@ -47,7 +47,6 @@ export const AuthError: React.FC<{ message: string | null }> = ({ message }) =>
     </p>
   ) : null;
 
-// The shared form controls, sized up for the sign-in card
 const authFieldClass = 'h-10 bg-canvas/70';
 
 type IAuthInputProps = React.ComponentProps<typeof Input>;

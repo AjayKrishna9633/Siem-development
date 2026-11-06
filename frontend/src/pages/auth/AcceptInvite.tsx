@@ -10,15 +10,12 @@ import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
 import { LocalTime } from '../../components/common/LocalTime.tsx';
 import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
-// Where an invitation link lands: shows who it's for, then the person chooses their
-// name and password and is signed in. The link works once.
 export const AcceptInvite: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
   const token = (searchParams.get('token') ?? '').trim().toLowerCase();
-  // A truncated or mangled link is caught here, without a request
   const malformed = !isLinkToken(token);
 
   const [preview, setPreview] = useState<IInvitePreview | null>(null);

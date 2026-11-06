@@ -71,7 +71,6 @@ export const UserManagement: React.FC = () => {
     kind: 'invite' | 'reset';
   } | null>(null);
 
-  // Resending and revoking are confirmed first: both kill the link the person may be using
   const [confirmResend, setConfirmResend] = useState<IManagedUser | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<IManagedUser | null>(null);
   const [confirmReset, setConfirmReset] = useState<IManagedUser | null>(null);
@@ -81,7 +80,6 @@ export const UserManagement: React.FC = () => {
     enable: boolean;
   } | null>(null);
 
-  // The server answers with the updated row; swap it in without reloading the list
   const replaceUser = (updated: IManagedUser) =>
     setUsers((current) => current.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
 

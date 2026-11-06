@@ -6,7 +6,6 @@ import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
-// Other auth pages send people here with context, e.g. after a password reset
 export interface ILoginRedirectState {
   from?: { pathname?: string };
   passwordReset?: boolean;

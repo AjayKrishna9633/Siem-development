@@ -9,10 +9,8 @@ import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
 import { Field, Select } from '../../components/ui/Form.tsx';
 import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
-// Exactly as the server prints it: 32 random bytes as hex
 const SETUP_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
-// The browser's own zone first, so the default is always in the list
 const timeZoneOptions = (preferred: string): string[] => {
   const zones = Intl.supportedValuesOf('timeZone');
   return [...new Set([preferred, 'UTC', ...zones])];
@@ -21,9 +19,6 @@ const timeZoneOptions = (preferred: string): string[] => {
 const firstProblem = (...problems: (string | null | undefined)[]) =>
   problems.find((p) => !!p) ?? null;
 
-// First-run setup, reached automatically while the server answers SETUP_REQUIRED.
-// Step 1 proves access to the server (the token is in its log); step 2 creates the
-// first admin and records the organization details.
 export const Setup: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
@@ -40,14 +35,12 @@ export const Setup: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [orgName, setOrgName] = useState('');
-  // The address this page was opened on is almost always the right one
   const [baseUrl, setBaseUrl] = useState(window.location.origin);
   const [timezone, setTimezone] = useState(browserZone);
   const [submitting, setSubmitting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
-  // The setup routes 404 for good once setup is done; this page can't do anything then
   const showIfAlreadyDone = (err: unknown) => {
     if (axios.isAxiosError(err) && err.response?.status === 404) {
       setStep('done');

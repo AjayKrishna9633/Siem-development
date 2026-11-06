@@ -6,8 +6,6 @@ import { apiErrorMessage } from '../../lib/errors.ts';
 import { isEmail } from '../../lib/validation.ts';
 import { AuthError, AuthInput, AuthLayout, AuthSubmit } from './AuthLayout.tsx';
 
-// Asks for a reset link. The server answers the same way whether or not the account
-// exists, so the page can't say whether an email is really on its way.
 export const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);

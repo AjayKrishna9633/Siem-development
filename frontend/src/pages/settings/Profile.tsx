@@ -19,10 +19,8 @@ export const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [dialog, setDialog] = useState<'password' | 'email' | null>(null);
-  // Analysts' addresses are managed for them; only user managers change their own
   const canChangeEmail = can(user, 'users.manage');
 
-  // Session payloads carry only identity fields; load audit timestamps from /me
   useEffect(() => {
     let active = true;
     authService
@@ -191,8 +189,6 @@ export const Profile: React.FC = () => {
         </div>
       </Panel>
 
-      {/* Outside the profile form: React bubbles portal events, so a dialog's submit would
-          otherwise also submit the profile form */}
       {dialog === 'password' && <ChangePasswordDialog onClose={() => setDialog(null)} />}
       {dialog === 'email' && canChangeEmail && (
         <ChangeEmailDialog onClose={() => setDialog(null)} />

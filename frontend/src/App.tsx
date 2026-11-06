@@ -14,7 +14,6 @@ import { UserManagement } from './pages/settings/UserManagement.tsx';
 import { InviteUser } from './pages/settings/InviteUser.tsx';
 import { Profile } from './pages/settings/Profile.tsx';
 
-// People who manage users land on user management, everyone else on their profile
 const RootRedirect: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
@@ -28,7 +27,6 @@ const CanManageUsers: React.FC<{ children: React.ReactNode }> = ({ children }) =
 export const App: React.FC = () => {
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
-  // The access token is memory-only, so each page load trades the refresh cookie for a new one
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
@@ -36,14 +34,12 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/setup" element={<Setup />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Authenticated account pages */}
         <Route
           element={
             <ProtectedRoute>

@@ -9,8 +9,6 @@ import { LocalTime } from '../../components/common/LocalTime.tsx';
 import type { ILoginRedirectState } from './Login.tsx';
 import { AuthError, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
-// Where a reset link lands (from "forgot password", an admin, or `npm run reset-admin`).
-// Setting the password signs the account out everywhere; the person then signs in.
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
