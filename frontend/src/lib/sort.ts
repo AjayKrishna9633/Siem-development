@@ -1,43 +1,12 @@
 export type SortDirection = 'asc' | 'desc';
 
-export interface ISortField<T, K extends string = string> {
+export interface ISortField<K extends string = string> {
   value: K;
   label: string;
   kind: 'text' | 'number' | 'date';
-  get: (item: T) => string | number | null | undefined;
 }
 
-const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
-
-const toComparable = (
-  raw: string | number | null | undefined,
-  kind: ISortField<unknown>['kind'],
-) => {
-  if (raw === null || raw === undefined || raw === '') return null;
-  if (kind === 'date') {
-    const t = new Date(raw).getTime();
-    return Number.isNaN(t) ? null : t;
-  }
-  return raw;
-};
-
-export const sortItems = <T>(items: T[], field: ISortField<T>, direction: SortDirection): T[] => {
-  const factor = direction === 'asc' ? 1 : -1;
-  return [...items].sort((a, b) => {
-    const va = toComparable(field.get(a), field.kind);
-    const vb = toComparable(field.get(b), field.kind);
-    if (va === null && vb === null) return 0;
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    const diff =
-      typeof va === 'number' && typeof vb === 'number'
-        ? va - vb
-        : collator.compare(String(va), String(vb));
-    return diff * factor;
-  });
-};
-
-export const directionLabel = (kind: ISortField<unknown>['kind'], direction: SortDirection) => {
+export const directionLabel = (kind: ISortField['kind'], direction: SortDirection) => {
   const labels = {
     text: { asc: 'A → Z', desc: 'Z → A' },
     number: { asc: 'Low → High', desc: 'High → Low' },

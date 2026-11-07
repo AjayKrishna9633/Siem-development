@@ -5,20 +5,26 @@ import type {
   IInviteResult,
   IManagedUser,
   IPendingInvite,
+  IUserListParams,
+  IUserPage,
   UserRole,
 } from '../types/auth.ts';
 import { isUuid } from '../lib/validation.ts';
 
 export const usersService = {
-  async list(): Promise<IManagedUser[]> {
+  async list(params: IUserListParams): Promise<IUserPage> {
     const [users, invites] = await Promise.all([
-      api.get<IApiResponse<IManagedUser[]>>('/users'),
+      api.get<IApiResponse<IUserPage>>('/users', { params }),
       api.get<IApiResponse<IPendingInvite[]>>('/users/invites'),
     ]);
     const expired = new Map(invites.data.data.map((i) => [i.userId, i.expired]));
-    return users.data.data.map((u) =>
-      u.status === 'invited' ? { ...u, inviteExpired: expired.get(u.id) ?? true } : u,
-    );
+    const page = users.data.data;
+    return {
+      ...page,
+      items: page.items.map((u) =>
+        u.status === 'invited' ? { ...u, inviteExpired: expired.get(u.id) ?? true } : u,
+      ),
+    };
   },
 
   async invite(data: { email: string; role: UserRole }): Promise<IInviteResult> {

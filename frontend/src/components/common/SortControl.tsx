@@ -3,21 +3,21 @@ import { MonoLabel } from '../ui/Panel.tsx';
 import { Select } from '../ui/Form.tsx';
 import { directionLabel, type ISortField, type SortDirection } from '../../lib/sort.ts';
 
-interface ISortControlProps<T, K extends string> {
-  fields: ISortField<T, K>[];
+interface ISortControlProps<K extends string> {
+  fields: ISortField<K>[];
   field: K;
   direction: SortDirection;
   onFieldChange: (field: K) => void;
   onDirectionChange: (direction: SortDirection) => void;
 }
 
-export const SortControl = <T, K extends string>({
+export const SortControl = <K extends string>({
   fields,
   field,
   direction,
   onFieldChange,
   onDirectionChange,
-}: ISortControlProps<T, K>) => {
+}: ISortControlProps<K>) => {
   const kind = fields.find((f) => f.value === field)?.kind ?? 'text';
   const next = direction === 'asc' ? 'desc' : 'asc';
 

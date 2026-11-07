@@ -2,8 +2,16 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { MonoLabel } from '../ui/Panel.tsx';
 import { SearchInput, Select } from '../ui/Form.tsx';
-import type { IPaging } from '../../hooks/usePaged.ts';
 import { cn } from '../../lib/cn.ts';
+
+export interface IPaging {
+  page: number;
+  pages: number;
+  from: number;
+  to: number;
+  total: number;
+  setPage: (page: number) => void;
+}
 
 interface IListToolbarProps {
   search: string;

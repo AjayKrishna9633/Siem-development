@@ -1,14 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { UserPlus } from 'lucide-react';
 import { Page, PageHeader } from '../../components/ui/PageHeader.tsx';
 import { Panel } from '../../components/ui/Panel.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { StatTiles } from '../../components/common/StatTiles.tsx';
-import { FilterSelect, ListToolbar } from '../../components/common/ListToolbar.tsx';
+import { FilterSelect, ListToolbar, type IPaging } from '../../components/common/ListToolbar.tsx';
 import { UserTable } from '../../components/users/UserTable.tsx';
-import { useRemoteList } from '../../hooks/useRemoteList.ts';
-import { usePaged } from '../../hooks/usePaged.ts';
+import { useRemote } from '../../hooks/useRemote.ts';
+import { useDebounced } from '../../hooks/useDebounced.ts';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { usersService } from '../../services/users.service.ts';
 import { SortControl } from '../../components/common/SortControl.tsx';
@@ -20,10 +20,18 @@ import {
 } from '../../components/users/InviteDialogs.tsx';
 import { ChangeRoleDialog } from '../../components/users/ChangeRoleDialog.tsx';
 import { UserStatusDialog } from '../../components/users/UserStatusDialog.tsx';
-import type { ILinkDelivery, IManagedUser, UserRole, UserStatus } from '../../types/auth.ts';
+import type {
+  ILinkDelivery,
+  IManagedUser,
+  UserRole,
+  UserSortKey,
+  UserStatus,
+} from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { sortItems, type ISortField, type SortDirection } from '../../lib/sort.ts';
+import type { ISortField, SortDirection } from '../../lib/sort.ts';
 import { ALL_ROLES, roleLabel } from '../../lib/roles.ts';
+
+const PAGE_SIZE = 10;
 
 const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -33,36 +41,41 @@ const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
 
 const ROLE_OPTIONS = ALL_ROLES.map((r) => ({ value: r, label: roleLabel[r] }));
 
-type UserSortKey = 'name' | 'email' | 'role' | 'status' | 'lastLogin';
-
-const SORT_FIELDS: ISortField<IManagedUser, UserSortKey>[] = [
-  { value: 'name', label: 'Name', kind: 'text', get: (u) => u.username ?? u.email },
-  { value: 'email', label: 'Email', kind: 'text', get: (u) => u.email },
-  {
-    value: 'role',
-    label: 'Role',
-    kind: 'text',
-    get: (u) => roleLabel[u.role],
-  },
-  {
-    value: 'status',
-    label: 'Status',
-    kind: 'text',
-    get: (u) => STATUS_OPTIONS.find((s) => s.value === (u.status ?? 'active'))?.label,
-  },
-  { value: 'lastLogin', label: 'Last login', kind: 'date', get: (u) => u.lastLoginAt },
+const SORT_FIELDS: ISortField<UserSortKey>[] = [
+  { value: 'name', label: 'Name', kind: 'text' },
+  { value: 'email', label: 'Email', kind: 'text' },
+  { value: 'role', label: 'Role', kind: 'text' },
+  { value: 'status', label: 'Status', kind: 'text' },
+  { value: 'lastLogin', label: 'Last login', kind: 'date' },
 ];
 
 export const UserManagement: React.FC = () => {
   const navigate = useNavigate();
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const {
-    items: users,
-    setItems: setUsers,
-    loading,
-    error,
-    reload,
-  } = useRemoteList(usersService.list, 'Failed to load users.');
+
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState<'all' | UserRole>('all');
+  const [status, setStatus] = useState<'all' | UserStatus>('all');
+  const [sortBy, setSortBy] = useState<UserSortKey>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const debouncedSearch = useDebounced(search.trim());
+
+  const fetchPage = useCallback(
+    () =>
+      usersService.list({
+        page,
+        pageSize: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        role: role === 'all' ? undefined : role,
+        status: status === 'all' ? undefined : status,
+        sortBy,
+        sortDir: sortDirection,
+      }),
+    [page, debouncedSearch, role, status, sortBy, sortDirection],
+  );
+  const { data, loading, error, reload } = useRemote(fetchPage, 'Failed to load users.');
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{
@@ -80,18 +93,29 @@ export const UserManagement: React.FC = () => {
     enable: boolean;
   } | null>(null);
 
-  const replaceUser = (updated: IManagedUser) =>
-    setUsers((current) => current.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const counts = data?.counts ?? { all: 0, invited: 0, disabled: 0 };
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const firstLoad = loading && !data;
 
-  const runAction = async (
-    u: IManagedUser,
-    action: () => Promise<IManagedUser>,
-    failure: string,
-  ) => {
+  if (data && page > pages) setPage(pages);
+
+  const paging: IPaging = {
+    page,
+    pages,
+    from: total ? (page - 1) * PAGE_SIZE + 1 : 0,
+    to: Math.min(page * PAGE_SIZE, total),
+    total,
+    setPage,
+  };
+
+  const runAction = async (u: IManagedUser, action: () => Promise<unknown>, failure: string) => {
     setBusyId(u.id);
     setActionError(null);
     try {
-      replaceUser(await action());
+      await action();
+      reload();
     } catch (err: unknown) {
       setActionError(apiErrorMessage(err, failure));
     } finally {
@@ -99,72 +123,29 @@ export const UserManagement: React.FC = () => {
     }
   };
 
-  const resendInvite = async (u: IManagedUser) => {
-    setBusyId(u.id);
-    setActionError(null);
-    try {
-      const delivery = await usersService.resendInvite(u.id);
-      setIssued({ user: u, delivery, kind: 'invite' });
-      replaceUser({ ...u, inviteExpired: false });
-    } catch (err: unknown) {
-      setActionError(apiErrorMessage(err, 'Failed to send a new invitation.'));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const issueResetLink = async (u: IManagedUser) => {
-    setBusyId(u.id);
-    setActionError(null);
-    try {
-      setIssued({ user: u, delivery: await usersService.issueResetLink(u.id), kind: 'reset' });
-    } catch (err: unknown) {
-      setActionError(apiErrorMessage(err, 'Failed to issue a reset link.'));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const revokeInvite = async (u: IManagedUser) => {
-    setBusyId(u.id);
-    setActionError(null);
-    try {
-      await usersService.revokeInvite(u.id);
-      setUsers((current) => current.filter((x) => x.id !== u.id));
-    } catch (err: unknown) {
-      setActionError(apiErrorMessage(err, 'Failed to revoke the invitation.'));
-    } finally {
-      setBusyId(null);
-    }
-  };
-  const [search, setSearch] = useState('');
-  const [role, setRole] = useState<'all' | UserRole>('all');
-  const [status, setStatus] = useState<'all' | UserStatus>('all');
-  const [sortBy, setSortBy] = useState<UserSortKey>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return users.filter(
-      (u) =>
-        (role === 'all' || u.role === role) &&
-        (status === 'all' || (u.status ?? 'active') === status) &&
-        `${u.username ?? ''} ${u.email}`.toLowerCase().includes(q),
+  const resendInvite = (u: IManagedUser) =>
+    runAction(
+      u,
+      async () => {
+        const delivery = await usersService.resendInvite(u.id);
+        setIssued({ user: u, delivery, kind: 'invite' });
+      },
+      'Failed to send a new invitation.',
     );
-  }, [users, role, status, search]);
 
-  const sorted = useMemo(
-    () =>
-      sortItems(
-        filtered,
-        SORT_FIELDS.find((f) => f.value === sortBy) ?? SORT_FIELDS[0],
-        sortDirection,
-      ),
-    [filtered, sortBy, sortDirection],
-  );
+  const issueResetLink = (u: IManagedUser) =>
+    runAction(
+      u,
+      async () => {
+        const delivery = await usersService.issueResetLink(u.id);
+        setIssued({ user: u, delivery, kind: 'reset' });
+      },
+      'Failed to issue a reset link.',
+    );
 
-  const { visible, paging } = usePaged(sorted);
-  const count = (s: UserStatus) => users.filter((u) => (u.status ?? 'active') === s).length;
+  const revokeInvite = (u: IManagedUser) =>
+    runAction(u, () => usersService.revokeInvite(u.id), 'Failed to revoke the invitation.');
+
   const filtersActive = search !== '' || role !== 'all' || status !== 'all';
 
   return (
@@ -185,11 +166,11 @@ export const UserManagement: React.FC = () => {
       />
 
       <StatTiles
-        loading={loading}
+        loading={firstLoad}
         stats={[
-          { label: 'Total users', value: users.length },
-          { label: 'Pending invitations', value: count('invited') },
-          { label: 'Disabled accounts', value: count('disabled') },
+          { label: 'Total users', value: counts.all },
+          { label: 'Pending invitations', value: counts.invited },
+          { label: 'Disabled accounts', value: counts.disabled },
         ]}
       />
 
@@ -254,8 +235,8 @@ export const UserManagement: React.FC = () => {
           <div className="px-4 py-12 text-center text-sm text-critical">{error}</div>
         ) : (
           <UserTable
-            users={visible}
-            loading={loading}
+            users={users}
+            loading={firstLoad}
             currentUserId={currentUserId}
             busyId={busyId}
             onResendInvite={setConfirmResend}
