@@ -7,6 +7,7 @@ import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
 import { actorFrom, idParamFrom } from '../http/actor.ts';
 import { requestContextFrom } from '../http/request-context.ts';
+import { listUsersQuerySchema } from '../validators/user-mgmt.schema.ts';
 import type {
   IChangeUserRoleUseCase,
   ISetUserStatusUseCase,
@@ -37,7 +38,8 @@ export class UsersController {
   ) {}
 
   list = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.listUsers.execute({ actor: actorFrom(req) });
+    const query = listUsersQuerySchema.parse(req.query);
+    const result = await this.listUsers.execute({ actor: actorFrom(req), query });
 
     res
       .status(HttpStatusCode.OK)

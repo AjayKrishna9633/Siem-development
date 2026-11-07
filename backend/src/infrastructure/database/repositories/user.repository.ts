@@ -6,9 +6,23 @@ import type { IMapper } from '../../../application/interfaces/IMapper.ts';
 import { BaseRepository } from './base.repository.ts';
 import { UserModel } from '../models/user.model.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
+import type {
+  IUserListQuery,
+  UserSortKey,
+} from '../../../application/types/use-case/user-mgmt.types.ts';
 import { normalizeEmail } from '../../../domain/policies/credentials.policy.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
+
+const SORT_COLUMNS: Record<UserSortKey, string> = {
+  name: 'LOWER(COALESCE(u.username, u.email))',
+  email: 'u.email',
+  role: 'u.role',
+  status: 'u.status',
+  lastLogin: 'u.lastLoginAt',
+};
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&');
 
 @injectable()
 export class TypeOrmUserRepository
@@ -34,6 +48,43 @@ export class TypeOrmUserRepository
   async findAll(): Promise<User[]> {
     const models = await this.repository.find({ order: { createdAt: 'DESC' } });
     return models.map((model) => this.mapper.toDomain(model));
+  }
+
+  async findPage(query: IUserListQuery): Promise<{ users: User[]; total: number }> {
+    const qb = this.repository.createQueryBuilder('u');
+    if (query.search) {
+      qb.andWhere('(u.email ILIKE :search OR u.username ILIKE :search)', {
+        search: `%${escapeLike(query.search)}%`,
+      });
+    }
+    if (query.role) qb.andWhere('u.role = :role', { role: query.role });
+    if (query.status) qb.andWhere('u.status = :status', { status: query.status });
+
+    const [models, total] = await qb
+      .orderBy(SORT_COLUMNS[query.sortBy], query.sortDir === 'asc' ? 'ASC' : 'DESC', 'NULLS LAST')
+      .addOrderBy('u.id', 'ASC')
+      .offset((query.page - 1) * query.pageSize)
+      .limit(query.pageSize)
+      .getManyAndCount();
+
+    return { users: models.map((model) => this.mapper.toDomain(model)), total };
+  }
+
+  async countByStatus(): Promise<Record<UserStatus, number>> {
+    const rows = await this.repository
+      .createQueryBuilder('u')
+      .select('u.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('u.status')
+      .getRawMany<{ status: UserStatus; count: string }>();
+
+    const counts: Record<UserStatus, number> = {
+      [UserStatus.INVITED]: 0,
+      [UserStatus.ACTIVE]: 0,
+      [UserStatus.DISABLED]: 0,
+    };
+    for (const row of rows) counts[row.status] = Number(row.count);
+    return counts;
   }
 
   async findByIds(ids: string[]): Promise<User[]> {

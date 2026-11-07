@@ -84,7 +84,7 @@ describe('roles, permissions and account status', () => {
 
     const remainingAdmin = first.status === 200 ? admin : otherAdmin;
     const users = await request(app).get('/api/users').set(as(remainingAdmin));
-    const activeAdmins = users.body.data.filter(
+    const activeAdmins = users.body.data.items.filter(
       (u: { role: string; status: string }) => u.role === 'admin' && u.status === 'active',
     );
     expect(activeAdmins).toHaveLength(1);

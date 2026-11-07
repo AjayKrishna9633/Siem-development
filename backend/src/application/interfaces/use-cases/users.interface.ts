@@ -3,6 +3,7 @@ import type {
   IListUsersInput,
   IManagedUser,
   ISetUserStatusInput,
+  IUserPage,
 } from '../../types/use-case/user-mgmt.types.ts';
 
 export interface IChangeUserRoleUseCase {
@@ -14,5 +15,5 @@ export interface ISetUserStatusUseCase {
 }
 
 export interface IListUsersUseCase {
-  execute(input: IListUsersInput): Promise<IManagedUser[]>;
+  execute(input: IListUsersInput): Promise<IUserPage>;
 }

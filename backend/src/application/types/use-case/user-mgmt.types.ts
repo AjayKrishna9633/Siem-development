@@ -13,8 +13,35 @@ export interface IManagedUser {
   lastLoginAt: Date | null;
 }
 
+export type UserSortKey = 'name' | 'email' | 'role' | 'status' | 'lastLogin';
+
+export interface IUserListQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  sortBy: UserSortKey;
+  sortDir: 'asc' | 'desc';
+}
+
 export interface IListUsersInput {
   actor: IActor;
+  query: IUserListQuery;
+}
+
+export interface IUserCounts {
+  all: number;
+  invited: number;
+  disabled: number;
+}
+
+export interface IUserPage {
+  items: IManagedUser[];
+  page: number;
+  pageSize: number;
+  total: number;
+  counts: IUserCounts;
 }
 
 export interface IChangeUserRoleInput {
