@@ -47,6 +47,16 @@ export const AuthError: React.FC<{ message: string | null }> = ({ message }) =>
     </p>
   ) : null;
 
+export const AuthField: React.FC<{ error?: string; children: React.ReactNode }> = ({
+  error,
+  children,
+}) => (
+  <div className="space-y-1.5">
+    {children}
+    <AuthError message={error ?? null} />
+  </div>
+);
+
 const authFieldClass = 'h-10 bg-canvas/70';
 
 type IAuthInputProps = React.ComponentProps<typeof Input>;

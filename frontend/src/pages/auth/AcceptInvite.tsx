@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '../../services/auth.service.ts';
 import { useAuthStore } from '../../store/auth.store.ts';
 import type { IInvitePreview } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { roleLabel } from '../../lib/roles.ts';
-import { isLinkToken } from '../../lib/validation.ts';
-import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
+import {
+  PASSWORD_MIN_LENGTH,
+  acceptInviteSchema,
+  isLinkToken,
+  type AcceptInviteValues,
+} from '../../lib/schemas.ts';
 import { LocalTime } from '../../components/common/LocalTime.tsx';
-import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
+import {
+  AuthError,
+  AuthField,
+  AuthInput,
+  AuthLayout,
+  AuthPasswordInput,
+  AuthSubmit,
+} from './AuthLayout.tsx';
 
 export const AcceptInvite: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -24,11 +37,16 @@ export const AcceptInvite: React.FC = () => {
     malformed ? 'This invitation link is incomplete. Open it again from your email.' : null,
   );
 
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(acceptInviteSchema),
+    mode: 'onTouched',
+    defaultValues: { name: '', password: '', confirmPassword: '' },
+  });
 
   useEffect(() => {
     if (malformed) return;
@@ -49,24 +67,15 @@ export const AcceptInvite: React.FC = () => {
     };
   }, [token, malformed]);
 
-  const handleAccept = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const problem =
-      name.trim().length < 2
-        ? 'Enter your full name (at least 2 characters).'
-        : newPasswordError(password, confirmPassword);
-    if (problem) return setError(problem);
-
-    setSubmitting(true);
-    setError(null);
+  const onSubmit = async ({ name, password }: AcceptInviteValues) => {
     try {
-      const session = await authService.acceptInvite({ token, name: name.trim(), password });
+      const session = await authService.acceptInvite({ token, name, password });
       login(session.accessToken, session.user);
       navigate('/', { replace: true });
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'The invitation could not be accepted.'));
-    } finally {
-      setSubmitting(false);
+      setError('root', {
+        message: apiErrorMessage(err, 'The invitation could not be accepted.'),
+      });
     }
   };
 
@@ -103,7 +112,7 @@ export const AcceptInvite: React.FC = () => {
       subtitle="Choose your name and a password to finish setting up your account."
       footer={footer}
     >
-      <form onSubmit={handleAccept} noValidate className="space-y-3">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
         <div className="space-y-1 rounded border border-line-strong bg-canvas/60 p-3">
           <p className="font-mono text-[10px] uppercase tracking-[1px] text-muted">
             Joining {preview.orgName ?? 'SIEMple'}
@@ -116,31 +125,37 @@ export const AcceptInvite: React.FC = () => {
             Link expires <LocalTime value={preview.expiresAt} />
           </p>
         </div>
-        <AuthInput
-          autoFocus
-          autoComplete="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Full name"
-          aria-label="Full name"
-        />
-        <AuthPasswordInput
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder={`Password (min ${PASSWORD_MIN_LENGTH} characters)`}
-          aria-label="Password"
-        />
-        <AuthPasswordInput
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirm password"
-          aria-label="Confirm password"
-        />
-        <AuthError message={error} />
-        <AuthSubmit disabled={submitting}>
-          {submitting ? 'Setting up…' : 'Accept & sign in'}
+        <AuthField error={errors.name?.message}>
+          <AuthInput
+            autoFocus
+            autoComplete="name"
+            placeholder="Full name"
+            aria-label="Full name"
+            invalid={!!errors.name}
+            {...register('name')}
+          />
+        </AuthField>
+        <AuthField error={errors.password?.message}>
+          <AuthPasswordInput
+            autoComplete="new-password"
+            placeholder={`Password (min ${PASSWORD_MIN_LENGTH} characters)`}
+            aria-label="Password"
+            invalid={!!errors.password}
+            {...register('password')}
+          />
+        </AuthField>
+        <AuthField error={errors.confirmPassword?.message}>
+          <AuthPasswordInput
+            autoComplete="new-password"
+            placeholder="Confirm password"
+            aria-label="Confirm password"
+            invalid={!!errors.confirmPassword}
+            {...register('confirmPassword')}
+          />
+        </AuthField>
+        <AuthError message={errors.root?.message ?? null} />
+        <AuthSubmit disabled={isSubmitting}>
+          {isSubmitting ? 'Setting up…' : 'Accept & sign in'}
         </AuthSubmit>
       </form>
     </AuthLayout>

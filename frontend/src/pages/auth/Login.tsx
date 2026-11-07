@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
+import { loginSchema, type LoginValues } from '../../lib/schemas.ts';
+import {
+  AuthError,
+  AuthField,
+  AuthInput,
+  AuthLayout,
+  AuthPasswordInput,
+  AuthSubmit,
+} from './AuthLayout.tsx';
 
 export interface ILoginRedirectState {
   from?: { pathname?: string };
@@ -18,25 +28,26 @@ export const Login: React.FC = () => {
   const login = useAuthStore((s) => s.login);
 
   const redirect = location.state as ILoginRedirectState | null;
-  const [email, setEmail] = useState(redirect?.email ?? '');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const from = redirect?.from?.pathname || '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
+    defaultValues: { email: redirect?.email ?? '', password: '' },
+  });
+
+  const onSubmit = async ({ email, password }: LoginValues) => {
     try {
       const res = await authService.login(email, password);
       login(res.accessToken, res.user);
       navigate(from, { replace: true });
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Invalid credentials'));
-    } finally {
-      setLoading(false);
+      setError('root', { message: apiErrorMessage(err, 'Invalid credentials') });
     }
   };
 
@@ -55,30 +66,28 @@ export const Login: React.FC = () => {
           Password updated. Sign in with your new password.
         </p>
       )}
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1.5">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
+        <AuthField error={errors.email?.message}>
           <AuthInput
             type="email"
-            required
             autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="Operator email"
             aria-label="Email"
-            invalid={!!error}
+            invalid={!!errors.email}
+            {...register('email')}
           />
-          <AuthError message={error} />
-        </div>
+        </AuthField>
 
-        <AuthPasswordInput
-          required
-          autoComplete="current-password"
-          autoFocus={!!redirect?.email}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Passphrase"
-          aria-label="Password"
-        />
+        <AuthField error={errors.password?.message}>
+          <AuthPasswordInput
+            autoComplete="current-password"
+            autoFocus={!!redirect?.email}
+            placeholder="Passphrase"
+            aria-label="Password"
+            invalid={!!errors.password}
+            {...register('password')}
+          />
+        </AuthField>
 
         <div className="text-right">
           <Link to="/forgot-password" className="text-sm text-muted hover:text-accent">
@@ -86,8 +95,9 @@ export const Login: React.FC = () => {
           </Link>
         </div>
 
-        <AuthSubmit disabled={loading || !email || !password}>
-          {loading ? 'Authenticating…' : 'Login'}
+        <AuthError message={errors.root?.message ?? null} />
+        <AuthSubmit disabled={isSubmitting}>
+          {isSubmitting ? 'Authenticating…' : 'Login'}
         </AuthSubmit>
       </form>
     </AuthLayout>

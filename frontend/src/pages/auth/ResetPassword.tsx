@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '../../services/auth.service.ts';
 import type { IPasswordResetPreview } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { isLinkToken } from '../../lib/validation.ts';
-import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
+import {
+  PASSWORD_MIN_LENGTH,
+  isLinkToken,
+  resetPasswordSchema,
+  type ResetPasswordValues,
+} from '../../lib/schemas.ts';
 import { LocalTime } from '../../components/common/LocalTime.tsx';
 import type { ILoginRedirectState } from './Login.tsx';
-import { AuthError, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
+import { AuthError, AuthField, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -22,10 +28,16 @@ export const ResetPassword: React.FC = () => {
     malformed ? 'This reset link is incomplete. Open it again from where you got it.' : null,
   );
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(resetPasswordSchema),
+    mode: 'onTouched',
+    defaultValues: { password: '', confirmPassword: '' },
+  });
 
   useEffect(() => {
     if (malformed) return;
@@ -46,21 +58,13 @@ export const ResetPassword: React.FC = () => {
     };
   }, [token, malformed]);
 
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const problem = newPasswordError(password, confirmPassword);
-    if (problem) return setError(problem);
-
-    setSubmitting(true);
-    setError(null);
+  const onSubmit = async ({ password }: ResetPasswordValues) => {
     try {
       await authService.resetPassword({ token, password });
       const state: ILoginRedirectState = { passwordReset: true, email: preview?.email };
       navigate('/login', { replace: true, state });
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'The password could not be reset.'));
-    } finally {
-      setSubmitting(false);
+      setError('root', { message: apiErrorMessage(err, 'The password could not be reset.') });
     }
   };
 
@@ -101,30 +105,36 @@ export const ResetPassword: React.FC = () => {
       subtitle="You'll be signed out everywhere, then sign in with the new password."
       footer={footer}
     >
-      <form onSubmit={handleReset} noValidate className="space-y-3">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
         <div className="space-y-1 rounded border border-line-strong bg-canvas/60 p-3">
           <p className="truncate font-mono text-xs text-ink">{preview.email}</p>
           <p className="text-[11px] text-subtle">
             Link expires <LocalTime value={preview.expiresAt} />
           </p>
         </div>
-        <AuthPasswordInput
-          autoFocus
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder={`New password (min ${PASSWORD_MIN_LENGTH} characters)`}
-          aria-label="New password"
-        />
-        <AuthPasswordInput
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          placeholder="Confirm new password"
-          aria-label="Confirm new password"
-        />
-        <AuthError message={error} />
-        <AuthSubmit disabled={submitting}>{submitting ? 'Saving…' : 'Set new password'}</AuthSubmit>
+        <AuthField error={errors.password?.message}>
+          <AuthPasswordInput
+            autoFocus
+            autoComplete="new-password"
+            placeholder={`New password (min ${PASSWORD_MIN_LENGTH} characters)`}
+            aria-label="New password"
+            invalid={!!errors.password}
+            {...register('password')}
+          />
+        </AuthField>
+        <AuthField error={errors.confirmPassword?.message}>
+          <AuthPasswordInput
+            autoComplete="new-password"
+            placeholder="Confirm new password"
+            aria-label="Confirm new password"
+            invalid={!!errors.confirmPassword}
+            {...register('confirmPassword')}
+          />
+        </AuthField>
+        <AuthError message={errors.root?.message ?? null} />
+        <AuthSubmit disabled={isSubmitting}>
+          {isSubmitting ? 'Saving…' : 'Set new password'}
+        </AuthSubmit>
       </form>
     </AuthLayout>
   );
