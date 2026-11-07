@@ -1,23 +1,34 @@
 import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck, Info, KeyRound, Mail, TriangleAlert } from 'lucide-react';
 import { ChangePasswordDialog } from '../../components/profile/ChangePasswordDialog.tsx';
 import { ChangeEmailDialog } from '../../components/profile/ChangeEmailDialog.tsx';
 import { Panel, MonoLabel } from '../../components/ui/Panel.tsx';
 import { Button } from '../../components/ui/Button.tsx';
-import { Input } from '../../components/ui/Form.tsx';
+import { Field, Input } from '../../components/ui/Form.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
 import { roleLabel } from '../../lib/roles.ts';
 import { can } from '../../lib/permissions.ts';
 import { LocalTime } from '../../components/common/LocalTime.tsx';
+import { profileSchema, type ProfileValues } from '../../lib/schemas.ts';
 
 export const Profile: React.FC = () => {
   const { user, setUser } = useAuthStore();
-  const [username, setUsername] = useState(user?.username ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(profileSchema),
+    mode: 'onTouched',
+    defaultValues: { username: user?.username ?? '' },
+  });
   const [dialog, setDialog] = useState<'password' | 'email' | null>(null);
   const canChangeEmail = can(user, 'users.manage');
 
@@ -41,27 +52,21 @@ export const Profile: React.FC = () => {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase())
     .join('');
-  const dirty = username.trim() !== user.username && username.trim().length >= 2;
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+  const onSave = async ({ username }: ProfileValues) => {
     setSaved(false);
     try {
-      const updated = await authService.updateProfile({ username: username.trim() });
+      const updated = await authService.updateProfile({ username });
       setUser({ ...user, ...updated });
+      reset({ username: updated.username });
       setSaved(true);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Failed to update profile.'));
-    } finally {
-      setSaving(false);
+      setError('root', { message: apiErrorMessage(err, 'Failed to update profile.') });
     }
   };
 
   return (
     <div className="mx-auto w-full max-w-[640px] space-y-6 px-6 py-8">
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSubmit(onSave)} noValidate className="space-y-6">
         <div className="border-b border-line pb-4">
           <h1 className="text-xl font-semibold text-ink">Profile</h1>
           <p className="text-sm text-muted">
@@ -92,10 +97,9 @@ export const Profile: React.FC = () => {
             <h2 className="border-b border-line-strong pb-3 text-sm font-semibold text-ink">
               Contact Information
             </h2>
-            <label className="block space-y-1.5">
-              <MonoLabel>Full name</MonoLabel>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} />
-            </label>
+            <Field label="Full name" mono error={errors.username?.message}>
+              <Input invalid={!!errors.username} {...register('username')} />
+            </Field>
             <div className="space-y-1.5">
               <MonoLabel>Email address</MonoLabel>
               <div className="flex gap-2">
@@ -144,7 +148,9 @@ export const Profile: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-line pt-5">
-          {error && <span className="mr-auto text-sm text-critical">{error}</span>}
+          {errors.root && (
+            <span className="mr-auto text-sm text-critical">{errors.root.message}</span>
+          )}
           {saved && (
             <span className="mr-auto flex items-center gap-1.5 text-sm text-success">
               <CircleCheck className="size-4" /> Profile updated
@@ -153,18 +159,18 @@ export const Profile: React.FC = () => {
           <Button
             variant="outline"
             mono
-            disabled={!dirty || saving}
-            onClick={() => setUsername(user.username)}
+            disabled={!isDirty || isSubmitting}
+            onClick={() => reset()}
           >
             Cancel
           </Button>
           <Button
             type="submit"
             variant="primary"
-            disabled={!dirty || saving}
+            disabled={!isDirty || isSubmitting}
             className="bg-low text-white hover:bg-low/90 disabled:bg-low/30 disabled:text-ink/60"
           >
-            {saving ? 'Saving…' : 'Save Changes'}
+            {isSubmitting ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       </form>

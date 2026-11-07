@@ -9,7 +9,7 @@ import type {
   IUserPage,
   UserRole,
 } from '../types/auth.ts';
-import { isUuid } from '../lib/validation.ts';
+import { isUuid } from '../lib/schemas.ts';
 
 export const usersService = {
   async list(params: IUserListParams): Promise<IUserPage> {

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck, MailCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal.tsx';
 import { Button } from '../ui/Button.tsx';
@@ -9,57 +11,60 @@ import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import type { ICodeSent } from '../../types/auth.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { isEmail } from '../../lib/validation.ts';
+import {
+  changeEmailSchema,
+  verificationCodeSchema,
+  type ChangeEmailValues,
+  type VerificationCodeValues,
+} from '../../lib/schemas.ts';
 
 type Step = 'details' | 'verify' | 'done';
 
 export const ChangeEmailDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user, login } = useAuthStore();
   const [step, setStep] = useState<Step>('details');
-  const [newEmail, setNewEmail] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
+  const [pending, setPending] = useState<ChangeEmailValues | null>(null);
   const [sent, setSent] = useState<ICodeSent | null>(null);
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const emailValid = isEmail(newEmail);
-  const sameEmail = newEmail.trim().toLowerCase() === user?.email.toLowerCase();
+  const schema = useMemo(() => changeEmailSchema(user?.email ?? ''), [user?.email]);
+  const detailsForm = useForm({
+    resolver: zodResolver(schema),
+    mode: 'onTouched',
+    defaultValues: { newEmail: '', currentPassword: '' },
+  });
+  const codeForm = useForm({
+    resolver: zodResolver(verificationCodeSchema),
+    mode: 'onTouched',
+    defaultValues: { code: '' },
+  });
 
-  const requestCode = () =>
-    authService.requestEmailChange({ newEmail: newEmail.trim(), currentPassword });
+  const busy = detailsForm.formState.isSubmitting || codeForm.formState.isSubmitting;
 
-  const sendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailValid || sameEmail || !currentPassword) return;
-    setBusy(true);
-    setError(null);
+  const sendCode = async (values: ChangeEmailValues) => {
     try {
-      setSent(await requestCode());
-      setCode('');
+      setSent(await authService.requestEmailChange(values));
+      setPending(values);
+      codeForm.reset();
       setStep('verify');
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, "Couldn't send the code. Try again."));
-    } finally {
-      setBusy(false);
+      detailsForm.setError('root', {
+        message: apiErrorMessage(err, "Couldn't send the code. Try again."),
+      });
     }
   };
 
-  const confirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.length !== 6) return;
-    setBusy(true);
-    setError(null);
+  const confirm = async ({ code }: VerificationCodeValues) => {
     try {
       const session = await authService.changeEmail(code);
       login(session.accessToken, { ...user, ...session.user });
       setStep('done');
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, "Couldn't change the email."));
-    } finally {
-      setBusy(false);
+      codeForm.setError('root', { message: apiErrorMessage(err, "Couldn't change the email.") });
     }
   };
+
+  const detailsErrors = detailsForm.formState.errors;
+  const codeErrors = codeForm.formState.errors;
 
   return (
     <Modal
@@ -72,46 +77,45 @@ export const ChangeEmailDialog: React.FC<{ onClose: () => void }> = ({ onClose }
       onClose={busy ? () => undefined : onClose}
     >
       {step === 'details' && (
-        <form onSubmit={sendCode} className="space-y-4">
+        <form onSubmit={detailsForm.handleSubmit(sendCode)} noValidate className="space-y-4">
           <div className="rounded border border-line-strong bg-canvas/50 p-3 text-sm">
             <p className="font-mono text-[10px] uppercase tracking-[0.5px] text-muted">
               Current email
             </p>
             <p className="mt-1 font-mono text-ink">{user?.email}</p>
           </div>
-          <Field
-            label="New email address"
-            required
-            error={sameEmail ? 'This is already your email address.' : null}
-          >
+          <Field label="New email address" required error={detailsErrors.newEmail?.message}>
             <Input
               type="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
               autoFocus
+              invalid={!!detailsErrors.newEmail}
+              {...detailsForm.register('newEmail')}
             />
           </Field>
-          <Field label="Current password" required hint="Confirms it's really you.">
+          <Field
+            label="Current password"
+            required
+            hint="Confirms it's really you."
+            error={detailsErrors.currentPassword?.message}
+          >
             <PasswordInput
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
               autoComplete="current-password"
+              invalid={!!detailsErrors.currentPassword}
+              {...detailsForm.register('currentPassword')}
             />
           </Field>
 
-          {error && <p className="text-sm text-critical">{error}</p>}
+          {detailsErrors.root && (
+            <p className="text-sm text-critical">{detailsErrors.root.message}</p>
+          )}
 
           <div className="flex justify-end gap-3 border-t border-line pt-4">
             <Button variant="outline" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!emailValid || sameEmail || !currentPassword || busy}
-            >
+            <Button type="submit" variant="primary" disabled={busy}>
               {busy ? 'Sending…' : 'Send code to new email'}
             </Button>
           </div>
@@ -119,7 +123,7 @@ export const ChangeEmailDialog: React.FC<{ onClose: () => void }> = ({ onClose }
       )}
 
       {step === 'verify' && sent && (
-        <form onSubmit={confirm} className="space-y-4">
+        <form onSubmit={codeForm.handleSubmit(confirm)} noValidate className="space-y-4">
           <p className="flex gap-3 rounded border border-success/40 bg-success/10 p-3 text-sm text-ink">
             <MailCheck className="mt-0.5 size-4 shrink-0 text-success" />
             <span>
@@ -128,31 +132,38 @@ export const ChangeEmailDialog: React.FC<{ onClose: () => void }> = ({ onClose }
             </span>
           </p>
 
-          <Field label="Verification code" required>
-            <CodeInput value={code} onChange={setCode} autoFocus />
+          <Field label="Verification code" required error={codeErrors.code?.message}>
+            <Controller
+              control={codeForm.control}
+              name="code"
+              render={({ field }) => (
+                <CodeInput value={field.value} onChange={field.onChange} autoFocus />
+              )}
+            />
           </Field>
           <ResendCode
             onResend={async () => {
-              setSent(await requestCode());
-              setCode('');
+              if (!pending) return;
+              setSent(await authService.requestEmailChange(pending));
+              codeForm.reset();
             }}
           />
 
-          {error && <p className="text-sm text-critical">{error}</p>}
+          {codeErrors.root && <p className="text-sm text-critical">{codeErrors.root.message}</p>}
 
           <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
             <button
               type="button"
               onClick={() => {
+                detailsForm.clearErrors('root');
                 setStep('details');
-                setError(null);
               }}
               disabled={busy}
               className="text-sm text-muted hover:text-ink disabled:opacity-50"
             >
               Use a different email
             </button>
-            <Button type="submit" variant="primary" disabled={code.length !== 6 || busy}>
+            <Button type="submit" variant="primary" disabled={busy}>
               {busy ? 'Confirming…' : 'Confirm new email'}
             </Button>
           </div>

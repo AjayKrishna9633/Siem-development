@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck } from 'lucide-react';
 import { Modal } from '../ui/Modal.tsx';
 import { Button } from '../ui/Button.tsx';
@@ -7,44 +9,39 @@ import { PasswordInput } from '../ui/PasswordInput.tsx';
 import { useAuthStore } from '../../store/auth.store.ts';
 import { authService } from '../../services/auth.service.ts';
 import { apiErrorMessage } from '../../lib/errors.ts';
-import { PASSWORD_MIN_LENGTH, newPasswordError } from '../../lib/password.ts';
+import {
+  PASSWORD_MIN_LENGTH,
+  changePasswordSchema,
+  type ChangePasswordValues,
+} from '../../lib/schemas.ts';
 
 export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user, login } = useAuthStore();
   const [done, setDone] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const minLength = PASSWORD_MIN_LENGTH;
-  const mismatch = confirmPassword !== '' && confirmPassword !== newPassword;
-  const tooShort = newPassword !== '' && newPassword.length < minLength;
-  const sameAsCurrent = newPassword !== '' && newPassword === currentPassword;
-  const valid =
-    currentPassword !== '' &&
-    newPasswordError(newPassword, confirmPassword, minLength) === null &&
-    !sameAsCurrent;
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(changePasswordSchema),
+    mode: 'onTouched',
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+  });
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!valid) return;
-    setBusy(true);
-    setError(null);
+  const onSubmit = async ({ currentPassword, newPassword }: ChangePasswordValues) => {
     try {
       const session = await authService.changePassword({ currentPassword, newPassword });
       login(session.accessToken, { ...user, ...session.user });
       setDone(true);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, "Couldn't change the password."));
-    } finally {
-      setBusy(false);
+      setError('root', { message: apiErrorMessage(err, "Couldn't change the password.") });
     }
   };
 
   return (
-    <Modal title="Change password" onClose={busy ? () => undefined : onClose}>
+    <Modal title="Change password" onClose={isSubmitting ? () => undefined : onClose}>
       {done ? (
         <div className="space-y-4">
           <p className="flex items-center gap-2 text-ink">
@@ -61,55 +58,43 @@ export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClos
           </div>
         </div>
       ) : (
-        <form onSubmit={submit} className="space-y-4">
-          <Field label="Current password" required>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <Field label="Current password" required error={errors.currentPassword?.message}>
             <PasswordInput
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
               autoComplete="current-password"
               autoFocus
+              invalid={!!errors.currentPassword}
+              {...register('currentPassword')}
             />
           </Field>
           <Field
             label="New password"
             required
-            hint={`At least ${minLength} characters.`}
-            error={
-              tooShort
-                ? `Must be at least ${minLength} characters.`
-                : sameAsCurrent
-                  ? 'Must be different from your current password.'
-                  : null
-            }
+            hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
+            error={errors.newPassword?.message}
           >
             <PasswordInput
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
-              invalid={tooShort || sameAsCurrent}
+              invalid={!!errors.newPassword}
+              {...register('newPassword')}
             />
           </Field>
-          <Field
-            label="Confirm new password"
-            required
-            error={mismatch ? "Passwords don't match." : null}
-          >
+          <Field label="Confirm new password" required error={errors.confirmPassword?.message}>
             <PasswordInput
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
-              invalid={mismatch}
+              invalid={!!errors.confirmPassword}
+              {...register('confirmPassword')}
             />
           </Field>
 
-          {error && <p className="text-sm text-critical">{error}</p>}
+          {errors.root && <p className="text-sm text-critical">{errors.root.message}</p>}
 
           <div className="flex justify-end gap-3 border-t border-line pt-4">
-            <Button variant="outline" onClick={onClose} disabled={busy}>
+            <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!valid || busy}>
-              {busy ? 'Changing…' : 'Change password'}
+            <Button type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Changing…' : 'Change password'}
             </Button>
           </div>
         </form>
