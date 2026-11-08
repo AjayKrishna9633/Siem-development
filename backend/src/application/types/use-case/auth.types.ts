@@ -5,7 +5,6 @@ export interface ILoginInput {
   password: string;
   context: IRequestContext;
 }
-export type LoginInput = ILoginInput;
 
 export interface ILoginResponse {
   accessToken: string;
@@ -18,7 +17,6 @@ export interface ILoginResponse {
     permissions: string[];
   };
 }
-export type LoginResponse = ILoginResponse;
 
 export interface IUserProfileResponse {
   id: string;
@@ -31,4 +29,3 @@ export interface IUserProfileResponse {
   lastLoginAt: Date | null;
   createdAt: Date;
 }
-export type UserProfileResponse = IUserProfileResponse;
