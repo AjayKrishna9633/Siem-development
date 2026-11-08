@@ -5,6 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toSessionResponse } from '../dtos/session.dto.ts';
 import { setRefreshCookie } from '../http/refresh-cookie.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import type {
@@ -32,7 +33,7 @@ export class SetupController {
   });
 
   complete = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const { refreshToken, ...session } = await this.completeSetup.execute({
+    const session = await this.completeSetup.execute({
       token: req.body.token,
       adminName: req.body.adminName,
       email: req.body.email,
@@ -43,9 +44,15 @@ export class SetupController {
       context: requestContextFrom(req),
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, session.refreshToken);
     res
       .status(HttpStatusCode.CREATED)
-      .json(new ApiResponse(HttpStatusCode.CREATED, session, SuccessMessage.SETUP_COMPLETED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.CREATED,
+          toSessionResponse(session),
+          SuccessMessage.SETUP_COMPLETED,
+        ),
+      );
   });
 }

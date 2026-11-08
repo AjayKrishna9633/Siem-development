@@ -5,6 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toSessionResponse } from '../dtos/session.dto.ts';
 import type { ILoginUseCase } from '../../application/interfaces/use-cases/login.interface.ts';
 import type { IRefreshSessionUseCase } from '../../application/interfaces/use-cases/refresh-session.interface.ts';
 import type { ILogoutUseCase } from '../../application/interfaces/use-cases/logout.interface.ts';
@@ -24,16 +25,22 @@ export class SessionController {
   ) {}
 
   login = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const { refreshToken, ...session } = await this.loginUseCase.execute({
+    const session = await this.loginUseCase.execute({
       email: req.body.email,
       password: req.body.password,
       context: requestContextFrom(req),
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, session.refreshToken);
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, session, SuccessMessage.LOGIN_SUCCESSFUL));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toSessionResponse(session),
+          SuccessMessage.LOGIN_SUCCESSFUL,
+        ),
+      );
   });
 
   refresh = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -43,13 +50,19 @@ export class SessionController {
     }
 
     try {
-      const { refreshToken, ...session } = await this.refreshSessionUseCase.execute({
+      const session = await this.refreshSessionUseCase.execute({
         refreshToken: token,
       });
-      setRefreshCookie(res, refreshToken);
+      setRefreshCookie(res, session.refreshToken);
       res
         .status(HttpStatusCode.OK)
-        .json(new ApiResponse(HttpStatusCode.OK, session, SuccessMessage.SESSION_REFRESHED));
+        .json(
+          new ApiResponse(
+            HttpStatusCode.OK,
+            toSessionResponse(session),
+            SuccessMessage.SESSION_REFRESHED,
+          ),
+        );
     } catch (err) {
       clearRefreshCookie(res);
       throw err;

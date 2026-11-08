@@ -5,6 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toPasswordResetPreviewDto } from '../dtos/password-reset.dto.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
@@ -46,7 +47,13 @@ export class PasswordResetController {
     const result = await this.getPasswordReset.execute({ token });
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.PASSWORD_RESET_FETCHED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toPasswordResetPreviewDto(result),
+          SuccessMessage.PASSWORD_RESET_FETCHED,
+        ),
+      );
   });
 
   reset = catchAsync(async (req: Request, res: Response): Promise<void> => {

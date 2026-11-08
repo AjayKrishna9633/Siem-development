@@ -5,6 +5,8 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toSessionResponse } from '../dtos/session.dto.ts';
+import { toInvitePreviewDto } from '../dtos/invite.dto.ts';
 import { setRefreshCookie } from '../http/refresh-cookie.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
@@ -32,20 +34,32 @@ export class InviteController {
     const result = await this.getInvite.execute({ token });
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.INVITE_FETCHED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toInvitePreviewDto(result),
+          SuccessMessage.INVITE_FETCHED,
+        ),
+      );
   });
 
   accept = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const { refreshToken, ...session } = await this.acceptInvite.execute({
+    const session = await this.acceptInvite.execute({
       token: req.body.token,
       name: req.body.name,
       password: req.body.password,
       context: requestContextFrom(req),
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, session.refreshToken);
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, session, SuccessMessage.INVITE_ACCEPTED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toSessionResponse(session),
+          SuccessMessage.INVITE_ACCEPTED,
+        ),
+      );
   });
 }

@@ -5,6 +5,9 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toSessionResponse } from '../dtos/session.dto.ts';
+import { toUserProfileDto } from '../dtos/user.dto.ts';
+import { toCodeSentDto } from '../dtos/account.dto.ts';
 import type { IGetCurrentUserUseCase } from '../../application/interfaces/use-cases/get-current-user.interface.ts';
 import type { IUpdateProfileUseCase } from '../../application/interfaces/use-cases/update-profile.interface.ts';
 import type {
@@ -46,7 +49,13 @@ export class AccountController {
 
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, profile, SuccessMessage.USER_PROFILE_FETCHED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toUserProfileDto(profile),
+          SuccessMessage.USER_PROFILE_FETCHED,
+        ),
+      );
   });
 
   updateProfile = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -58,21 +67,33 @@ export class AccountController {
 
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, updatedProfile, SuccessMessage.PROFILE_UPDATED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toUserProfileDto(updatedProfile),
+          SuccessMessage.PROFILE_UPDATED,
+        ),
+      );
   });
 
   changePassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const { refreshToken, ...session } = await this.changePasswordUseCase.execute({
+    const session = await this.changePasswordUseCase.execute({
       actor: actorFrom(req),
       currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
       context: requestContextFrom(req),
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, session.refreshToken);
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, session, SuccessMessage.PASSWORD_CHANGED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toSessionResponse(session),
+          SuccessMessage.PASSWORD_CHANGED,
+        ),
+      );
   });
 
   requestEmailChange = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -84,18 +105,30 @@ export class AccountController {
 
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, result, SuccessMessage.VERIFICATION_CODE_SENT));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toCodeSentDto(result),
+          SuccessMessage.VERIFICATION_CODE_SENT,
+        ),
+      );
   });
 
   changeEmail = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const { refreshToken, ...session } = await this.changeEmailUseCase.execute({
+    const session = await this.changeEmailUseCase.execute({
       actor: actorFrom(req),
       code: req.body.code,
     });
 
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, session.refreshToken);
     res
       .status(HttpStatusCode.OK)
-      .json(new ApiResponse(HttpStatusCode.OK, session, SuccessMessage.EMAIL_CHANGED));
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toSessionResponse(session),
+          SuccessMessage.EMAIL_CHANGED,
+        ),
+      );
   });
 }
