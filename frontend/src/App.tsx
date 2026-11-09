@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { Toaster } from 'sonner';
 import { useAuthStore } from './store/auth.store.ts';
 import { ProtectedRoute } from './components/common/ProtectedRoute.tsx';
 import { AppShell } from './components/layout/AppShell.tsx';
@@ -70,6 +71,12 @@ export const App: React.FC = () => {
         <Route path="/" element={<RootRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Toaster
+        position="bottom-right"
+        theme="dark"
+        closeButton
+        toastOptions={{ className: '!bg-surface !border-line-strong !text-ink' }}
+      />
     </BrowserRouter>
   );
 };
