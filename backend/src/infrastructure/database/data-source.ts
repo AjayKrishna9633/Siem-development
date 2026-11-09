@@ -9,6 +9,7 @@ import { RemoveTenancy1793491200000 } from './migrations/1793491200000-RemoveTen
 import { CreateAuditLogs1793577600000 } from './migrations/1793577600000-CreateAuditLogs.ts';
 import { CreateSystemSettings1793664000000 } from './migrations/1793664000000-CreateSystemSettings.ts';
 import { CreateAuthTokens1793750400000 } from './migrations/1793750400000-CreateAuthTokens.ts';
+import { DropSettingsTimezone1793836800000 } from './migrations/1793836800000-DropSettingsTimezone.ts';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -22,5 +23,6 @@ export const AppDataSource = new DataSource({
     CreateAuditLogs1793577600000,
     CreateSystemSettings1793664000000,
     CreateAuthTokens1793750400000,
+    DropSettingsTimezone1793836800000,
   ],
 });

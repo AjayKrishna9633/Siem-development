@@ -45,10 +45,7 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
           throw invalidSetupToken();
         }
 
-        locked.completeSetup(
-          { orgName: input.orgName, baseUrl: input.baseUrl, timezone: input.timezone },
-          now,
-        );
+        locked.completeSetup({ orgName: input.orgName, baseUrl: input.baseUrl }, now);
         return User.createFirstAdmin({
           id: randomUUID(),
           email: input.email,

@@ -16,6 +16,5 @@ export interface ICompleteSetupInput {
   password: string;
   orgName: string;
   baseUrl: string;
-  timezone: string;
   context: IRequestContext;
 }

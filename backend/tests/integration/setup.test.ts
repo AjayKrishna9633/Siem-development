@@ -18,7 +18,6 @@ describe('first-run setup', () => {
     password: 'correct-horse-battery',
     orgName: 'Acme SOC',
     baseUrl: 'https://siem.acme.test/',
-    timezone: 'Asia/Kolkata',
   };
   let token: string;
 

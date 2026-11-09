@@ -40,7 +40,6 @@ export class SetupController {
       password: req.body.password,
       orgName: req.body.orgName,
       baseUrl: req.body.baseUrl,
-      timezone: req.body.timezone,
       context: requestContextFrom(req),
     });
 

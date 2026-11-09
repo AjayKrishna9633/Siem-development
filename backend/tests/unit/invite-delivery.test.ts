@@ -15,7 +15,6 @@ const settings = SystemSettings.reconstitute({
   setupTokenExpiresAt: null,
   orgName: 'Acme SOC',
   baseUrl: 'https://siem.acme.test',
-  timezone: 'UTC',
   createdAt: now,
   updatedAt: now,
 });

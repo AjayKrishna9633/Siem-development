@@ -19,7 +19,6 @@ export const setupFirstAdmin = async (app: Express, email = 'admin@example.com')
       password: PASSWORD,
       orgName: 'Acme SOC',
       baseUrl: 'https://siem.acme.test',
-      timezone: 'UTC',
     });
   if (res.status !== 201) throw new Error(`Setup failed: ${res.status} ${res.body.message}`);
   return { id: res.body.data.user.id, token: res.body.data.accessToken } as ISignedInUser;

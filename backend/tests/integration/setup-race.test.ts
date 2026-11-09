@@ -28,7 +28,6 @@ describe('first-run setup under concurrency', () => {
           password: 'correct-horse-battery',
           orgName: 'Acme SOC',
           baseUrl: 'https://siem.acme.test',
-          timezone: 'UTC',
         }),
     );
     const statuses = (await Promise.all(attempts)).map((res) => res.status);

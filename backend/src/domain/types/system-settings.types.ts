@@ -4,7 +4,6 @@ export interface ISystemSettingsProps {
   setupTokenExpiresAt: Date | null;
   orgName: string | null;
   baseUrl: string | null;
-  timezone: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,5 +12,4 @@ export type SystemSettingsProps = ISystemSettingsProps;
 export interface IOrganizationDetails {
   orgName: string;
   baseUrl: string;
-  timezone: string;
 }

@@ -21,9 +21,6 @@ export class SystemSettingsModel {
   @Column({ type: 'varchar', length: 2048, name: 'base_url', nullable: true })
   baseUrl!: string | null;
 
-  @Column({ type: 'varchar', length: 64, nullable: true })
-  timezone!: string | null;
-
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

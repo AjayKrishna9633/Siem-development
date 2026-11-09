@@ -14,7 +14,6 @@ export class SystemSettingsMapper implements IMapper<SystemSettings, SystemSetti
       setupTokenExpiresAt: model.setupTokenExpiresAt,
       orgName: model.orgName,
       baseUrl: model.baseUrl,
-      timezone: model.timezone,
       createdAt: model.createdAt,
       updatedAt: model.updatedAt,
     });

@@ -24,9 +24,6 @@ export class SystemSettings {
   get baseUrl() {
     return this.props.baseUrl;
   }
-  get timezone() {
-    return this.props.timezone;
-  }
 
   toSnapshot(): Readonly<SystemSettingsProps> {
     return { ...this.props };
@@ -54,7 +51,6 @@ export class SystemSettings {
     this.props.setupTokenExpiresAt = null;
     this.props.orgName = details.orgName;
     this.props.baseUrl = details.baseUrl;
-    this.props.timezone = details.timezone;
     this.touch(now);
   }
 

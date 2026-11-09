@@ -4,7 +4,7 @@ import { DomainError } from '../../src/domain/errors/DomainError.ts';
 
 const now = new Date('2026-11-01T10:00:00Z');
 const inOneHour = new Date('2026-11-01T11:00:00Z');
-const details = { orgName: 'Acme SOC', baseUrl: 'https://siem.acme.test', timezone: 'UTC' };
+const details = { orgName: 'Acme SOC', baseUrl: 'https://siem.acme.test' };
 
 const pendingSettings = () =>
   SystemSettings.reconstitute({
@@ -13,7 +13,6 @@ const pendingSettings = () =>
     setupTokenExpiresAt: null,
     orgName: null,
     baseUrl: null,
-    timezone: null,
     createdAt: now,
     updatedAt: now,
   });
