@@ -1,4 +1,4 @@
-import type { ICodeSentResponse } from '../../application/types/use-case/account.types.ts';
+import type { ICodeSentResponse } from '../../../types/use-case/account.types.ts';
 
 export interface ICodeSentDto {
   sentTo: string;

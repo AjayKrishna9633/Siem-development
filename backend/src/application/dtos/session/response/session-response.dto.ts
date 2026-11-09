@@ -1,4 +1,4 @@
-import type { ILoginResponse } from '../../application/types/use-case/auth.types.ts';
+import type { ILoginResponse } from '../../../types/use-case/auth.types.ts';
 
 export interface ISessionUserDto {
   id: string;

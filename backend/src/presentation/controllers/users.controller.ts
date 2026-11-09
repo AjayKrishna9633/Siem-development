@@ -5,9 +5,16 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { toManagedUserDto, toUserPageDto } from '../dtos/user.dto.ts';
-import { toInviteDeliveryDto, toInviteResultDto, toPendingInviteDto } from '../dtos/invite.dto.ts';
-import { toResetLinkDeliveryDto } from '../dtos/password-reset.dto.ts';
+import {
+  toManagedUserDto,
+  toUserPageDto,
+} from '../../application/dtos/user/response/user-response.dto.ts';
+import {
+  toInviteDeliveryDto,
+  toInviteResultDto,
+  toPendingInviteDto,
+} from '../../application/dtos/invite/response/invite-response.dto.ts';
+import { toResetLinkDeliveryDto } from '../../application/dtos/password-reset/response/password-reset-response.dto.ts';
 import { actorFrom, idParamFrom } from '../http/actor.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import { listUsersQuerySchema } from '../validators/user-mgmt.schema.ts';

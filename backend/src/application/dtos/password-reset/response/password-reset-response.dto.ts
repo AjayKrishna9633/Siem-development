@@ -1,8 +1,8 @@
 import type {
   IPasswordResetPreview,
   IResetLinkDelivery,
-} from '../../application/types/use-case/password-reset.types.ts';
-import { iso } from './dates.ts';
+} from '../../../types/use-case/password-reset.types.ts';
+import { iso } from '../../dates.ts';
 
 export interface IPasswordResetPreviewDto {
   email: string;

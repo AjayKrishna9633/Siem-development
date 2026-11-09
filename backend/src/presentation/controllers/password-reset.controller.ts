@@ -5,7 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { toPasswordResetPreviewDto } from '../dtos/password-reset.dto.ts';
+import { toPasswordResetPreviewDto } from '../../application/dtos/password-reset/response/password-reset-response.dto.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
 import { AppError } from '../../domain/errors/AppError.ts';

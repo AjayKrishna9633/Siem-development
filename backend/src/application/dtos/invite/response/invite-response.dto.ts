@@ -3,9 +3,9 @@ import type {
   IInvitePreview,
   IInviteResult,
   IPendingInvite,
-} from '../../application/types/use-case/invite.types.ts';
-import { iso, isoOrNull } from './dates.ts';
-import { toManagedUserDto, type IManagedUserDto } from './user.dto.ts';
+} from '../../../types/use-case/invite.types.ts';
+import { iso, isoOrNull } from '../../dates.ts';
+import { toManagedUserDto, type IManagedUserDto } from '../../user/response/user-response.dto.ts';
 
 export interface IInviteDeliveryDto {
   delivered: boolean;

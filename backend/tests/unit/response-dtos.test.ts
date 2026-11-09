@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { toSessionResponse } from '../../src/presentation/dtos/session.dto.ts';
-import { toInviteDeliveryDto, toPendingInviteDto } from '../../src/presentation/dtos/invite.dto.ts';
-import { toUserPageDto } from '../../src/presentation/dtos/user.dto.ts';
+import { toSessionResponse } from '../../src/application/dtos/session/response/session-response.dto.ts';
+import {
+  toInviteDeliveryDto,
+  toPendingInviteDto,
+} from '../../src/application/dtos/invite/response/invite-response.dto.ts';
+import { toUserPageDto } from '../../src/application/dtos/user/response/user-response.dto.ts';
 import type { ILoginResponse } from '../../src/application/types/use-case/auth.types.ts';
 import { UserRole } from '../../src/domain/enums/UserRole.ts';
 import { UserStatus } from '../../src/domain/enums/UserStatus.ts';

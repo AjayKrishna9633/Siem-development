@@ -1,10 +1,10 @@
-import type { IUserProfileResponse } from '../../application/types/use-case/auth.types.ts';
+import type { IUserProfileResponse } from '../../../types/use-case/auth.types.ts';
 import type {
   IManagedUser,
   IUserCounts,
   IUserPage,
-} from '../../application/types/use-case/user-mgmt.types.ts';
-import { iso, isoOrNull } from './dates.ts';
+} from '../../../types/use-case/user-mgmt.types.ts';
+import { iso, isoOrNull } from '../../dates.ts';
 
 export interface IUserProfileDto {
   id: string;

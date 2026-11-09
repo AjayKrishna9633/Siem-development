@@ -5,7 +5,7 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { toSessionResponse } from '../dtos/session.dto.ts';
+import { toSessionResponse } from '../../application/dtos/session/response/session-response.dto.ts';
 import { setRefreshCookie } from '../http/refresh-cookie.ts';
 import { requestContextFrom } from '../http/request-context.ts';
 import type {

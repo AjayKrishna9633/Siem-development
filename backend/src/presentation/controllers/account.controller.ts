@@ -5,9 +5,9 @@ import { catchAsync } from '../middlewares/catch-async.ts';
 import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
-import { toSessionResponse } from '../dtos/session.dto.ts';
-import { toUserProfileDto } from '../dtos/user.dto.ts';
-import { toCodeSentDto } from '../dtos/account.dto.ts';
+import { toSessionResponse } from '../../application/dtos/session/response/session-response.dto.ts';
+import { toUserProfileDto } from '../../application/dtos/user/response/user-response.dto.ts';
+import { toCodeSentDto } from '../../application/dtos/account/response/account-response.dto.ts';
 import type { IGetCurrentUserUseCase } from '../../application/interfaces/use-cases/get-current-user.interface.ts';
 import type { IUpdateProfileUseCase } from '../../application/interfaces/use-cases/update-profile.interface.ts';
 import type {
