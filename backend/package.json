@@ -14,7 +14,8 @@
     "migration:show": "tsx node_modules/typeorm/cli.js migration:show -d src/infrastructure/database/data-source.ts",
     "lint": "eslint .",
     "setup-token": "tsx src/cli/setup-token.ts",
-    "reset-admin": "tsx src/cli/reset-admin.ts"
+    "reset-admin": "tsx src/cli/reset-admin.ts",
+    "seed": "tsx src/cli/seed.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
