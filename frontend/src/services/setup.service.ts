@@ -8,7 +8,6 @@ export interface ICompleteSetupData {
   password: string;
   orgName: string;
   baseUrl: string;
-  timezone: string;
 }
 
 export const setupService = {

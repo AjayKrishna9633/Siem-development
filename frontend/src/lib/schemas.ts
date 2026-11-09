@@ -82,7 +82,6 @@ export const setupDetailsSchema = z
           error: 'Enter the full address SIEMple is reached at, like https://siem.example.com.',
         }),
       ),
-    timezone: z.string().min(1, 'Choose a time zone.'),
   })
   .refine((v) => v.password === v.confirmPassword, passwordsMatch);
 

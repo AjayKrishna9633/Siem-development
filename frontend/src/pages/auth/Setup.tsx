@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,13 +13,8 @@ import {
   type SetupDetailsValues,
   type SetupTokenValues,
 } from '../../lib/schemas.ts';
-import { Field, Select } from '../../components/ui/Form.tsx';
+import { Field } from '../../components/ui/Form.tsx';
 import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
-
-const timeZoneOptions = (preferred: string): string[] => {
-  const zones = Intl.supportedValuesOf('timeZone');
-  return [...new Set([preferred, 'UTC', ...zones])];
-};
 
 export const Setup: React.FC = () => {
   const navigate = useNavigate();
@@ -27,9 +22,6 @@ export const Setup: React.FC = () => {
 
   const [step, setStep] = useState<'token' | 'details' | 'done'>('token');
   const [token, setToken] = useState('');
-
-  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const zones = useMemo(() => timeZoneOptions(browserZone), [browserZone]);
 
   const tokenForm = useForm({
     resolver: zodResolver(setupTokenSchema),
@@ -47,7 +39,6 @@ export const Setup: React.FC = () => {
       confirmPassword: '',
       orgName: '',
       baseUrl: window.location.origin,
-      timezone: browserZone,
     },
   });
 
@@ -82,7 +73,6 @@ export const Setup: React.FC = () => {
         password: values.password,
         orgName: values.orgName,
         baseUrl: values.baseUrl,
-        timezone: values.timezone,
       });
       login(session.accessToken, session.user);
       navigate('/', { replace: true });
@@ -207,15 +197,6 @@ export const Setup: React.FC = () => {
               invalid={!!errors.baseUrl}
               {...register('baseUrl')}
             />
-          </Field>
-          <Field label="Time zone" mono error={errors.timezone?.message}>
-            <Select className="h-10 bg-canvas/70" {...register('timezone')}>
-              {zones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </Select>
           </Field>
         </fieldset>
 
