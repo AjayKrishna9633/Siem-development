@@ -1,4 +1,4 @@
-import { api } from './api.ts';
+import { api, INLINE_ERRORS } from './api.ts';
 import type {
   IApiResponse,
   ILoginResponse,
@@ -10,15 +10,17 @@ import type {
 
 export const authService = {
   async login(email: string, password: string): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/login', {
-      email,
-      password,
-    });
+    const res = await api.post<IApiResponse<ILoginResponse>>(
+      '/auth/login',
+      { email, password },
+      INLINE_ERRORS,
+    );
     return res.data.data;
   },
 
   async getInvite(token: string): Promise<IInvitePreview> {
     const res = await api.get<IApiResponse<IInvitePreview>>('/auth/invite', {
+      ...INLINE_ERRORS,
       params: { token },
     });
     return res.data.data;
@@ -29,27 +31,32 @@ export const authService = {
     name: string;
     password: string;
   }): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/invite/accept', data);
+    const res = await api.post<IApiResponse<ILoginResponse>>(
+      '/auth/invite/accept',
+      data,
+      INLINE_ERRORS,
+    );
     return res.data.data;
   },
 
   async requestPasswordReset(email: string): Promise<void> {
-    await api.post<IApiResponse<null>>('/auth/password-reset/request', { email });
+    await api.post<IApiResponse<null>>('/auth/password-reset/request', { email }, INLINE_ERRORS);
   },
 
   async getPasswordReset(token: string): Promise<IPasswordResetPreview> {
     const res = await api.get<IApiResponse<IPasswordResetPreview>>('/auth/password-reset', {
+      ...INLINE_ERRORS,
       params: { token },
     });
     return res.data.data;
   },
 
   async resetPassword(data: { token: string; password: string }): Promise<void> {
-    await api.post<IApiResponse<null>>('/auth/password-reset', data);
+    await api.post<IApiResponse<null>>('/auth/password-reset', data, INLINE_ERRORS);
   },
 
   async logout(): Promise<void> {
-    await api.post<IApiResponse<null>>('/auth/logout');
+    await api.post<IApiResponse<null>>('/auth/logout', null, INLINE_ERRORS);
   },
 
   async getMe(): Promise<IUser> {
@@ -58,7 +65,7 @@ export const authService = {
   },
 
   async updateProfile(data: { username: string }): Promise<IUser> {
-    const res = await api.put<IApiResponse<IUser>>('/auth/profile', data);
+    const res = await api.put<IApiResponse<IUser>>('/auth/profile', data, INLINE_ERRORS);
     return res.data.data;
   },
 
@@ -66,7 +73,7 @@ export const authService = {
     currentPassword: string;
     newPassword: string;
   }): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/password', data);
+    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/password', data, INLINE_ERRORS);
     return res.data.data;
   },
 
@@ -74,12 +81,16 @@ export const authService = {
     newEmail: string;
     currentPassword: string;
   }): Promise<ICodeSent> {
-    const res = await api.post<IApiResponse<ICodeSent>>('/auth/email/code', data);
+    const res = await api.post<IApiResponse<ICodeSent>>('/auth/email/code', data, INLINE_ERRORS);
     return res.data.data;
   },
 
   async changeEmail(code: string): Promise<ILoginResponse> {
-    const res = await api.post<IApiResponse<ILoginResponse>>('/auth/email', { code });
+    const res = await api.post<IApiResponse<ILoginResponse>>(
+      '/auth/email',
+      { code },
+      INLINE_ERRORS,
+    );
     return res.data.data;
   },
 };
