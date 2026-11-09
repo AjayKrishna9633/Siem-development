@@ -1,6 +1,6 @@
 import type { IApiResponse } from '../IAPIResponse.ts';
 
-export class ApiResponse<T = any> implements IApiResponse<T> {
+export class ApiResponse<T = unknown> implements IApiResponse<T> {
   public readonly success: boolean;
 
   constructor(
