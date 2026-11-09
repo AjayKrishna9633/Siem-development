@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Page, PageHeader } from '../../components/ui/PageHeader.tsx';
 import { Panel } from '../../components/ui/Panel.tsx';
 import { Button } from '../../components/ui/Button.tsx';
@@ -77,7 +78,6 @@ export const UserManagement: React.FC = () => {
   const { data, loading, error, reload } = useRemote(fetchPage, 'Failed to load users.');
 
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{
     user: IManagedUser;
     delivery: ILinkDelivery;
@@ -110,14 +110,19 @@ export const UserManagement: React.FC = () => {
     setPage,
   };
 
-  const runAction = async (u: IManagedUser, action: () => Promise<unknown>, failure: string) => {
+  const runAction = async (
+    u: IManagedUser,
+    action: () => Promise<unknown>,
+    failure: string,
+    success?: string,
+  ) => {
     setBusyId(u.id);
-    setActionError(null);
     try {
       await action();
+      if (success) toast.success(success);
       reload();
     } catch (err: unknown) {
-      setActionError(apiErrorMessage(err, failure));
+      toast.error(apiErrorMessage(err, failure));
     } finally {
       setBusyId(null);
     }
@@ -144,7 +149,12 @@ export const UserManagement: React.FC = () => {
     );
 
   const revokeInvite = (u: IManagedUser) =>
-    runAction(u, () => usersService.revokeInvite(u.id), 'Failed to revoke the invitation.');
+    runAction(
+      u,
+      () => usersService.revokeInvite(u.id),
+      'Failed to revoke the invitation.',
+      `Invitation for ${u.email} revoked.`,
+    );
 
   const filtersActive = search !== '' || role !== 'all' || status !== 'all';
 
@@ -182,8 +192,6 @@ export const UserManagement: React.FC = () => {
           onDismiss={() => setIssued(null)}
         />
       )}
-
-      {actionError && <p className="text-sm text-critical">{actionError}</p>}
 
       <Panel className="bg-raised/30">
         <ListToolbar
@@ -294,6 +302,7 @@ export const UserManagement: React.FC = () => {
               roleTarget,
               () => usersService.changeRole(roleTarget.id, role),
               'Failed to change the role.',
+              `${roleTarget.email} is now ${roleLabel[role]}.`,
             );
             setRoleTarget(null);
           }}
@@ -311,6 +320,7 @@ export const UserManagement: React.FC = () => {
               user,
               () => usersService.setEnabled(user.id, enable),
               enable ? 'Failed to enable the user.' : 'Failed to disable the user.',
+              `${user.email} ${enable ? 'enabled' : 'disabled'}.`,
             );
             setStatusTarget(null);
           }}
