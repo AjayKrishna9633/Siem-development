@@ -6,7 +6,7 @@ import type { IAuthTokenService } from '../../interfaces/services/auth-token.ser
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { IResetPasswordUseCase } from '../../interfaces/use-cases/password-reset.interface.ts';
-import type { IResetPasswordInput } from '../../types/use-case/password-reset.types.ts';
+import type { IResetPasswordInput } from '../../dtos/password-reset/request/password-reset-request.dto.ts';
 import { AuthTokenType } from '../../../domain/enums/AuthTokenType.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';

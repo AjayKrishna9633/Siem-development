@@ -5,7 +5,7 @@ import type { ISessionService } from '../../interfaces/services/session.service.
 import type { IVerificationCodeService } from '../../interfaces/services/verification-code.service.interface.ts';
 import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { IChangeEmailUseCase } from '../../interfaces/use-cases/account.interface.ts';
-import type { IChangeEmailInput } from '../../types/use-case/account.types.ts';
+import type { IChangeEmailInput } from '../../dtos/account/request/account-request.dto.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';

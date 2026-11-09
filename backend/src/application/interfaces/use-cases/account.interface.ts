@@ -2,9 +2,9 @@ import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import type {
   IChangeEmailInput,
   IChangePasswordInput,
-  ICodeSentResponse,
   IRequestEmailChangeInput,
-} from '../../types/use-case/account.types.ts';
+} from '../../dtos/account/request/account-request.dto.ts';
+import type { ICodeSentResponse } from '../../types/use-case/account.types.ts';
 
 export interface IChangePasswordUseCase {
   execute(input: IChangePasswordInput): Promise<ILoginResponse>;

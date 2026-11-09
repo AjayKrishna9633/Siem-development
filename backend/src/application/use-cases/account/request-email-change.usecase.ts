@@ -5,10 +5,8 @@ import type { IHashService } from '../../interfaces/services/hash.service.interf
 import type { IVerificationCodeService } from '../../interfaces/services/verification-code.service.interface.ts';
 import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { IRequestEmailChangeUseCase } from '../../interfaces/use-cases/account.interface.ts';
-import type {
-  ICodeSentResponse,
-  IRequestEmailChangeInput,
-} from '../../types/use-case/account.types.ts';
+import type { ICodeSentResponse } from '../../types/use-case/account.types.ts';
+import type { IRequestEmailChangeInput } from '../../dtos/account/request/account-request.dto.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';

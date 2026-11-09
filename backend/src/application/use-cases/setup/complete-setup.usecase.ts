@@ -8,7 +8,7 @@ import type { IHashService } from '../../interfaces/services/hash.service.interf
 import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
 import type { ICompleteSetupUseCase } from '../../interfaces/use-cases/setup.interface.ts';
-import type { ICompleteSetupInput } from '../../types/use-case/setup.types.ts';
+import type { ICompleteSetupInput } from '../../dtos/setup/request/setup-request.dto.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import { User } from '../../../domain/entities/user.entity.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';

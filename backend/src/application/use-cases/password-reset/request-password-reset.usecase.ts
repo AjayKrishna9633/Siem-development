@@ -8,7 +8,7 @@ import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interfac
 import type { IEmailService } from '../../interfaces/services/email.service.interface.ts';
 import type { ILogger } from '../../interfaces/services/logger.interface.ts';
 import type { IRequestPasswordResetUseCase } from '../../interfaces/use-cases/password-reset.interface.ts';
-import type { IRequestPasswordResetInput } from '../../types/use-case/password-reset.types.ts';
+import type { IRequestPasswordResetInput } from '../../dtos/password-reset/request/password-reset-request.dto.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';

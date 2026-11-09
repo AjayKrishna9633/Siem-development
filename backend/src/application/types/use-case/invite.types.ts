@@ -1,6 +1,5 @@
 import type { UserRole } from '../../../domain/enums/UserRole.ts';
-import type { IRequestContext } from '../../interfaces/repositories/audit-log.repository.interface.ts';
-import type { IActor } from './actor.types.ts';
+
 import type { IManagedUser } from './user-mgmt.types.ts';
 
 export interface IInviteDelivery {
@@ -9,22 +8,9 @@ export interface IInviteDelivery {
   link?: string;
 }
 
-export interface IInviteUserInput {
-  actor: IActor;
-  email: string;
-  role: UserRole;
-  context: IRequestContext;
-}
-
 export interface IInviteResult {
   user: IManagedUser;
   invite: IInviteDelivery;
-}
-
-export interface IManageInviteInput {
-  actor: IActor;
-  userId: string;
-  context: IRequestContext;
 }
 
 export interface IPendingInvite {
@@ -42,11 +28,4 @@ export interface IInvitePreview {
   role: UserRole;
   orgName: string | null;
   expiresAt: Date;
-}
-
-export interface IAcceptInviteInput {
-  token: string;
-  name: string;
-  password: string;
-  context: IRequestContext;
 }

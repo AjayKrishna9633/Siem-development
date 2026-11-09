@@ -6,7 +6,7 @@ import type { IAuthTokenService } from '../../interfaces/services/auth-token.ser
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
 import type { IAcceptInviteUseCase } from '../../interfaces/use-cases/invites.interface.ts';
-import type { IAcceptInviteInput } from '../../types/use-case/invite.types.ts';
+import type { IAcceptInviteInput } from '../../dtos/invite/request/invite-request.dto.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import { AuthTokenType } from '../../../domain/enums/AuthTokenType.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';

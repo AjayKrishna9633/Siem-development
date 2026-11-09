@@ -1,10 +1,9 @@
 import type {
   IChangeUserRoleInput,
   IListUsersInput,
-  IManagedUser,
   ISetUserStatusInput,
-  IUserPage,
-} from '../../types/use-case/user-mgmt.types.ts';
+} from '../../dtos/user/request/user-request.dto.ts';
+import type { IManagedUser, IUserPage } from '../../types/use-case/user-mgmt.types.ts';
 
 export interface IChangeUserRoleUseCase {
   execute(input: IChangeUserRoleInput): Promise<IManagedUser>;

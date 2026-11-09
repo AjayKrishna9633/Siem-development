@@ -9,7 +9,7 @@ import type { User } from '../../../domain/entities/user.entity.ts';
 import type {
   IUserListQuery,
   UserSortKey,
-} from '../../../application/types/use-case/user-mgmt.types.ts';
+} from '../../../application/dtos/user/request/user-request.dto.ts';
 import { normalizeEmail } from '../../../domain/policies/credentials.policy.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';

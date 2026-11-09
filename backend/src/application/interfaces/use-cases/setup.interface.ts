@@ -1,9 +1,9 @@
 import type {
   ICompleteSetupInput,
   IIssueSetupTokenInput,
-  IssueSetupTokenResult,
   IVerifySetupTokenInput,
-} from '../../types/use-case/setup.types.ts';
+} from '../../dtos/setup/request/setup-request.dto.ts';
+import type { IssueSetupTokenResult } from '../../types/use-case/setup.types.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 
 export interface IIssueSetupTokenUseCase {

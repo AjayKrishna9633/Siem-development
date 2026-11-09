@@ -1,10 +1,12 @@
 import type {
   IAcceptInviteInput,
+  IInviteUserInput,
+  IManageInviteInput,
+} from '../../dtos/invite/request/invite-request.dto.ts';
+import type {
   IInviteDelivery,
   IInvitePreview,
   IInviteResult,
-  IInviteUserInput,
-  IManageInviteInput,
   IPendingInvite,
 } from '../../types/use-case/invite.types.ts';
 import type { IActor } from '../../types/use-case/actor.types.ts';

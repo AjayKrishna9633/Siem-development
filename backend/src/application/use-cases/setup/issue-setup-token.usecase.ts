@@ -4,10 +4,8 @@ import { SETUP_TOKEN_TTL_HOURS } from '../../../domain/constants/security.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
 import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
 import type { IIssueSetupTokenUseCase } from '../../interfaces/use-cases/setup.interface.ts';
-import type {
-  IIssueSetupTokenInput,
-  IssueSetupTokenResult,
-} from '../../types/use-case/setup.types.ts';
+import type { IIssueSetupTokenInput } from '../../dtos/setup/request/setup-request.dto.ts';
+import type { IssueSetupTokenResult } from '../../types/use-case/setup.types.ts';
 
 @injectable()
 export class IssueSetupTokenUseCase implements IIssueSetupTokenUseCase {

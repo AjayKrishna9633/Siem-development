@@ -1,10 +1,12 @@
 import type {
   IIssueResetLinkInput,
+  IRequestPasswordResetInput,
+  IResetPasswordInput,
+} from '../../dtos/password-reset/request/password-reset-request.dto.ts';
+import type {
   IPasswordResetPreview,
   IRecoveryLink,
-  IRequestPasswordResetInput,
   IResetLinkDelivery,
-  IResetPasswordInput,
 } from '../../types/use-case/password-reset.types.ts';
 
 export interface IRequestPasswordResetUseCase {

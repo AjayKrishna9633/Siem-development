@@ -3,7 +3,7 @@ import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 import type { IRevokeInviteUseCase } from '../../interfaces/use-cases/invites.interface.ts';
-import type { IManageInviteInput } from '../../types/use-case/invite.types.ts';
+import type { IManageInviteInput } from '../../dtos/invite/request/invite-request.dto.ts';
 import { Permission } from '../../../domain/enums/Permission.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';

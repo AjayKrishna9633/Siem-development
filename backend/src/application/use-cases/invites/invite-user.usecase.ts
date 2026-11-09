@@ -7,7 +7,8 @@ import type { IAuditLogRepository } from '../../interfaces/repositories/audit-lo
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interface.ts';
 import type { IInviteUserUseCase } from '../../interfaces/use-cases/invites.interface.ts';
-import type { IInviteResult, IInviteUserInput } from '../../types/use-case/invite.types.ts';
+import type { IInviteResult } from '../../types/use-case/invite.types.ts';
+import type { IInviteUserInput } from '../../dtos/invite/request/invite-request.dto.ts';
 import { User } from '../../../domain/entities/user.entity.ts';
 import { Permission } from '../../../domain/enums/Permission.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';

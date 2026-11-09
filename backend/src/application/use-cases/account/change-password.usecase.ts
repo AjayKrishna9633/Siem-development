@@ -6,7 +6,7 @@ import type { ISessionService } from '../../interfaces/services/session.service.
 import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { IChangePasswordUseCase } from '../../interfaces/use-cases/account.interface.ts';
-import type { IChangePasswordInput } from '../../types/use-case/account.types.ts';
+import type { IChangePasswordInput } from '../../dtos/account/request/account-request.dto.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';

@@ -6,10 +6,8 @@ import type { IAuditLogRepository } from '../../interfaces/repositories/audit-lo
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interface.ts';
 import type { IIssueResetLinkUseCase } from '../../interfaces/use-cases/password-reset.interface.ts';
-import type {
-  IIssueResetLinkInput,
-  IResetLinkDelivery,
-} from '../../types/use-case/password-reset.types.ts';
+import type { IIssueResetLinkInput } from '../../dtos/password-reset/request/password-reset-request.dto.ts';
+import type { IResetLinkDelivery } from '../../types/use-case/password-reset.types.ts';
 import { Permission } from '../../../domain/enums/Permission.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';

@@ -6,7 +6,8 @@ import type { IUserRepository } from '../../interfaces/repositories/user.reposit
 import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
-import type { ILoginInput, ILoginResponse } from '../../types/use-case/auth.types.ts';
+import type { ILoginInput } from '../../dtos/session/request/session-request.dto.ts';
+import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import type { ILoginUseCase } from '../../interfaces/use-cases/login.interface.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';

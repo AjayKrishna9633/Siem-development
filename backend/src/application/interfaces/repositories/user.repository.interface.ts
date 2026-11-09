@@ -1,7 +1,7 @@
 import type { IBaseRepository } from './base.repository.interface.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 import type { UserStatus } from '../../../domain/enums/UserStatus.ts';
-import type { IUserListQuery } from '../../types/use-case/user-mgmt.types.ts';
+import type { IUserListQuery } from '../../dtos/user/request/user-request.dto.ts';
 
 export interface IUserRepository extends IBaseRepository<User> {
   findByEmail(email: string): Promise<User | null>;

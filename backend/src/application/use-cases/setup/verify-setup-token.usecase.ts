@@ -4,7 +4,7 @@ import type { ISystemSettingsRepository } from '../../interfaces/repositories/sy
 import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
 import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
 import type { IVerifySetupTokenUseCase } from '../../interfaces/use-cases/setup.interface.ts';
-import type { IVerifySetupTokenInput } from '../../types/use-case/setup.types.ts';
+import type { IVerifySetupTokenInput } from '../../dtos/setup/request/setup-request.dto.ts';
 import {
   invalidSetupToken,
   isSetupTokenValid,
