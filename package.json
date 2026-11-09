@@ -16,6 +16,8 @@
     "prepare": "husky",
     "dev": "concurrently -n \"backend,frontend\" -c \"cyan,magenta\" \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:backend": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix frontend run dev"
+    "dev:frontend": "npm --prefix frontend run dev",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "lint:fix": "npm run lint --prefix backend -- --fix && npm run lint --prefix frontend -- --fix"
   }
 }
