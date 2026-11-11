@@ -24,7 +24,7 @@ const hashCode = (code: string) => createHash('sha256').update(code).digest();
 
 @injectable()
 export class VerificationCodeService implements IVerificationCodeService {
-  constructor(@inject(TYPES.CacheService) private readonly cache: ICacheService) {}
+  constructor(@inject(TYPES.CacheService) private readonly _cache: ICacheService) {}
 
   private key(purpose: VerificationPurpose, userId: string): CacheKey {
     return `verify:${purpose}:${userId}`;
@@ -42,7 +42,7 @@ export class VerificationCodeService implements IVerificationCodeService {
       expiresAt: new Date(Date.now() + TTL_MINUTES * 60_000).toISOString(),
       data,
     };
-    await this.cache.set(this.key(purpose, userId), record, TTL_MINUTES * 60);
+    await this._cache.set(this.key(purpose, userId), record, TTL_MINUTES * 60);
     return { code, expiresInMinutes: TTL_MINUTES };
   }
 
@@ -52,7 +52,7 @@ export class VerificationCodeService implements IVerificationCodeService {
     code: string,
   ): Promise<T | null> {
     const key = this.key(purpose, userId);
-    const record = await this.cache.get<IStoredCode<T>>(key);
+    const record = await this._cache.get<IStoredCode<T>>(key);
     if (!record) return null;
 
     const matches = timingSafeEqual(hashCode(code.trim()), Buffer.from(record.codeHash, 'hex'));
@@ -60,18 +60,18 @@ export class VerificationCodeService implements IVerificationCodeService {
 
     const attempts = record.attempts + 1;
     if (attempts >= MAX_ATTEMPTS) {
-      await this.cache.delete(key);
+      await this._cache.delete(key);
       return null;
     }
     const remainingSeconds = Math.max(
       1,
       Math.floor((new Date(record.expiresAt).getTime() - Date.now()) / 1000),
     );
-    await this.cache.set(key, { ...record, attempts }, remainingSeconds);
+    await this._cache.set(key, { ...record, attempts }, remainingSeconds);
     return null;
   }
 
   async consume(purpose: VerificationPurpose, userId: string): Promise<void> {
-    await this.cache.delete(this.key(purpose, userId));
+    await this._cache.delete(this.key(purpose, userId));
   }
 }

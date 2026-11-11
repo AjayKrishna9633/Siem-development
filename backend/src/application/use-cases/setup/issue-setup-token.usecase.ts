@@ -10,12 +10,12 @@ import type { IssueSetupTokenResult } from '../../types/use-case/setup.types.ts'
 @injectable()
 export class IssueSetupTokenUseCase implements IIssueSetupTokenUseCase {
   constructor(
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.OpaqueTokenService) private readonly tokens: IOpaqueTokenService,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.OpaqueTokenService) private readonly _tokens: IOpaqueTokenService,
   ) {}
 
   async execute(input: IIssueSetupTokenInput): Promise<IssueSetupTokenResult> {
-    const settings = await this.settings.get();
+    const settings = await this._settings.get();
     const now = new Date();
 
     if (settings.isSetupCompleted) return { status: 'completed' };
@@ -23,10 +23,10 @@ export class IssueSetupTokenUseCase implements IIssueSetupTokenUseCase {
       return { status: 'existing', expiresAt: settings.setupTokenExpiresAt as Date };
     }
 
-    const { token, hash } = this.tokens.generate();
+    const { token, hash } = this._tokens.generate();
     const expiresAt = new Date(now.getTime() + SETUP_TOKEN_TTL_HOURS * 60 * 60_000);
     settings.issueSetupToken(hash, expiresAt, now);
-    await this.settings.save(settings);
+    await this._settings.save(settings);
 
     return { status: 'issued', token, expiresAt };
   }

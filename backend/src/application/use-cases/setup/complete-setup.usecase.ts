@@ -23,24 +23,24 @@ import {
 @injectable()
 export class CompleteSetupUseCase implements ICompleteSetupUseCase {
   constructor(
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
-    @inject(TYPES.OpaqueTokenService) private readonly tokens: IOpaqueTokenService,
-    @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.OpaqueTokenService) private readonly _tokens: IOpaqueTokenService,
+    @inject(TYPES.HashService) private readonly _hasher: IHashService,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
   ) {}
 
   async execute(input: ICompleteSetupInput): Promise<ILoginResponse> {
-    const passwordHash = await this.hasher.hash(input.password);
+    const passwordHash = await this._hasher.hash(input.password);
     const now = new Date();
     let tokenRejected = false;
 
     let admin: User;
     try {
-      admin = await this.settings.completeSetup((locked) => {
+      admin = await this._settings.completeSetup((locked) => {
         if (locked.isSetupCompleted) throw setupAlreadyCompleted();
-        if (!isSetupTokenValid(locked, input.token, this.tokens, now)) {
+        if (!isSetupTokenValid(locked, input.token, this._tokens, now)) {
           tokenRejected = true;
           throw invalidSetupToken();
         }
@@ -55,11 +55,11 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
         });
       });
     } catch (err) {
-      if (tokenRejected) await recordRejectedSetupToken(this.audit, input.context);
+      if (tokenRejected) await recordRejectedSetupToken(this._audit, input.context);
       throw err;
     }
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: admin.id,
       action: AuditAction.SETUP_COMPLETED,
       targetType: AuditTargetType.USER,
@@ -69,7 +69,7 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
     });
 
     admin.recordSuccessfulLogin(input.context.ip, now);
-    await this.users.save(admin);
-    return startSession(this.sessions, admin);
+    await this._users.save(admin);
+    return startSession(this._sessions, admin);
   }
 }

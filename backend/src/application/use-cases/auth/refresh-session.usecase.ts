@@ -16,19 +16,19 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 @injectable()
 export class RefreshSessionUseCase implements IRefreshSessionUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
   ) {}
 
   async execute(input: IRefreshSessionInput): Promise<ILoginResponse> {
-    const record = await this.sessions.consume(input.refreshToken);
-    const user = await this.users.findById(record.userId);
+    const record = await this._sessions.consume(input.refreshToken);
+    const user = await this._users.findById(record.userId);
 
     if (!user || user.status !== UserStatus.ACTIVE || user.tokenVersion !== record.tokenVersion) {
-      await this.sessions.revokeFamily(record.familyId);
+      await this._sessions.revokeFamily(record.familyId);
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
     }
 
-    return startSession(this.sessions, user, record.familyId);
+    return startSession(this._sessions, user, record.familyId);
   }
 }

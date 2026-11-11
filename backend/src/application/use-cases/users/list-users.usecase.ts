@@ -11,14 +11,14 @@ import { toManagedUser } from './managed-user.ts';
 
 @injectable()
 export class ListUsersUseCase implements IListUsersUseCase {
-  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
+  constructor(@inject(TYPES.UserRepository) private readonly _users: IUserRepository) {}
 
   async execute(input: IListUsersInput): Promise<IUserPage> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const [{ users, total }, byStatus] = await Promise.all([
-      this.users.findPage(input.query),
-      this.users.countByStatus(),
+      this._users.findPage(input.query),
+      this._users.countByStatus(),
     ]);
 
     return {

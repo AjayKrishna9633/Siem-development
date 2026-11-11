@@ -26,15 +26,15 @@ import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
 export class AccountController {
   constructor(
     @inject(TYPES.GetCurrentUserUseCase)
-    private readonly getCurrentUserUseCase: IGetCurrentUserUseCase,
+    private readonly _getCurrentUserUseCase: IGetCurrentUserUseCase,
     @inject(TYPES.UpdateProfileUseCase)
-    private readonly updateProfileUseCase: IUpdateProfileUseCase,
+    private readonly _updateProfileUseCase: IUpdateProfileUseCase,
     @inject(TYPES.ChangePasswordUseCase)
-    private readonly changePasswordUseCase: IChangePasswordUseCase,
+    private readonly _changePasswordUseCase: IChangePasswordUseCase,
     @inject(TYPES.RequestEmailChangeUseCase)
-    private readonly requestEmailChangeUseCase: IRequestEmailChangeUseCase,
+    private readonly _requestEmailChangeUseCase: IRequestEmailChangeUseCase,
     @inject(TYPES.ChangeEmailUseCase)
-    private readonly changeEmailUseCase: IChangeEmailUseCase,
+    private readonly _changeEmailUseCase: IChangeEmailUseCase,
   ) {}
 
   getMe = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -42,7 +42,7 @@ export class AccountController {
       throw new AppError(AppErrorCode.UNAUTHORIZED, ErrorMessage.UNAUTHORIZED);
     }
 
-    const profile = await this.getCurrentUserUseCase.execute({
+    const profile = await this._getCurrentUserUseCase.execute({
       userId: req.user.userId,
       tokenVersion: req.user.tokenVersion,
     });
@@ -59,7 +59,7 @@ export class AccountController {
   });
 
   updateProfile = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const updatedProfile = await this.updateProfileUseCase.execute({
+    const updatedProfile = await this._updateProfileUseCase.execute({
       id: actorFrom(req).userId,
       username: req.body.username,
       now: new Date(),
@@ -77,7 +77,7 @@ export class AccountController {
   });
 
   changePassword = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const session = await this.changePasswordUseCase.execute({
+    const session = await this._changePasswordUseCase.execute({
       actor: actorFrom(req),
       currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
@@ -97,7 +97,7 @@ export class AccountController {
   });
 
   requestEmailChange = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.requestEmailChangeUseCase.execute({
+    const result = await this._requestEmailChangeUseCase.execute({
       actor: actorFrom(req),
       newEmail: req.body.newEmail,
       currentPassword: req.body.currentPassword,
@@ -115,7 +115,7 @@ export class AccountController {
   });
 
   changeEmail = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const session = await this.changeEmailUseCase.execute({
+    const session = await this._changeEmailUseCase.execute({
       actor: actorFrom(req),
       code: req.body.code,
     });

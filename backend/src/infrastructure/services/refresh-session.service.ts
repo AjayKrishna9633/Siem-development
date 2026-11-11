@@ -24,8 +24,8 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
 @injectable()
 export class RefreshSessionService implements ISessionService {
   constructor(
-    @inject(TYPES.CacheService) private readonly cache: ICacheService,
-    @inject(TYPES.TokenService) private readonly tokenService: ITokenService,
+    @inject(TYPES.CacheService) private readonly _cache: ICacheService,
+    @inject(TYPES.TokenService) private readonly _tokenService: ITokenService,
   ) {}
 
   async issue(payload: ITokenPayload, familyId: string = randomUUID()): Promise<ISessionTokens> {
@@ -37,33 +37,33 @@ export class RefreshSessionService implements ISessionService {
       tokenVersion: payload.tokenVersion,
     };
 
-    await this.cache.set(`refresh:${hashToken(refreshToken)}`, record, REFRESH_TTL_SECONDS);
-    await this.cache.set(
+    await this._cache.set(`refresh:${hashToken(refreshToken)}`, record, REFRESH_TTL_SECONDS);
+    await this._cache.set(
       `refresh-family:${familyId}`,
       { userId: payload.userId },
       REFRESH_TTL_SECONDS,
     );
 
-    return { accessToken: this.tokenService.generateAccessToken(payload), refreshToken };
+    return { accessToken: this._tokenService.generateAccessToken(payload), refreshToken };
   }
 
   async consume(refreshToken: string): Promise<IRefreshTokenRecord> {
     const key = `refresh:${hashToken(refreshToken)}` as const;
-    const record = await this.cache.get<IRefreshTokenRecord>(key);
+    const record = await this._cache.get<IRefreshTokenRecord>(key);
 
     if (!record) {
       throw new AppError(AppErrorCode.INVALID_REFRESH_TOKEN, ErrorMessage.INVALID_REFRESH_TOKEN);
     }
 
-    const family = await this.cache.get<{ userId: string }>(`refresh-family:${record.familyId}`);
+    const family = await this._cache.get<{ userId: string }>(`refresh-family:${record.familyId}`);
     if (!family) {
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
     }
 
     const usedKey = `refresh-used:${hashToken(refreshToken)}` as const;
-    const claimed = await this.cache.setIfAbsent(usedKey, Date.now(), REFRESH_TTL_SECONDS);
+    const claimed = await this._cache.setIfAbsent(usedKey, Date.now(), REFRESH_TTL_SECONDS);
     if (!claimed) {
-      const usedAt = await this.cache.get<number>(usedKey);
+      const usedAt = await this._cache.get<number>(usedKey);
       if (usedAt !== null && Date.now() - usedAt > REUSE_GRACE_MS) {
         await this.revokeFamily(record.familyId);
         throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);
@@ -75,11 +75,11 @@ export class RefreshSessionService implements ISessionService {
   }
 
   async revokeFamily(familyId: string): Promise<void> {
-    await this.cache.delete(`refresh-family:${familyId}`);
+    await this._cache.delete(`refresh-family:${familyId}`);
   }
 
   async revoke(refreshToken: string): Promise<string | null> {
-    const record = await this.cache.get<IRefreshTokenRecord>(`refresh:${hashToken(refreshToken)}`);
+    const record = await this._cache.get<IRefreshTokenRecord>(`refresh:${hashToken(refreshToken)}`);
     if (!record) return null;
     await this.revokeFamily(record.familyId);
     return record.userId;

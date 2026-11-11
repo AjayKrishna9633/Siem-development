@@ -15,17 +15,17 @@ import {
 @injectable()
 export class VerifySetupTokenUseCase implements IVerifySetupTokenUseCase {
   constructor(
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.OpaqueTokenService) private readonly tokens: IOpaqueTokenService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.OpaqueTokenService) private readonly _tokens: IOpaqueTokenService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IVerifySetupTokenInput): Promise<void> {
-    const settings = await this.settings.get();
+    const settings = await this._settings.get();
     if (settings.isSetupCompleted) throw setupAlreadyCompleted();
 
-    if (!isSetupTokenValid(settings, input.token, this.tokens, new Date())) {
-      await recordRejectedSetupToken(this.audit, input.context);
+    if (!isSetupTokenValid(settings, input.token, this._tokens, new Date())) {
+      await recordRejectedSetupToken(this._audit, input.context);
       throw invalidSetupToken();
     }
   }

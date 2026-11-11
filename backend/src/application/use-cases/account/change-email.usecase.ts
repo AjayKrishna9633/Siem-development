@@ -19,38 +19,38 @@ import type { IPendingEmailChange } from './request-email-change.usecase.ts';
 @injectable()
 export class ChangeEmailUseCase implements IChangeEmailUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.VerificationCodeService) private readonly codes: IVerificationCodeService,
-    @inject(TYPES.SecurityMailer) private readonly mailer: ISecurityMailer,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
+    @inject(TYPES.VerificationCodeService) private readonly _codes: IVerificationCodeService,
+    @inject(TYPES.SecurityMailer) private readonly _mailer: ISecurityMailer,
   ) {}
 
   async execute(input: IChangeEmailInput): Promise<ILoginResponse> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
-    const user = await loadActiveUser(this.users, input.actor.userId);
+    const user = await loadActiveUser(this._users, input.actor.userId);
 
-    const pending = await this.codes.check<IPendingEmailChange>(
+    const pending = await this._codes.check<IPendingEmailChange>(
       'email-change',
       user.id,
       input.code,
     );
     if (!pending) throw invalidCode();
 
-    if (await this.users.findByEmail(pending.newEmail)) {
-      await this.codes.consume('email-change', user.id);
+    if (await this._users.findByEmail(pending.newEmail)) {
+      await this._codes.consume('email-change', user.id);
       throw new AppError(AppErrorCode.EMAIL_TAKEN, ErrorMessage.EMAIL_TAKEN);
     }
 
     const oldEmail = user.email;
     user.changeEmail(pending.newEmail, new Date());
-    await this.users.save(user);
-    await this.codes.consume('email-change', user.id);
-    await this.mailer.notifyEmailChanged({
+    await this._users.save(user);
+    await this._codes.consume('email-change', user.id);
+    await this._mailer.notifyEmailChanged({
       oldEmail,
       newEmail: user.email,
       username: user.displayName,
     });
 
-    return startSession(this.sessions, user);
+    return startSession(this._sessions, user);
   }
 }

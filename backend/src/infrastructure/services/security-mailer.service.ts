@@ -26,10 +26,10 @@ const codeCopy: Record<VerificationPurpose, { subject: string; eyebrow: string; 
 
 @injectable()
 export class SecurityMailer implements ISecurityMailer {
-  constructor(@inject(TYPES.EmailService) private readonly email: IEmailService) {}
+  constructor(@inject(TYPES.EmailService) private readonly _email: IEmailService) {}
 
   private send(to: string, subject: string, content: ISecurityEmailInput) {
-    return this.email.send({
+    return this._email.send({
       to,
       subject,
       text: securityEmailText(content),

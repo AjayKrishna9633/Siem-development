@@ -9,19 +9,19 @@ import type { ILogger } from '../../application/interfaces/services/logger.inter
 
 @injectable()
 export class RedisCacheService implements ICacheService {
-  private fallbackStore = new Map<string, { value: string; expiresAt: number }>();
-  private readonly logger: ILogger;
+  private _fallbackStore = new Map<string, { value: string; expiresAt: number }>();
+  private readonly _logger: ILogger;
 
   constructor(
-    @inject(TYPES.RedisClient) private readonly client: IRedisClient,
+    @inject(TYPES.RedisClient) private readonly _client: IRedisClient,
     @inject(TYPES.Logger) logger: ILogger,
   ) {
-    this.logger = logger.child({ module: 'cache' });
+    this._logger = logger.child({ module: 'cache' });
   }
 
   private reportFailure(operation: string, key: CacheKey, err: unknown): void {
-    if (this.client.status !== 'ready') return;
-    this.logger.warn('Redis command failed, using the in-memory cache', {
+    if (this._client.status !== 'ready') return;
+    this._logger.warn('Redis command failed, using the in-memory cache', {
       operation,
       keyType: key.split(':')[0],
       err,
@@ -31,10 +31,10 @@ export class RedisCacheService implements ICacheService {
   async set<T>(key: CacheKey, value: T, ttl: number): Promise<void> {
     const stringVal = JSON.stringify(value);
     try {
-      await this.client.set(key, stringVal, 'EX', ttl);
+      await this._client.set(key, stringVal, 'EX', ttl);
     } catch (err) {
       this.reportFailure('set', key, err);
-      this.fallbackStore.set(key, {
+      this._fallbackStore.set(key, {
         value: stringVal,
         expiresAt: Date.now() + ttl * 1000,
       });
@@ -44,29 +44,29 @@ export class RedisCacheService implements ICacheService {
   async setIfAbsent<T>(key: CacheKey, value: T, ttl: number): Promise<boolean> {
     const stringVal = JSON.stringify(value);
     try {
-      return (await this.client.set(key, stringVal, 'EX', ttl, 'NX')) === 'OK';
+      return (await this._client.set(key, stringVal, 'EX', ttl, 'NX')) === 'OK';
     } catch (err) {
       this.reportFailure('setIfAbsent', key, err);
-      const existing = this.fallbackStore.get(key);
+      const existing = this._fallbackStore.get(key);
       if (existing && Date.now() <= existing.expiresAt) return false;
-      this.fallbackStore.set(key, { value: stringVal, expiresAt: Date.now() + ttl * 1000 });
+      this._fallbackStore.set(key, { value: stringVal, expiresAt: Date.now() + ttl * 1000 });
       return true;
     }
   }
 
   async get<T>(key: CacheKey): Promise<T | null> {
     try {
-      const data = await this.client.get(key);
+      const data = await this._client.get(key);
       if (data) return JSON.parse(data) as T;
     } catch (err) {
       this.reportFailure('get', key, err);
     }
 
-    const item = this.fallbackStore.get(key);
+    const item = this._fallbackStore.get(key);
     if (!item) return null;
 
     if (Date.now() > item.expiresAt) {
-      this.fallbackStore.delete(key);
+      this._fallbackStore.delete(key);
       return null;
     }
 
@@ -75,10 +75,10 @@ export class RedisCacheService implements ICacheService {
 
   async delete(key: CacheKey): Promise<void> {
     try {
-      await this.client.del(key);
+      await this._client.del(key);
     } catch (err) {
       this.reportFailure('delete', key, err);
     }
-    this.fallbackStore.delete(key);
+    this._fallbackStore.delete(key);
   }
 }

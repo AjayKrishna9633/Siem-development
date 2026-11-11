@@ -12,17 +12,17 @@ import { invalidInvite } from './invite-delivery.ts';
 @injectable()
 export class GetInviteUseCase implements IGetInviteUseCase {
   constructor(
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
   ) {}
 
   async execute(input: { token: string }): Promise<IInvitePreview> {
-    const link = await this.tokens.findUsable(input.token, AuthTokenType.INVITE);
-    const user = link ? await this.users.findById(link.userId) : null;
+    const link = await this._tokens.findUsable(input.token, AuthTokenType.INVITE);
+    const user = link ? await this._users.findById(link.userId) : null;
     if (!link || !user || user.status !== UserStatus.INVITED) throw invalidInvite();
 
-    const settings = await this.settings.get();
+    const settings = await this._settings.get();
     return {
       email: user.email,
       role: user.role,

@@ -12,26 +12,26 @@ import { SETTINGS_ROW_ID } from '../mappers/system-settings.mapper.ts';
 @injectable()
 export class TypeOrmSystemSettingsRepository implements ISystemSettingsRepository {
   constructor(
-    @inject(TYPES.DataSource) private readonly db: DataSource,
+    @inject(TYPES.DataSource) private readonly _db: DataSource,
     @inject(TYPES.SystemSettingsMapper)
-    private readonly mapper: IMapper<SystemSettings, SystemSettingsModel>,
+    private readonly _mapper: IMapper<SystemSettings, SystemSettingsModel>,
   ) {}
 
   async get(): Promise<SystemSettings> {
-    return this.mapper.toDomain(await this.loadRow(this.db.manager));
+    return this._mapper.toDomain(await this.loadRow(this._db.manager));
   }
 
   async save(settings: SystemSettings): Promise<void> {
-    await this.db.getRepository(SystemSettingsModel).save(this.mapper.toPersistence(settings));
+    await this._db.getRepository(SystemSettingsModel).save(this._mapper.toPersistence(settings));
   }
 
   completeSetup(decide: (locked: SystemSettings) => User): Promise<User> {
-    return this.db.transaction(async (manager) => {
-      const settings = this.mapper.toDomain(await this.loadRow(manager, true));
+    return this._db.transaction(async (manager) => {
+      const settings = this._mapper.toDomain(await this.loadRow(manager, true));
       const admin = decide(settings);
 
       await manager.insert(UserModel, admin.toSnapshot());
-      await manager.save(SystemSettingsModel, this.mapper.toPersistence(settings));
+      await manager.save(SystemSettingsModel, this._mapper.toPersistence(settings));
       return admin;
     });
   }

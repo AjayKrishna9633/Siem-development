@@ -20,28 +20,28 @@ import { deliverInvite, inviteNotPending } from './invite-delivery.ts';
 @injectable()
 export class ResendInviteUseCase implements IResendInviteUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.AuthMailer) private readonly mailer: IAuthMailer,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IManageInviteInput): Promise<IInviteDelivery> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
-    const user = await this.users.findById(input.userId);
+    const user = await this._users.findById(input.userId);
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
     if (user.status !== UserStatus.INVITED) throw inviteNotPending();
 
     const invite = await deliverInvite(
-      { settings: this.settings, tokens: this.tokens, mailer: this.mailer },
+      { settings: this._settings, tokens: this._tokens, mailer: this._mailer },
       user,
       input.actor.userId,
       true,
     );
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: input.actor.userId,
       action: AuditAction.INVITE_RESENT,
       targetType: AuditTargetType.USER,

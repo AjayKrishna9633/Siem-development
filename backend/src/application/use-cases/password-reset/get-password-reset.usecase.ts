@@ -11,13 +11,13 @@ import { invalidResetLink } from './reset-link.ts';
 @injectable()
 export class GetPasswordResetUseCase implements IGetPasswordResetUseCase {
   constructor(
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
   ) {}
 
   async execute(input: { token: string }): Promise<IPasswordResetPreview> {
-    const link = await this.tokens.findUsable(input.token, AuthTokenType.RESET);
-    const user = link ? await this.users.findById(link.userId) : null;
+    const link = await this._tokens.findUsable(input.token, AuthTokenType.RESET);
+    const user = link ? await this._users.findById(link.userId) : null;
     if (!link || !user || user.status !== UserStatus.ACTIVE) throw invalidResetLink();
 
     return { email: user.email, expiresAt: link.expiresAt };

@@ -20,17 +20,17 @@ import { createResetLink } from './reset-link.ts';
 @injectable()
 export class IssueResetLinkUseCase implements IIssueResetLinkUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.AuthMailer) private readonly mailer: IAuthMailer,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IIssueResetLinkInput): Promise<IResetLinkDelivery> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
-    const user = await this.users.findById(input.userId);
+    const user = await this._users.findById(input.userId);
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
     if (user.status !== UserStatus.ACTIVE) {
       throw new AppError(
@@ -40,12 +40,12 @@ export class IssueResetLinkUseCase implements IIssueResetLinkUseCase {
     }
 
     const { link, expiresAt } = await createResetLink(
-      this.settings,
-      this.tokens,
+      this._settings,
+      this._tokens,
       user,
       input.actor.userId,
     );
-    const { delivered } = await this.mailer.sendPasswordReset({
+    const { delivered } = await this._mailer.sendPasswordReset({
       to: user.email,
       name: user.displayName,
       link,
@@ -53,7 +53,7 @@ export class IssueResetLinkUseCase implements IIssueResetLinkUseCase {
       byAdmin: true,
     });
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: input.actor.userId,
       action: AuditAction.PASSWORD_RESET_REQUESTED,
       targetType: AuditTargetType.USER,

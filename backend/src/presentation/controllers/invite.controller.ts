@@ -21,8 +21,8 @@ import type {
 @injectable()
 export class InviteController {
   constructor(
-    @inject(TYPES.GetInviteUseCase) private readonly getInvite: IGetInviteUseCase,
-    @inject(TYPES.AcceptInviteUseCase) private readonly acceptInvite: IAcceptInviteUseCase,
+    @inject(TYPES.GetInviteUseCase) private readonly _getInvite: IGetInviteUseCase,
+    @inject(TYPES.AcceptInviteUseCase) private readonly _acceptInvite: IAcceptInviteUseCase,
   ) {}
 
   preview = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -31,7 +31,7 @@ export class InviteController {
       throw new AppError(AppErrorCode.INVALID_INVITE, ErrorMessage.INVALID_INVITE);
     }
 
-    const result = await this.getInvite.execute({ token });
+    const result = await this._getInvite.execute({ token });
     res
       .status(HttpStatusCode.OK)
       .json(
@@ -44,7 +44,7 @@ export class InviteController {
   });
 
   accept = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const session = await this.acceptInvite.execute({
+    const session = await this._acceptInvite.execute({
       token: req.body.token,
       name: req.body.name,
       password: req.body.password,

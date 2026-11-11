@@ -21,14 +21,14 @@ import type {
 export class PasswordResetController {
   constructor(
     @inject(TYPES.RequestPasswordResetUseCase)
-    private readonly requestPasswordReset: IRequestPasswordResetUseCase,
+    private readonly _requestPasswordReset: IRequestPasswordResetUseCase,
     @inject(TYPES.GetPasswordResetUseCase)
-    private readonly getPasswordReset: IGetPasswordResetUseCase,
-    @inject(TYPES.ResetPasswordUseCase) private readonly resetPassword: IResetPasswordUseCase,
+    private readonly _getPasswordReset: IGetPasswordResetUseCase,
+    @inject(TYPES.ResetPasswordUseCase) private readonly _resetPassword: IResetPasswordUseCase,
   ) {}
 
   request = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.requestPasswordReset.execute({
+    await this._requestPasswordReset.execute({
       email: req.body.email,
       context: requestContextFrom(req),
     });
@@ -44,7 +44,7 @@ export class PasswordResetController {
       throw new AppError(AppErrorCode.INVALID_RESET_LINK, ErrorMessage.INVALID_RESET_LINK);
     }
 
-    const result = await this.getPasswordReset.execute({ token });
+    const result = await this._getPasswordReset.execute({ token });
     res
       .status(HttpStatusCode.OK)
       .json(
@@ -57,7 +57,7 @@ export class PasswordResetController {
   });
 
   reset = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.resetPassword.execute({
+    await this._resetPassword.execute({
       token: req.body.token,
       password: req.body.password,
       context: requestContextFrom(req),

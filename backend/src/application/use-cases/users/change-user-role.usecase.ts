@@ -18,8 +18,8 @@ import { toManagedUser } from './managed-user.ts';
 @injectable()
 export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IChangeUserRoleInput): Promise<IManagedUser> {
@@ -27,7 +27,7 @@ export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
     assertNotSelf(input.actor, input.userId);
 
     let previousRole: UserRole | null = null;
-    const user = await this.users.changeWithAdminLock(input.userId, (target, activeAdmins) => {
+    const user = await this._users.changeWithAdminLock(input.userId, (target, activeAdmins) => {
       previousRole = target.role;
       const wasActiveAdmin = target.isActiveAdmin;
       target.changeRole(input.role, new Date());
@@ -36,7 +36,7 @@ export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
 
     if (previousRole !== input.role) {
-      await this.audit.append({
+      await this._audit.append({
         actorUserId: input.actor.userId,
         action: AuditAction.USER_ROLE_CHANGED,
         targetType: AuditTargetType.USER,

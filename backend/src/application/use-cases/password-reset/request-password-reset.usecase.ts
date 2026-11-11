@@ -17,29 +17,29 @@ import { createResetLink } from './reset-link.ts';
 @injectable()
 export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.AuthMailer) private readonly mailer: IAuthMailer,
-    @inject(TYPES.EmailService) private readonly email: IEmailService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
-    @inject(TYPES.Logger) private readonly logger: ILogger,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
+    @inject(TYPES.EmailService) private readonly _email: IEmailService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.Logger) private readonly _logger: ILogger,
   ) {}
 
   async execute(input: IRequestPasswordResetInput): Promise<void> {
-    if (!this.email.isConfigured) return;
+    if (!this._email.isConfigured) return;
 
-    const user = await this.users.findByEmail(input.email);
+    const user = await this._users.findByEmail(input.email);
     if (!user || user.status !== UserStatus.ACTIVE) return;
 
     void this.sendLink(user, input).catch((err: unknown) =>
-      this.logger.error('Password reset link could not be sent', { userId: user.id, err }),
+      this._logger.error('Password reset link could not be sent', { userId: user.id, err }),
     );
   }
 
   private async sendLink(user: User, input: IRequestPasswordResetInput): Promise<void> {
-    const { link, expiresAt } = await createResetLink(this.settings, this.tokens, user, null);
-    const { delivered } = await this.mailer.sendPasswordReset({
+    const { link, expiresAt } = await createResetLink(this._settings, this._tokens, user, null);
+    const { delivered } = await this._mailer.sendPasswordReset({
       to: user.email,
       name: user.displayName,
       link,
@@ -47,7 +47,7 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
       byAdmin: false,
     });
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: null,
       action: AuditAction.PASSWORD_RESET_REQUESTED,
       targetType: AuditTargetType.USER,

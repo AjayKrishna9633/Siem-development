@@ -8,18 +8,18 @@ import type {
 
 @injectable()
 export class JwtTokenService implements ITokenService {
-  private readonly secret = envConfig.JWT_SECRET;
-  private readonly expiresIn = '15m';
-  private readonly algorithm = 'HS256' as const;
+  private readonly _secret = envConfig.JWT_SECRET;
+  private readonly _expiresIn = '15m';
+  private readonly _algorithm = 'HS256' as const;
 
   generateAccessToken(payload: ITokenPayload): string {
-    return jwt.sign(payload, this.secret, {
-      expiresIn: this.expiresIn,
-      algorithm: this.algorithm,
+    return jwt.sign(payload, this._secret, {
+      expiresIn: this._expiresIn,
+      algorithm: this._algorithm,
     });
   }
 
   verifyAccessToken(token: string): ITokenPayload {
-    return jwt.verify(token, this.secret, { algorithms: [this.algorithm] }) as ITokenPayload;
+    return jwt.verify(token, this._secret, { algorithms: [this._algorithm] }) as ITokenPayload;
   }
 }

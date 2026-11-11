@@ -17,15 +17,15 @@ import { toManagedUser } from './managed-user.ts';
 @injectable()
 export class SetUserStatusUseCase implements ISetUserStatusUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: ISetUserStatusInput): Promise<IManagedUser> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
     assertNotSelf(input.actor, input.userId);
 
-    const user = await this.users.changeWithAdminLock(input.userId, (target, activeAdmins) => {
+    const user = await this._users.changeWithAdminLock(input.userId, (target, activeAdmins) => {
       const wasActiveAdmin = target.isActiveAdmin;
       const now = new Date();
       if (input.enabled) target.enable(now);
@@ -34,7 +34,7 @@ export class SetUserStatusUseCase implements ISetUserStatusUseCase {
     });
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: input.actor.userId,
       action: input.enabled ? AuditAction.USER_ENABLED : AuditAction.USER_DISABLED,
       targetType: AuditTargetType.USER,

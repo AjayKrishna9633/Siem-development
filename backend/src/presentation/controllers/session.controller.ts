@@ -18,14 +18,14 @@ import { requestContextFrom } from '../http/request-context.ts';
 @injectable()
 export class SessionController {
   constructor(
-    @inject(TYPES.LoginUseCase) private readonly loginUseCase: ILoginUseCase,
+    @inject(TYPES.LoginUseCase) private readonly _loginUseCase: ILoginUseCase,
     @inject(TYPES.RefreshSessionUseCase)
-    private readonly refreshSessionUseCase: IRefreshSessionUseCase,
-    @inject(TYPES.LogoutUseCase) private readonly logoutUseCase: ILogoutUseCase,
+    private readonly _refreshSessionUseCase: IRefreshSessionUseCase,
+    @inject(TYPES.LogoutUseCase) private readonly _logoutUseCase: ILogoutUseCase,
   ) {}
 
   login = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const session = await this.loginUseCase.execute({
+    const session = await this._loginUseCase.execute({
       email: req.body.email,
       password: req.body.password,
       context: requestContextFrom(req),
@@ -50,7 +50,7 @@ export class SessionController {
     }
 
     try {
-      const session = await this.refreshSessionUseCase.execute({
+      const session = await this._refreshSessionUseCase.execute({
         refreshToken: token,
       });
       setRefreshCookie(res, session.refreshToken);
@@ -70,7 +70,7 @@ export class SessionController {
   });
 
   logout = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.logoutUseCase.execute({
+    await this._logoutUseCase.execute({
       refreshToken: readRefreshCookie(req),
       context: requestContextFrom(req),
     });

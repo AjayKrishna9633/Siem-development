@@ -5,10 +5,10 @@ import { BCRYPT_COST } from '../../domain/constants/security.ts';
 
 @injectable()
 export class BcryptHashService implements IHashService {
-  constructor(private readonly saltRounds: number = BCRYPT_COST) {}
+  constructor(private readonly _saltRounds: number = BCRYPT_COST) {}
 
   async hash(plain: string): Promise<string> {
-    return bcrypt.hash(plain, this.saltRounds);
+    return bcrypt.hash(plain, this._saltRounds);
   }
 
   async compare(plain: string, hash: string): Promise<boolean> {
@@ -17,7 +17,7 @@ export class BcryptHashService implements IHashService {
 
   needsRehash(hash: string): boolean {
     try {
-      return bcrypt.getRounds(hash) < this.saltRounds;
+      return bcrypt.getRounds(hash) < this._saltRounds;
     } catch {
       return true;
     }

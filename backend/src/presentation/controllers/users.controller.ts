@@ -35,21 +35,21 @@ import type { IIssueResetLinkUseCase } from '../../application/interfaces/use-ca
 export class UsersController {
   constructor(
     @inject(TYPES.ListUsersUseCase)
-    private readonly listUsers: IListUsersUseCase,
-    @inject(TYPES.ChangeUserRoleUseCase) private readonly changeUserRole: IChangeUserRoleUseCase,
-    @inject(TYPES.SetUserStatusUseCase) private readonly setUserStatus: ISetUserStatusUseCase,
-    @inject(TYPES.InviteUserUseCase) private readonly inviteUser: IInviteUserUseCase,
-    @inject(TYPES.ResendInviteUseCase) private readonly resendInviteUseCase: IResendInviteUseCase,
-    @inject(TYPES.RevokeInviteUseCase) private readonly revokeInviteUseCase: IRevokeInviteUseCase,
+    private readonly _listUsers: IListUsersUseCase,
+    @inject(TYPES.ChangeUserRoleUseCase) private readonly _changeUserRole: IChangeUserRoleUseCase,
+    @inject(TYPES.SetUserStatusUseCase) private readonly _setUserStatus: ISetUserStatusUseCase,
+    @inject(TYPES.InviteUserUseCase) private readonly _inviteUser: IInviteUserUseCase,
+    @inject(TYPES.ResendInviteUseCase) private readonly _resendInviteUseCase: IResendInviteUseCase,
+    @inject(TYPES.RevokeInviteUseCase) private readonly _revokeInviteUseCase: IRevokeInviteUseCase,
     @inject(TYPES.IssueResetLinkUseCase)
-    private readonly issueResetLinkUseCase: IIssueResetLinkUseCase,
+    private readonly _issueResetLinkUseCase: IIssueResetLinkUseCase,
     @inject(TYPES.ListPendingInvitesUseCase)
-    private readonly listPendingInvites: IListPendingInvitesUseCase,
+    private readonly _listPendingInvites: IListPendingInvitesUseCase,
   ) {}
 
   list = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const query = listUsersQuerySchema.parse(req.query);
-    const result = await this.listUsers.execute({ actor: actorFrom(req), query });
+    const result = await this._listUsers.execute({ actor: actorFrom(req), query });
 
     res
       .status(HttpStatusCode.OK)
@@ -59,7 +59,7 @@ export class UsersController {
   });
 
   listInvites = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.listPendingInvites.execute({ actor: actorFrom(req) });
+    const result = await this._listPendingInvites.execute({ actor: actorFrom(req) });
 
     res
       .status(HttpStatusCode.OK)
@@ -73,7 +73,7 @@ export class UsersController {
   });
 
   invite = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.inviteUser.execute({
+    const result = await this._inviteUser.execute({
       actor: actorFrom(req),
       email: req.body.email,
       role: req.body.role,
@@ -92,7 +92,7 @@ export class UsersController {
   });
 
   resendInvite = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.resendInviteUseCase.execute({
+    const result = await this._resendInviteUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       context: requestContextFrom(req),
@@ -110,7 +110,7 @@ export class UsersController {
   });
 
   revokeInvite = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.revokeInviteUseCase.execute({
+    await this._revokeInviteUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       context: requestContextFrom(req),
@@ -122,7 +122,7 @@ export class UsersController {
   });
 
   issueResetLink = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.issueResetLinkUseCase.execute({
+    const result = await this._issueResetLinkUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       context: requestContextFrom(req),
@@ -140,7 +140,7 @@ export class UsersController {
   });
 
   changeRole = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const result = await this.changeUserRole.execute({
+    const result = await this._changeUserRole.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       role: req.body.role,
@@ -167,7 +167,7 @@ export class UsersController {
   });
 
   private async respondWithStatus(req: Request, res: Response, enabled: boolean): Promise<void> {
-    const result = await this.setUserStatus.execute({
+    const result = await this._setUserStatus.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       enabled,

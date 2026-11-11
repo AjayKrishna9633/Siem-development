@@ -15,19 +15,19 @@ import { inviteNotPending } from './invite-delivery.ts';
 @injectable()
 export class RevokeInviteUseCase implements IRevokeInviteUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IManageInviteInput): Promise<void> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
-    const user = await this.users.findById(input.userId);
+    const user = await this._users.findById(input.userId);
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
 
-    if (!(await this.users.deleteInvited(user.id))) throw inviteNotPending();
+    if (!(await this._users.deleteInvited(user.id))) throw inviteNotPending();
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: input.actor.userId,
       action: AuditAction.INVITE_REVOKED,
       targetType: AuditTargetType.USER,

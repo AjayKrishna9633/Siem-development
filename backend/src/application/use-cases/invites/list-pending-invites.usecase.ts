@@ -13,16 +13,16 @@ import { assertPermission } from '../shared/access.ts';
 @injectable()
 export class ListPendingInvitesUseCase implements IListPendingInvitesUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.AuthTokenRepository) private readonly tokens: IAuthTokenRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuthTokenRepository) private readonly _tokens: IAuthTokenRepository,
   ) {}
 
   async execute(input: { actor: IActor }): Promise<IPendingInvite[]> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
     const [users, links] = await Promise.all([
-      this.users.findAll(),
-      this.tokens.findUnusedByType(AuthTokenType.INVITE),
+      this._users.findAll(),
+      this._tokens.findUnusedByType(AuthTokenType.INVITE),
     ]);
     const linkByUser = new Map(links.map((link) => [link.userId, link] as const).reverse());
     const now = new Date();

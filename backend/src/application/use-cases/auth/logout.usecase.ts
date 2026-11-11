@@ -8,16 +8,16 @@ import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.
 @injectable()
 export class LogoutUseCase implements ILogoutUseCase {
   constructor(
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: ILogoutInput): Promise<void> {
     if (!input.refreshToken) return;
-    const userId = await this.sessions.revoke(input.refreshToken);
+    const userId = await this._sessions.revoke(input.refreshToken);
     if (!userId) return;
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: userId,
       action: AuditAction.LOGGED_OUT,
       targetType: AuditTargetType.USER,

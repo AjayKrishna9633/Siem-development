@@ -22,17 +22,17 @@ import { deliverInvite } from './invite-delivery.ts';
 @injectable()
 export class InviteUserUseCase implements IInviteUserUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.AuthMailer) private readonly mailer: IAuthMailer,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IInviteUserInput): Promise<IInviteResult> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
 
-    if (await this.users.findByEmail(input.email)) {
+    if (await this._users.findByEmail(input.email)) {
       throw new AppError(AppErrorCode.USER_ALREADY_EXISTS, ErrorMessage.USER_ALREADY_EXISTS);
     }
 
@@ -43,16 +43,16 @@ export class InviteUserUseCase implements IInviteUserUseCase {
       invitedById: input.actor.userId,
       now: new Date(),
     });
-    await this.users.save(user);
+    await this._users.save(user);
 
     const invite = await deliverInvite(
-      { settings: this.settings, tokens: this.tokens, mailer: this.mailer },
+      { settings: this._settings, tokens: this._tokens, mailer: this._mailer },
       user,
       input.actor.userId,
       false,
     );
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: input.actor.userId,
       action: AuditAction.INVITE_CREATED,
       targetType: AuditTargetType.USER,

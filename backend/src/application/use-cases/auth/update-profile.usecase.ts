@@ -12,10 +12,10 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class UpdateProfileUseCase implements IUpdateProfileUseCase {
-  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
+  constructor(@inject(TYPES.UserRepository) private readonly _users: IUserRepository) {}
 
   async execute(input: IUpdateProfileDTO): Promise<IUserProfileResponse> {
-    const user = await this.users.findById(input.id);
+    const user = await this._users.findById(input.id);
 
     if (!user) {
       throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
@@ -26,7 +26,7 @@ export class UpdateProfileUseCase implements IUpdateProfileUseCase {
     }
 
     user.updateProfile({ username: input.username }, input.now);
-    await this.users.save(user);
+    await this._users.save(user);
 
     return toUserProfile(user);
   }

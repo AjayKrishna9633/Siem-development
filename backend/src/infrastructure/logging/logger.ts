@@ -43,26 +43,26 @@ export const rootLogger: Logger = pino({
 });
 
 export class PinoLogger implements ILogger {
-  constructor(private readonly logger: Logger = rootLogger) {}
+  constructor(private readonly _logger: Logger = rootLogger) {}
 
   debug(message: string, fields?: LogFields): void {
-    this.logger.debug(fields ?? {}, message);
+    this._logger.debug(fields ?? {}, message);
   }
 
   info(message: string, fields?: LogFields): void {
-    this.logger.info(fields ?? {}, message);
+    this._logger.info(fields ?? {}, message);
   }
 
   warn(message: string, fields?: LogFields): void {
-    this.logger.warn(fields ?? {}, message);
+    this._logger.warn(fields ?? {}, message);
   }
 
   error(message: string, fields?: LogFields): void {
-    this.logger.error(fields ?? {}, message);
+    this._logger.error(fields ?? {}, message);
   }
 
   child(bindings: LogFields): ILogger {
-    return new PinoLogger(this.logger.child(bindings));
+    return new PinoLogger(this._logger.child(bindings));
   }
 }
 

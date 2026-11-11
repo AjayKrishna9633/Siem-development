@@ -23,8 +23,8 @@ const LIFETIME_MS: Record<AuthTokenType, number> = {
 @injectable()
 export class AuthTokenService implements IAuthTokenService {
   constructor(
-    @inject(TYPES.AuthTokenRepository) private readonly tokens: IAuthTokenRepository,
-    @inject(TYPES.OpaqueTokenService) private readonly opaque: IOpaqueTokenService,
+    @inject(TYPES.AuthTokenRepository) private readonly _tokens: IAuthTokenRepository,
+    @inject(TYPES.OpaqueTokenService) private readonly _opaque: IOpaqueTokenService,
   ) {}
 
   async issue(
@@ -32,17 +32,17 @@ export class AuthTokenService implements IAuthTokenService {
     type: AuthTokenType,
     createdBy: string | null,
   ): Promise<IIssuedAuthToken> {
-    const { token, hash } = this.opaque.generate();
+    const { token, hash } = this._opaque.generate();
     const expiresAt = new Date(Date.now() + LIFETIME_MS[type]);
-    await this.tokens.replace({ userId, type, tokenHash: hash, expiresAt, createdBy });
+    await this._tokens.replace({ userId, type, tokenHash: hash, expiresAt, createdBy });
     return { token, expiresAt };
   }
 
   findUsable(token: string, type: AuthTokenType): Promise<IAuthTokenRecord | null> {
-    return this.tokens.findUsableByHash(this.opaque.hash(token), type, new Date());
+    return this._tokens.findUsableByHash(this._opaque.hash(token), type, new Date());
   }
 
   consume(record: IAuthTokenRecord): Promise<boolean> {
-    return this.tokens.consume(record.id, new Date());
+    return this._tokens.consume(record.id, new Date());
   }
 }

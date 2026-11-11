@@ -21,33 +21,33 @@ type FailureReason = 'unknown_account' | 'not_activated' | 'locked' | 'wrong_pas
 @injectable()
 export class LoginUseCase implements ILoginUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.HashService) private readonly _hasher: IHashService,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
-  private timingHash: Promise<string> | null = null;
+  private _timingHash: Promise<string> | null = null;
 
   async execute(input: ILoginInput): Promise<ILoginResponse> {
     const invalidCredentials = new AppError(
       AppErrorCode.INVALID_CREDENTIALS,
       ErrorMessage.INVALID_CREDENTIALS,
     );
-    const user = await this.users.findByEmail(input.email);
+    const user = await this._users.findByEmail(input.email);
     const now = new Date();
 
     if (!user || !user.passwordHash || user.isLocked(now)) {
-      this.timingHash ??= this.hasher.hash(randomBytes(16).toString('hex'));
-      await this.hasher.compare(input.password, await this.timingHash);
+      this._timingHash ??= this._hasher.hash(randomBytes(16).toString('hex'));
+      await this._hasher.compare(input.password, await this._timingHash);
       const reason = !user ? 'unknown_account' : !user.passwordHash ? 'not_activated' : 'locked';
       await this.recordFailure(input, user, reason);
       throw invalidCredentials;
     }
 
-    if (!(await this.hasher.compare(input.password, user.passwordHash))) {
+    if (!(await this._hasher.compare(input.password, user.passwordHash))) {
       user.recordFailedLogin(now);
-      await this.users.save(user);
+      await this._users.save(user);
       await this.recordFailure(input, user, 'wrong_password');
       throw invalidCredentials;
     }
@@ -57,13 +57,13 @@ export class LoginUseCase implements ILoginUseCase {
       throw new AppError(AppErrorCode.ACCOUNT_INACTIVE, ErrorMessage.ACCOUNT_INACTIVE);
     }
 
-    if (this.hasher.needsRehash(user.passwordHash)) {
-      user.upgradePasswordHash(await this.hasher.hash(input.password));
+    if (this._hasher.needsRehash(user.passwordHash)) {
+      user.upgradePasswordHash(await this._hasher.hash(input.password));
     }
     user.recordSuccessfulLogin(input.context.ip, now);
-    await this.users.save(user);
+    await this._users.save(user);
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: user.id,
       action: AuditAction.LOGIN_SUCCEEDED,
       targetType: AuditTargetType.USER,
@@ -71,11 +71,11 @@ export class LoginUseCase implements ILoginUseCase {
       context: input.context,
     });
 
-    return startSession(this.sessions, user);
+    return startSession(this._sessions, user);
   }
 
   private recordFailure(input: ILoginInput, user: User | null, reason: FailureReason) {
-    return this.audit.append({
+    return this._audit.append({
       actorUserId: null,
       action: AuditAction.LOGIN_FAILED,
       ...(user && { targetType: AuditTargetType.USER, targetId: user.id }),

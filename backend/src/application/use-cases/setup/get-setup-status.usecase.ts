@@ -6,11 +6,11 @@ import type { IGetSetupStatusUseCase } from '../../interfaces/use-cases/setup.in
 @injectable()
 export class GetSetupStatusUseCase implements IGetSetupStatusUseCase {
   constructor(
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
   ) {}
 
   async execute(): Promise<{ completed: boolean }> {
-    const settings = await this.settings.get();
+    const settings = await this._settings.get();
     return { completed: settings.isSetupCompleted };
   }
 }

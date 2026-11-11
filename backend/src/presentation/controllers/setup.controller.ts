@@ -17,12 +17,12 @@ import type {
 export class SetupController {
   constructor(
     @inject(TYPES.VerifySetupTokenUseCase)
-    private readonly verifySetupToken: IVerifySetupTokenUseCase,
-    @inject(TYPES.CompleteSetupUseCase) private readonly completeSetup: ICompleteSetupUseCase,
+    private readonly _verifySetupToken: IVerifySetupTokenUseCase,
+    @inject(TYPES.CompleteSetupUseCase) private readonly _completeSetup: ICompleteSetupUseCase,
   ) {}
 
   verifyToken = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this.verifySetupToken.execute({
+    await this._verifySetupToken.execute({
       token: req.body.token,
       context: requestContextFrom(req),
     });
@@ -33,7 +33,7 @@ export class SetupController {
   });
 
   complete = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    const session = await this.completeSetup.execute({
+    const session = await this._completeSetup.execute({
       token: req.body.token,
       adminName: req.body.adminName,
       email: req.body.email,

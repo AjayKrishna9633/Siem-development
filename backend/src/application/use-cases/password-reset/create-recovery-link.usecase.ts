@@ -17,14 +17,14 @@ import { createResetLink } from './reset-link.ts';
 @injectable()
 export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.SystemSettingsRepository) private readonly settings: ISystemSettingsRepository,
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: { email: string }): Promise<IRecoveryLink> {
-    const user = await this.users.findByEmail(input.email);
+    const user = await this._users.findByEmail(input.email);
     if (!user || user.role !== UserRole.ADMIN) {
       throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.NOT_AN_ADMIN);
     }
@@ -35,9 +35,9 @@ export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
       );
     }
 
-    const recovery = await createResetLink(this.settings, this.tokens, user, null);
+    const recovery = await createResetLink(this._settings, this._tokens, user, null);
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: null,
       action: AuditAction.PASSWORD_RESET_REQUESTED,
       targetType: AuditTargetType.USER,

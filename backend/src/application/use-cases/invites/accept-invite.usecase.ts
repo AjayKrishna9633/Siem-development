@@ -17,28 +17,28 @@ import { invalidInvite } from './invite-delivery.ts';
 @injectable()
 export class AcceptInviteUseCase implements IAcceptInviteUseCase {
   constructor(
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.SessionService) private readonly sessions: ISessionService,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.HashService) private readonly _hasher: IHashService,
+    @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IAcceptInviteInput): Promise<ILoginResponse> {
-    const link = await this.tokens.findUsable(input.token, AuthTokenType.INVITE);
-    const user = link ? await this.users.findById(link.userId) : null;
+    const link = await this._tokens.findUsable(input.token, AuthTokenType.INVITE);
+    const user = link ? await this._users.findById(link.userId) : null;
     if (!link || !user || user.status !== UserStatus.INVITED) throw invalidInvite();
 
-    const passwordHash = await this.hasher.hash(input.password);
+    const passwordHash = await this._hasher.hash(input.password);
 
-    if (!(await this.tokens.consume(link))) throw invalidInvite();
+    if (!(await this._tokens.consume(link))) throw invalidInvite();
 
     const now = new Date();
     user.acceptInvite(input.name, passwordHash, now);
     user.recordSuccessfulLogin(input.context.ip, now);
-    await this.users.save(user);
+    await this._users.save(user);
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: user.id,
       action: AuditAction.INVITE_ACCEPTED,
       targetType: AuditTargetType.USER,
@@ -47,6 +47,6 @@ export class AcceptInviteUseCase implements IAcceptInviteUseCase {
       metadata: { email: user.email, role: user.role },
     });
 
-    return startSession(this.sessions, user);
+    return startSession(this._sessions, user);
   }
 }

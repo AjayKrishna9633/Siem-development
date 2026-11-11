@@ -22,7 +22,7 @@ const formatExpiry = (date: Date) => date.toUTCString().replace(/:\d{2} GMT$/, '
 
 @injectable()
 export class AuthMailer implements IAuthMailer {
-  constructor(@inject(TYPES.EmailService) private readonly email: IEmailService) {}
+  constructor(@inject(TYPES.EmailService) private readonly _email: IEmailService) {}
 
   sendInvite(input: IInviteEmail): Promise<IEmailDelivery> {
     const org = input.orgName ?? 'SIEMple';
@@ -41,7 +41,7 @@ export class AuthMailer implements IAuthMailer {
         "Weren't expecting this? You can ignore this email; nothing happens unless the link is used.",
     };
 
-    return this.email.send({
+    return this._email.send({
       to: input.to,
       subject: input.replacesEarlier
         ? `New invitation link for ${org} on SIEMple`
@@ -65,7 +65,7 @@ export class AuthMailer implements IAuthMailer {
       footnote: "Didn't ask for this? Ignore this email; your password stays the same.",
     };
 
-    return this.email.send({
+    return this._email.send({
       to: input.to,
       subject: 'Reset your SIEMple password',
       text: securityEmailText(content),

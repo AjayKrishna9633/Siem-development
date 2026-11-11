@@ -14,10 +14,10 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class GetCurrentUserUseCase implements IGetCurrentUserUseCase {
-  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
+  constructor(@inject(TYPES.UserRepository) private readonly _users: IUserRepository) {}
 
   async execute(input: IGetCurrentUserInput): Promise<IUserProfileResponse> {
-    const user = await this.users.findById(input.userId);
+    const user = await this._users.findById(input.userId);
 
     if (!user) {
       throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);

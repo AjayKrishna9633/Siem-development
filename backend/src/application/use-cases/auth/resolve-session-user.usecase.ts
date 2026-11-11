@@ -13,10 +13,10 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 @injectable()
 export class ResolveSessionUserUseCase implements IResolveSessionUserUseCase {
-  constructor(@inject(TYPES.UserRepository) private readonly users: IUserRepository) {}
+  constructor(@inject(TYPES.UserRepository) private readonly _users: IUserRepository) {}
 
   async execute(input: IResolveSessionUserInput): Promise<ITokenPayload> {
-    const user = await this.users.findById(input.userId);
+    const user = await this._users.findById(input.userId);
 
     if (!user || user.status !== UserStatus.ACTIVE || user.tokenVersion !== input.tokenVersion) {
       throw new AppError(AppErrorCode.SESSION_REVOKED, ErrorMessage.SESSION_REVOKED);

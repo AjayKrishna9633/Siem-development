@@ -21,17 +21,17 @@ export interface IPendingEmailChange {
 @injectable()
 export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
   constructor(
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.VerificationCodeService) private readonly codes: IVerificationCodeService,
-    @inject(TYPES.SecurityMailer) private readonly mailer: ISecurityMailer,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.HashService) private readonly _hasher: IHashService,
+    @inject(TYPES.VerificationCodeService) private readonly _codes: IVerificationCodeService,
+    @inject(TYPES.SecurityMailer) private readonly _mailer: ISecurityMailer,
   ) {}
 
   async execute(input: IRequestEmailChangeInput): Promise<ICodeSentResponse> {
     assertPermission(input.actor, Permission.USERS_MANAGE);
-    const user = await loadActiveUser(this.users, input.actor.userId);
+    const user = await loadActiveUser(this._users, input.actor.userId);
 
-    if (!(await this.hasher.compare(input.currentPassword, user.passwordHash as string))) {
+    if (!(await this._hasher.compare(input.currentPassword, user.passwordHash as string))) {
       throw new AppError(
         AppErrorCode.INVALID_CURRENT_PASSWORD,
         ErrorMessage.INVALID_CURRENT_PASSWORD,
@@ -42,13 +42,13 @@ export class RequestEmailChangeUseCase implements IRequestEmailChangeUseCase {
     if (newEmail === user.email) {
       throw new AppError(AppErrorCode.SAME_EMAIL, ErrorMessage.SAME_EMAIL);
     }
-    if (await this.users.findByEmail(newEmail)) {
+    if (await this._users.findByEmail(newEmail)) {
       throw new AppError(AppErrorCode.EMAIL_TAKEN, ErrorMessage.EMAIL_TAKEN);
     }
 
     const pending: IPendingEmailChange = { newEmail };
-    const { code, expiresInMinutes } = await this.codes.issue('email-change', user.id, pending);
-    await this.mailer.sendVerificationCode({
+    const { code, expiresInMinutes } = await this._codes.issue('email-change', user.id, pending);
+    await this._mailer.sendVerificationCode({
       to: newEmail,
       username: user.displayName,
       purpose: 'email-change',

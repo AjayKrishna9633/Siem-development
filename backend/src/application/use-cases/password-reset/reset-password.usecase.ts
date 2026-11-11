@@ -16,27 +16,27 @@ import { invalidResetLink } from './reset-link.ts';
 @injectable()
 export class ResetPasswordUseCase implements IResetPasswordUseCase {
   constructor(
-    @inject(TYPES.AuthTokenService) private readonly tokens: IAuthTokenService,
-    @inject(TYPES.UserRepository) private readonly users: IUserRepository,
-    @inject(TYPES.HashService) private readonly hasher: IHashService,
-    @inject(TYPES.SecurityMailer) private readonly mailer: ISecurityMailer,
-    @inject(TYPES.AuditLogRepository) private readonly audit: IAuditLogRepository,
+    @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.HashService) private readonly _hasher: IHashService,
+    @inject(TYPES.SecurityMailer) private readonly _mailer: ISecurityMailer,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
   ) {}
 
   async execute(input: IResetPasswordInput): Promise<void> {
     assertPasswordPolicy(input.password);
 
-    const link = await this.tokens.findUsable(input.token, AuthTokenType.RESET);
-    const user = link ? await this.users.findById(link.userId) : null;
+    const link = await this._tokens.findUsable(input.token, AuthTokenType.RESET);
+    const user = link ? await this._users.findById(link.userId) : null;
     if (!link || !user || user.status !== UserStatus.ACTIVE) throw invalidResetLink();
 
-    const passwordHash = await this.hasher.hash(input.password);
-    if (!(await this.tokens.consume(link))) throw invalidResetLink();
+    const passwordHash = await this._hasher.hash(input.password);
+    if (!(await this._tokens.consume(link))) throw invalidResetLink();
 
     user.resetPassword(passwordHash, new Date());
-    await this.users.save(user);
+    await this._users.save(user);
 
-    await this.audit.append({
+    await this._audit.append({
       actorUserId: user.id,
       action: AuditAction.PASSWORD_RESET_COMPLETED,
       targetType: AuditTargetType.USER,
@@ -44,6 +44,6 @@ export class ResetPasswordUseCase implements IResetPasswordUseCase {
       context: input.context,
       metadata: { email: user.email },
     });
-    await this.mailer.notifyPasswordChanged({ to: user.email, username: user.displayName });
+    await this._mailer.notifyPasswordChanged({ to: user.email, username: user.displayName });
   }
 }

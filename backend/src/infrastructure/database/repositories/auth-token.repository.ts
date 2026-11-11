@@ -20,10 +20,10 @@ const toRecord = (model: AuthTokenModel): IAuthTokenRecord => ({
 
 @injectable()
 export class TypeOrmAuthTokenRepository implements IAuthTokenRepository {
-  constructor(@inject(TYPES.DataSource) private readonly db: DataSource) {}
+  constructor(@inject(TYPES.DataSource) private readonly _db: DataSource) {}
 
   async replace(token: INewAuthToken): Promise<void> {
-    await this.db.transaction(async (manager) => {
+    await this._db.transaction(async (manager) => {
       await manager.delete(AuthTokenModel, {
         userId: token.userId,
         type: token.type,
@@ -38,14 +38,14 @@ export class TypeOrmAuthTokenRepository implements IAuthTokenRepository {
     type: AuthTokenType,
     now: Date,
   ): Promise<IAuthTokenRecord | null> {
-    const model = await this.db.getRepository(AuthTokenModel).findOne({
+    const model = await this._db.getRepository(AuthTokenModel).findOne({
       where: { tokenHash, type, usedAt: IsNull(), expiresAt: MoreThan(now) },
     });
     return model ? toRecord(model) : null;
   }
 
   async consume(id: string, now: Date): Promise<boolean> {
-    const result = await this.db
+    const result = await this._db
       .createQueryBuilder()
       .update(AuthTokenModel)
       .set({ usedAt: now })
@@ -55,7 +55,7 @@ export class TypeOrmAuthTokenRepository implements IAuthTokenRepository {
   }
 
   async findUnusedByType(type: AuthTokenType): Promise<IAuthTokenRecord[]> {
-    const models = await this.db.getRepository(AuthTokenModel).find({
+    const models = await this._db.getRepository(AuthTokenModel).find({
       where: { type, usedAt: IsNull() },
       order: { createdAt: 'DESC' },
     });

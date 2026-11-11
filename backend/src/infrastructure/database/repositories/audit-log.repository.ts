@@ -9,10 +9,10 @@ import { AuditLogModel } from '../models/audit-log.model.ts';
 
 @injectable()
 export class TypeOrmAuditLogRepository implements IAuditLogRepository {
-  constructor(@inject(TYPES.DataSource) private readonly db: DataSource) {}
+  constructor(@inject(TYPES.DataSource) private readonly _db: DataSource) {}
 
   async append(entry: IAuditEntry): Promise<void> {
-    const repository = this.db.getRepository(AuditLogModel);
+    const repository = this._db.getRepository(AuditLogModel);
     await repository.insert(
       repository.create({
         actorUserId: entry.actorUserId,
