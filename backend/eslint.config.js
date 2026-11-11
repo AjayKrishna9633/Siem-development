@@ -16,6 +16,16 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-unsafe-function-type': 'warn',
+      // Private fields (including constructor parameter properties) start with "_".
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: ['classProperty', 'parameterProperty'],
+          modifiers: ['private'],
+          format: null,
+          leadingUnderscore: 'require',
+        },
+      ],
     },
   },
 );
