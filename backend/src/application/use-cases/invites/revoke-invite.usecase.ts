@@ -1,0 +1,39 @@
+import { injectable, inject } from 'inversify';
+import TYPES from '../../../domain/constants/types.ts';
+import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
+import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IRevokeInviteUseCase } from '../../interfaces/use-cases/invites.interface.ts';
+import type { IManageInviteInput } from '../../dtos/invite/request/invite-request.dto.ts';
+import { Permission } from '../../../domain/enums/Permission.ts';
+import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
+import { AppError } from '../../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
+import { assertPermission } from '../shared/access.ts';
+import { inviteNotPending } from './invite-delivery.ts';
+
+@injectable()
+export class RevokeInviteUseCase implements IRevokeInviteUseCase {
+  constructor(
+    @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
+    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+  ) {}
+
+  async execute(input: IManageInviteInput): Promise<void> {
+    assertPermission(input.actor, Permission.USERS_MANAGE);
+
+    const user = await this._users.findById(input.userId);
+    if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
+
+    if (!(await this._users.deleteInvited(user.id))) throw inviteNotPending();
+
+    await this._audit.append({
+      actorUserId: input.actor.userId,
+      action: AuditAction.INVITE_REVOKED,
+      targetType: AuditTargetType.USER,
+      targetId: user.id,
+      context: input.context,
+      metadata: { email: user.email, role: user.role },
+    });
+  }
+}

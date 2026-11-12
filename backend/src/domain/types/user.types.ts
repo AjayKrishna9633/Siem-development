@@ -1,11 +1,10 @@
-import type { UserRole } from '../enums/UserRole.js';
-import type { UserStatus } from '../enums/UserStatus.js';
+import type { UserRole } from '../enums/UserRole.ts';
+import type { UserStatus } from '../enums/UserStatus.ts';
 
-export interface UserProps {
+export interface IUserProps {
   id: string;
-  organizationId: string | null;
   email: string;
-  username: string;
+  username: string | null;
   passwordHash: string | null;
   role: UserRole;
   status: UserStatus;
@@ -19,4 +18,21 @@ export interface UserProps {
   invitedById: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+export type UserProps = IUserProps;
+
+export interface ICreateFirstAdminProps {
+  id: string;
+  email: string;
+  username: string;
+  passwordHash: string;
+  now: Date;
+}
+
+export interface ICreateInvitedUserProps {
+  id: string;
+  email: string;
+  role: UserRole;
+  invitedById: string;
+  now: Date;
 }

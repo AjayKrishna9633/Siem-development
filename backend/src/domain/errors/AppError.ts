@@ -1,8 +1,11 @@
-import type { AppErrorCode } from "../enums/AppErrorCode.js";
+import type { AppErrorCode } from '../enums/AppErrorCode.ts';
 
 export class AppError extends Error {
   override name = 'AppError';
-  constructor(public readonly code: AppErrorCode, message: string) {
+  constructor(
+    public readonly code: AppErrorCode,
+    message: string,
+  ) {
     super(message);
   }
 }

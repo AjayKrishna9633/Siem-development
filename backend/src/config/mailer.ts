@@ -1,12 +1,34 @@
-import nodemailer from 'nodemailer';
-import {env} from './env.js';
+import nodemailer, { type Transporter } from 'nodemailer';
+import { env } from './env.config.ts';
 
-export const createTransporter = ()=>{
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: env.OTP_EMAIL,
-            pass: env.OTP_PASSWORD
-        }
-    })
+export interface IMailTransport {
+  transporter: Transporter;
+  from: string;
 }
+
+export const createMailTransport = (): IMailTransport | null => {
+  if (env.SMTP_HOST) {
+    const sender = env.SMTP_FROM ?? env.SMTP_USER ?? 'siemple@localhost';
+    return {
+      transporter: nodemailer.createTransport({
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE ?? env.SMTP_PORT === 465,
+        ...(env.SMTP_USER && { auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } }),
+      }),
+      from: sender.includes('<') ? sender : `SIEMple <${sender}>`,
+    };
+  }
+
+  if (env.OTP_EMAIL && env.OTP_PASSWORD) {
+    return {
+      transporter: nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: env.OTP_EMAIL, pass: env.OTP_PASSWORD },
+      }),
+      from: `SIEMple <${env.OTP_EMAIL}>`,
+    };
+  }
+
+  return null;
+};

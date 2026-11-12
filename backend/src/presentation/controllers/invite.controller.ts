@@ -1,0 +1,65 @@
+import { injectable, inject } from 'inversify';
+import type { Request, Response } from 'express';
+import TYPES from '../../domain/constants/types.ts';
+import { catchAsync } from '../middlewares/catch-async.ts';
+import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
+import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
+import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
+import { toSessionResponse } from '../../application/dtos/session/response/session-response.dto.ts';
+import { toInvitePreviewDto } from '../../application/dtos/invite/response/invite-response.dto.ts';
+import { setRefreshCookie } from '../http/refresh-cookie.ts';
+import { requestContextFrom } from '../http/request-context.ts';
+import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
+import type {
+  IAcceptInviteUseCase,
+  IGetInviteUseCase,
+} from '../../application/interfaces/use-cases/invites.interface.ts';
+
+@injectable()
+export class InviteController {
+  constructor(
+    @inject(TYPES.GetInviteUseCase) private readonly _getInvite: IGetInviteUseCase,
+    @inject(TYPES.AcceptInviteUseCase) private readonly _acceptInvite: IAcceptInviteUseCase,
+  ) {}
+
+  preview = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const token = typeof req.query.token === 'string' ? req.query.token.trim().toLowerCase() : '';
+    if (!LINK_TOKEN_PATTERN.test(token)) {
+      throw new AppError(AppErrorCode.INVALID_INVITE, ErrorMessage.INVALID_INVITE);
+    }
+
+    const result = await this._getInvite.execute({ token });
+    res
+      .status(HttpStatusCode.OK)
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toInvitePreviewDto(result),
+          SuccessMessage.INVITE_FETCHED,
+        ),
+      );
+  });
+
+  accept = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const session = await this._acceptInvite.execute({
+      token: req.body.token,
+      name: req.body.name,
+      password: req.body.password,
+      context: requestContextFrom(req),
+    });
+
+    setRefreshCookie(res, session.refreshToken);
+    res
+      .status(HttpStatusCode.OK)
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          toSessionResponse(session),
+          SuccessMessage.INVITE_ACCEPTED,
+        ),
+      );
+  });
+}
