@@ -1,12 +1,11 @@
-import { api, INLINE_ERRORS } from './api.ts';
+import { api, INLINE_ERRORS } from '@/services/api.ts';
+import type { IApiResponse, ICodeSent } from '@/types/auth.ts';
 import type {
-  IApiResponse,
   ILoginResponse,
   IUser,
-  ICodeSent,
   IInvitePreview,
   IPasswordResetPreview,
-} from '../types/auth.ts';
+} from '../types/auth.types.ts';
 
 export const authService = {
   async login(email: string, password: string): Promise<ILoginResponse> {

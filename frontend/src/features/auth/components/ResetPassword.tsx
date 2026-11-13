@@ -2,16 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authService } from '../../services/auth.service.ts';
-import type { IPasswordResetPreview } from '../../types/auth.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import {
-  PASSWORD_MIN_LENGTH,
-  isLinkToken,
-  resetPasswordSchema,
-  type ResetPasswordValues,
-} from '../../lib/schemas.ts';
-import { LocalTime } from '../../components/common/LocalTime.tsx';
+import { authService } from '../api/authApi.ts';
+import type { IPasswordResetPreview } from '../types/auth.types.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { PASSWORD_MIN_LENGTH, isLinkToken } from '@/utils/validation.ts';
+import { resetPasswordSchema, type ResetPasswordValues } from '../schemas.ts';
+import { LocalTime } from '@/components/common/LocalTime.tsx';
 import type { ILoginRedirectState } from './Login.tsx';
 import { AuthError, AuthField, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 

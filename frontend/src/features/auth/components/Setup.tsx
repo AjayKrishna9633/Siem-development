@@ -3,17 +3,17 @@ import { Link, useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import axios from 'axios';
-import { setupService } from '../../services/setup.service.ts';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
+import { setupService } from '../api/setupApi.ts';
+import { useAuthStore } from '../store/authStore.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { PASSWORD_MIN_LENGTH } from '@/utils/validation.ts';
 import {
-  PASSWORD_MIN_LENGTH,
   setupDetailsSchema,
   setupTokenSchema,
   type SetupDetailsValues,
   type SetupTokenValues,
-} from '../../lib/schemas.ts';
-import { Field } from '../../components/ui/Form.tsx';
+} from '../schemas.ts';
+import { Field } from '@/components/ui/Form.tsx';
 import { AuthError, AuthInput, AuthLayout, AuthPasswordInput, AuthSubmit } from './AuthLayout.tsx';
 
 export const Setup: React.FC = () => {

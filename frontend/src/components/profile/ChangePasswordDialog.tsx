@@ -6,14 +6,13 @@ import { Modal } from '../ui/Modal.tsx';
 import { Button } from '../ui/Button.tsx';
 import { Field } from '../ui/Form.tsx';
 import { PasswordInput } from '../ui/PasswordInput.tsx';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { authService } from '../../services/auth.service.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
+import { useAuthStore, authService } from '@/features/auth';
+import { apiErrorMessage } from '@/lib/errors.ts';
 import {
   PASSWORD_MIN_LENGTH,
   changePasswordSchema,
   type ChangePasswordValues,
-} from '../../lib/schemas.ts';
+} from '@/utils/validation.ts';
 
 export const ChangePasswordDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { user, login } = useAuthStore();

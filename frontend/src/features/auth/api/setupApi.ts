@@ -1,5 +1,6 @@
-import { api, INLINE_ERRORS } from './api.ts';
-import type { IApiResponse, ILoginResponse } from '../types/auth.ts';
+import { api, INLINE_ERRORS } from '@/services/api.ts';
+import type { IApiResponse } from '@/types/auth.ts';
+import type { ILoginResponse } from '../types/auth.types.ts';
 
 export interface ICompleteSetupData {
   token: string;

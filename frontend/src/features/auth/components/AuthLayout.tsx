@@ -1,11 +1,11 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
-import { SvgIcon } from '../../components/ui/Misc.tsx';
-import logoShield from '../../assets/icons/logo-shield.svg';
-import { Input } from '../../components/ui/Form.tsx';
-import { PasswordInput } from '../../components/ui/PasswordInput.tsx';
-import { Button } from '../../components/ui/Button.tsx';
-import { cn } from '../../lib/cn.ts';
+import { SvgIcon } from '@/components/ui/Misc.tsx';
+import logoShield from '@/assets/icons/logo-shield.svg';
+import { Input } from '@/components/ui/Form.tsx';
+import { PasswordInput } from '@/components/ui/PasswordInput.tsx';
+import { Button } from '@/components/ui/Button.tsx';
+import { cn } from '@/lib/cn.ts';
 
 interface IAuthLayoutProps {
   title: string;

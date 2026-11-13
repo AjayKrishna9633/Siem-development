@@ -1,7 +1,7 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { MonoLabel } from '../ui/Panel.tsx';
 import { Select } from '../ui/Form.tsx';
-import { directionLabel, type ISortField, type SortDirection } from '../../lib/sort.ts';
+import { directionLabel, type ISortField, type SortDirection } from '@/lib/sort.ts';
 
 interface ISortControlProps<K extends string> {
   fields: ISortField<K>[];

@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { MonoLabel } from '../ui/Panel.tsx';
 import { SearchInput, Select } from '../ui/Form.tsx';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 export interface IPaging {
   page: number;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../../lib/cn.ts';
-import type { Severity } from '../../lib/severity.ts';
+import { cn } from '@/lib/cn.ts';
+import type { Severity } from '@/lib/severity.ts';
 
 const solid: Record<Severity, string> = {
   critical: 'bg-critical text-white',

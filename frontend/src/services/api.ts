@@ -1,7 +1,8 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
-import type { IApiResponse, ILoginResponse } from '../types/auth.ts';
-import { apiErrorMessage, shouldToast } from '../lib/errors.ts';
+import type { IApiResponse } from '@/types/auth.ts';
+import type { ILoginResponse } from '@/features/auth';
+import { apiErrorMessage, shouldToast } from '@/lib/errors.ts';
 
 const SESSION_EXPIRED = 'Your session expired. Sign in again.';
 

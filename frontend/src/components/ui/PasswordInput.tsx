@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from './Form.tsx';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 type IPasswordInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   invalid?: boolean;

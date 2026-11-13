@@ -3,10 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck } from 'lucide-react';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { authService } from '../../services/auth.service.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import { loginSchema, type LoginValues } from '../../lib/schemas.ts';
+import { useAuthStore } from '../store/authStore.ts';
+import { authService } from '../api/authApi.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { loginSchema, type LoginValues } from '../schemas.ts';
 import {
   AuthError,
   AuthField,

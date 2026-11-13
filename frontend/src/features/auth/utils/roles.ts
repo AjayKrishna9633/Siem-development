@@ -1,4 +1,4 @@
-import type { UserRole } from '../types/auth.ts';
+import type { UserRole } from '../types/auth.types.ts';
 
 export const roleLabel: Record<UserRole, string> = {
   admin: 'Administrator',

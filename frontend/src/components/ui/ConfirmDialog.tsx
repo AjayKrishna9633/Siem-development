@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { Modal } from './Modal.tsx';
 import { Button } from './Button.tsx';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 interface IConfirmDialogProps {
   title: string;

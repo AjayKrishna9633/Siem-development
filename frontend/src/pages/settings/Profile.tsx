@@ -2,18 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CircleCheck, Info, KeyRound, Mail, TriangleAlert } from 'lucide-react';
-import { ChangePasswordDialog } from '../../components/profile/ChangePasswordDialog.tsx';
-import { ChangeEmailDialog } from '../../components/profile/ChangeEmailDialog.tsx';
-import { Panel, MonoLabel } from '../../components/ui/Panel.tsx';
-import { Button } from '../../components/ui/Button.tsx';
-import { Field, Input } from '../../components/ui/Form.tsx';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { authService } from '../../services/auth.service.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import { roleLabel } from '../../lib/roles.ts';
-import { can } from '../../lib/permissions.ts';
-import { LocalTime } from '../../components/common/LocalTime.tsx';
-import { profileSchema, type ProfileValues } from '../../lib/schemas.ts';
+import { ChangePasswordDialog } from '@/components/profile/ChangePasswordDialog.tsx';
+import { ChangeEmailDialog } from '@/components/profile/ChangeEmailDialog.tsx';
+import { Panel, MonoLabel } from '@/components/ui/Panel.tsx';
+import { Button } from '@/components/ui/Button.tsx';
+import { Field, Input } from '@/components/ui/Form.tsx';
+import { useAuthStore, authService, roleLabel, can } from '@/features/auth';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { LocalTime } from '@/components/common/LocalTime.tsx';
+import { profileSchema, type ProfileValues } from '@/utils/validation.ts';
 
 export const Profile: React.FC = () => {
   const { user, setUser } = useAuthStore();

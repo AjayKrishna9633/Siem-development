@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 export const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({
   className,

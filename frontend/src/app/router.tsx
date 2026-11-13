@@ -1,14 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router';
-import { useAuthStore } from '@/store/auth.store.ts';
-import { ProtectedRoute } from '@/components/common/ProtectedRoute.tsx';
+import {
+  useAuthStore,
+  ProtectedRoute,
+  homePathFor,
+  Login,
+  Setup,
+  AcceptInvite,
+  ForgotPassword,
+  ResetPassword,
+} from '@/features/auth';
 import { AppShell } from './layout/AppShell.tsx';
-import { homePathFor } from '@/lib/permissions.ts';
-import { Login } from '@/pages/auth/Login.tsx';
-import { Setup } from '@/pages/auth/Setup.tsx';
-import { AcceptInvite } from '@/pages/auth/AcceptInvite.tsx';
-import { ForgotPassword } from '@/pages/auth/ForgotPassword.tsx';
-import { ResetPassword } from '@/pages/auth/ResetPassword.tsx';
 import { Unauthorized } from '@/pages/Unauthorized.tsx';
 import { UserManagement } from '@/pages/settings/UserManagement.tsx';
 import { InviteUser } from '@/pages/settings/InviteUser.tsx';

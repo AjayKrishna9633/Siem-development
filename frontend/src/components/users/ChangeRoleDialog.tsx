@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Modal } from '../ui/Modal.tsx';
 import { Button } from '../ui/Button.tsx';
 import { Field, Select } from '../ui/Form.tsx';
-import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
-import type { IManagedUser, UserRole } from '../../types/auth.ts';
+import { ALL_ROLES, roleDescription, roleLabel } from '@/features/auth';
+import type { IManagedUser } from '@/types/auth.ts';
+import type { UserRole } from '@/features/auth';
 
 export const ChangeRoleDialog: React.FC<{
   user: IManagedUser;

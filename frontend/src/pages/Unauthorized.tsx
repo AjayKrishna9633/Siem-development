@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router';
 import { ShieldX } from 'lucide-react';
-import { EmptyState } from '../components/ui/Misc.tsx';
-import { Button } from '../components/ui/Button.tsx';
+import { EmptyState } from '@/components/ui/Misc.tsx';
+import { Button } from '@/components/ui/Button.tsx';
 
 export const Unauthorized: React.FC = () => (
   <div className="flex min-h-[70vh] items-center justify-center px-6">

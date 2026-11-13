@@ -1,27 +1,4 @@
-export type UserRole = 'admin' | 't2_analyst' | 't1_analyst';
-
-export type UserStatus = 'invited' | 'active' | 'disabled';
-
-export type Permission =
-  | 'alerts.view'
-  | 'alerts.triage'
-  | 'alerts.close_fp'
-  | 'alerts.work_escalated'
-  | 'rules.edit'
-  | 'users.manage'
-  | 'settings.manage'
-  | 'audit.view';
-
-export interface IUser {
-  id: string;
-  email: string;
-  username: string;
-  role: UserRole;
-  permissions?: Permission[];
-  status?: UserStatus;
-  createdAt?: string;
-  lastLoginAt?: string | null;
-}
+import type { IUser, UserRole, UserStatus } from '@/features/auth';
 
 export interface IApiResponse<T = unknown> {
   statusCode: number;
@@ -29,11 +6,6 @@ export interface IApiResponse<T = unknown> {
   message: string;
   success?: boolean;
   code?: string;
-}
-
-export interface ILoginResponse {
-  accessToken: string;
-  user: IUser;
 }
 
 export interface IManagedUser extends Omit<IUser, 'username' | 'permissions'> {
@@ -84,16 +56,4 @@ export interface IPendingInvite {
 export interface ICodeSent {
   sentTo: string;
   expiresInMinutes: number;
-}
-
-export interface IPasswordResetPreview {
-  email: string;
-  expiresAt: string;
-}
-
-export interface IInvitePreview {
-  email: string;
-  role: UserRole;
-  orgName: string | null;
-  expiresAt: string;
 }

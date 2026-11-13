@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { IUser } from '../types/auth.ts';
-import { authService } from '../services/auth.service.ts';
-import { refreshSession, setAccessToken, setSessionListener } from '../services/api.ts';
+import type { IUser } from '../types/auth.types.ts';
+import { authService } from '../api/authApi.ts';
+import { refreshSession, setAccessToken, setSessionListener } from '@/services/api.ts';
 
 interface IAuthState {
   user: IUser | null;

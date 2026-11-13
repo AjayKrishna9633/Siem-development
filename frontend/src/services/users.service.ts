@@ -7,9 +7,9 @@ import type {
   IPendingInvite,
   IUserListParams,
   IUserPage,
-  UserRole,
-} from '../types/auth.ts';
-import { isUuid } from '../lib/schemas.ts';
+} from '@/types/auth.ts';
+import type { UserRole } from '@/features/auth';
+import { isUuid } from '@/utils/validation.ts';
 
 export const usersService = {
   async list(params: IUserListParams): Promise<IUserPage> {

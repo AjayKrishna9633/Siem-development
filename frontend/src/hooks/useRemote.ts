@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiErrorMessage } from '../lib/errors.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
 
 interface IRequest<T> {
   fetcher: () => Promise<T>;

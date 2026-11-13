@@ -1,8 +1,8 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router';
-import { useAuthStore } from '../../store/auth.store.ts';
-import type { Permission } from '../../types/auth.ts';
-import { can } from '../../lib/permissions.ts';
+import { useAuthStore } from '../store/authStore.ts';
+import type { Permission } from '../types/auth.types.ts';
+import { can } from '../utils/permissions.ts';
 
 interface IProtectedRouteProps {
   permission?: Permission;

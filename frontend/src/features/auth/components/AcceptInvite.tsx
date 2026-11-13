@@ -2,18 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authService } from '../../services/auth.service.ts';
-import { useAuthStore } from '../../store/auth.store.ts';
-import type { IInvitePreview } from '../../types/auth.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import { roleLabel } from '../../lib/roles.ts';
-import {
-  PASSWORD_MIN_LENGTH,
-  acceptInviteSchema,
-  isLinkToken,
-  type AcceptInviteValues,
-} from '../../lib/schemas.ts';
-import { LocalTime } from '../../components/common/LocalTime.tsx';
+import { authService } from '../api/authApi.ts';
+import { useAuthStore } from '../store/authStore.ts';
+import type { IInvitePreview } from '../types/auth.types.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { roleLabel } from '../utils/roles.ts';
+import { PASSWORD_MIN_LENGTH, isLinkToken } from '@/utils/validation.ts';
+import { acceptInviteSchema, type AcceptInviteValues } from '../schemas.ts';
+import { LocalTime } from '@/components/common/LocalTime.tsx';
 import {
   AuthError,
   AuthField,

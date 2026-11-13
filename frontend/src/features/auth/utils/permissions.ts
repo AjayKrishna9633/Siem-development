@@ -1,4 +1,4 @@
-import type { IUser, Permission } from '../types/auth.ts';
+import type { IUser, Permission } from '../types/auth.types.ts';
 
 export const can = (user: IUser | null | undefined, permission: Permission): boolean =>
   !!user?.permissions?.includes(permission);

@@ -7,16 +7,15 @@ import { Button } from '../ui/Button.tsx';
 import { Field, Input } from '../ui/Form.tsx';
 import { PasswordInput } from '../ui/PasswordInput.tsx';
 import { CodeInput, ResendCode } from '../common/VerificationCode.tsx';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { authService } from '../../services/auth.service.ts';
-import type { ICodeSent } from '../../types/auth.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
+import { useAuthStore, authService } from '@/features/auth';
+import type { ICodeSent } from '@/types/auth.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
 import {
   changeEmailSchema,
   verificationCodeSchema,
   type ChangeEmailValues,
   type VerificationCodeValues,
-} from '../../lib/schemas.ts';
+} from '@/utils/validation.ts';
 
 type Step = 'details' | 'verify' | 'done';
 

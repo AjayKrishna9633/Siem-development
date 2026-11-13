@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAuthStore } from '@/store/auth.store.ts';
+import { useAuthStore } from '@/features/auth';
 import { Providers } from './providers.tsx';
 import { AppRoutes } from './router.tsx';
 

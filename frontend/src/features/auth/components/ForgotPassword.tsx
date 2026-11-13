@@ -3,9 +3,9 @@ import { Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MailCheck } from 'lucide-react';
-import { authService } from '../../services/auth.service.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import { forgotPasswordSchema, type ForgotPasswordValues } from '../../lib/schemas.ts';
+import { authService } from '../api/authApi.ts';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import { forgotPasswordSchema, type ForgotPasswordValues } from '../schemas.ts';
 import { AuthError, AuthField, AuthInput, AuthLayout, AuthSubmit } from './AuthLayout.tsx';
 
 export const ForgotPassword: React.FC = () => {
