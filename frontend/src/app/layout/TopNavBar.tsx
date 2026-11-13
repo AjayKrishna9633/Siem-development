@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { cn } from '../../lib/cn.ts';
-import { roleLabel } from '../../lib/roles.ts';
-import { can } from '../../lib/permissions.ts';
-import { Avatar } from '../ui/Misc.tsx';
+import { useAuthStore } from '@/store/auth.store.ts';
+import { cn } from '@/lib/cn.ts';
+import { roleLabel } from '@/lib/roles.ts';
+import { can } from '@/lib/permissions.ts';
+import { Avatar } from '@/components/ui/Misc.tsx';
 
 export const TopNavBar: React.FC = () => {
   const { user, logout } = useAuthStore();
