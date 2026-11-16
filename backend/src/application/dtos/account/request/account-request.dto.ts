@@ -1,11 +1,9 @@
 import type { IActor } from '../../../types/use-case/actor.types.ts';
-import type { IRequestContext } from '../../../interfaces/repositories/audit-log.repository.interface.ts';
 
 export interface IChangePasswordInput {
   actor: IActor;
   currentPassword: string;
   newPassword: string;
-  context: IRequestContext;
 }
 
 export interface IRequestEmailChangeInput {
