@@ -10,6 +10,7 @@ import {
   ForgotPassword,
   ResetPassword,
 } from '@/features/auth';
+import { AuditLogsPage } from '@/features/audit';
 import { AppShell } from './layout/AppShell.tsx';
 import { Unauthorized } from '@/pages/Unauthorized.tsx';
 import { UserManagement } from '@/pages/settings/UserManagement.tsx';
@@ -56,6 +57,14 @@ export const AppRoutes: React.FC = () => (
           <CanManageUsers>
             <InviteUser />
           </CanManageUsers>
+        }
+      />
+      <Route
+        path="/audit"
+        element={
+          <ProtectedRoute permission="audit.view">
+            <AuditLogsPage />
+          </ProtectedRoute>
         }
       />
       <Route path="/unauthorized" element={<Unauthorized />} />
