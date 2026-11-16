@@ -1,9 +1,9 @@
-import type { ITokenPayload } from '../../application/interfaces/services/token.service.interface.ts';
+import type { ISessionUser } from '../../application/interfaces/use-cases/resolve-session-user.interface.ts';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: ITokenPayload;
+      user?: ISessionUser;
     }
   }
 }

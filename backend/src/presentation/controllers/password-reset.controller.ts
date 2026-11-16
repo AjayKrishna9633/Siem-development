@@ -6,7 +6,6 @@ import { ApiResponse } from '../http/helpers/implementation/apiResponse.ts';
 import { HttpStatusCode } from '../../domain/enums/HttpStatusCode.ts';
 import { SuccessMessage } from '../../domain/enums/SuccessMessage.ts';
 import { toPasswordResetPreviewDto } from '../../application/dtos/password-reset/response/password-reset-response.dto.ts';
-import { requestContextFrom } from '../http/request-context.ts';
 import { LINK_TOKEN_PATTERN } from '../validators/common.schema.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
@@ -30,7 +29,6 @@ export class PasswordResetController {
   request = catchAsync(async (req: Request, res: Response): Promise<void> => {
     await this._requestPasswordReset.execute({
       email: req.body.email,
-      context: requestContextFrom(req),
     });
 
     res
@@ -60,7 +58,6 @@ export class PasswordResetController {
     await this._resetPassword.execute({
       token: req.body.token,
       password: req.body.password,
-      context: requestContextFrom(req),
     });
 
     res

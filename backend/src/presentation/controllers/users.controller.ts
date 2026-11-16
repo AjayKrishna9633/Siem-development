@@ -16,7 +16,6 @@ import {
 } from '../../application/dtos/invite/response/invite-response.dto.ts';
 import { toResetLinkDeliveryDto } from '../../application/dtos/password-reset/response/password-reset-response.dto.ts';
 import { actorFrom, idParamFrom } from '../http/actor.ts';
-import { requestContextFrom } from '../http/request-context.ts';
 import { listUsersQuerySchema } from '../validators/user-mgmt.schema.ts';
 import type {
   IChangeUserRoleUseCase,
@@ -77,7 +76,6 @@ export class UsersController {
       actor: actorFrom(req),
       email: req.body.email,
       role: req.body.role,
-      context: requestContextFrom(req),
     });
 
     res
@@ -95,7 +93,6 @@ export class UsersController {
     const result = await this._resendInviteUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
-      context: requestContextFrom(req),
     });
 
     res
@@ -113,7 +110,6 @@ export class UsersController {
     await this._revokeInviteUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
-      context: requestContextFrom(req),
     });
 
     res
@@ -125,7 +121,6 @@ export class UsersController {
     const result = await this._issueResetLinkUseCase.execute({
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
-      context: requestContextFrom(req),
     });
 
     res
@@ -144,7 +139,6 @@ export class UsersController {
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       role: req.body.role,
-      context: requestContextFrom(req),
     });
 
     res
@@ -171,7 +165,6 @@ export class UsersController {
       actor: actorFrom(req),
       userId: idParamFrom(req, 'userId'),
       enabled,
-      context: requestContextFrom(req),
     });
     const message = enabled ? SuccessMessage.USER_ENABLED : SuccessMessage.USER_DISABLED;
     res

@@ -17,7 +17,6 @@ import type {
 } from '../../application/interfaces/use-cases/account.interface.ts';
 import { actorFrom } from '../http/actor.ts';
 import { setRefreshCookie } from '../http/refresh-cookie.ts';
-import { requestContextFrom } from '../http/request-context.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
@@ -81,7 +80,6 @@ export class AccountController {
       actor: actorFrom(req),
       currentPassword: req.body.currentPassword,
       newPassword: req.body.newPassword,
-      context: requestContextFrom(req),
     });
 
     setRefreshCookie(res, session.refreshToken);

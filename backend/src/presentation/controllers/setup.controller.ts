@@ -22,10 +22,7 @@ export class SetupController {
   ) {}
 
   verifyToken = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    await this._verifySetupToken.execute({
-      token: req.body.token,
-      context: requestContextFrom(req),
-    });
+    await this._verifySetupToken.execute({ token: req.body.token });
 
     res
       .status(HttpStatusCode.OK)

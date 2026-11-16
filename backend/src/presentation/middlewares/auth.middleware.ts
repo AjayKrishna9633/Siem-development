@@ -4,6 +4,7 @@ import type {
   ITokenService,
 } from '../../application/interfaces/services/token.service.interface.ts';
 import type { IResolveSessionUserUseCase } from '../../application/interfaces/use-cases/resolve-session-user.interface.ts';
+import type { IRequestContextProvider } from '../../application/interfaces/services/request-context.provider.interface.ts';
 import { AppError } from '../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
@@ -15,6 +16,7 @@ import { hasPermission } from '../../domain/policies/permissions.policy.ts';
 export function authenticate(
   tokenService: ITokenService,
   sessionUsers: IResolveSessionUserUseCase,
+  requestContext: IRequestContextProvider,
 ) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
@@ -45,6 +47,13 @@ export function authenticate(
       req.user = await sessionUsers.execute({
         userId: payload.userId,
         tokenVersion: payload.tokenVersion,
+      });
+      // From here on, anything this request audits is attributed to this user, with the name
+      // and role as they are right now (the role comes from the database, not the token).
+      requestContext.setActor({
+        userId: req.user.userId,
+        username: req.user.displayName,
+        role: req.user.role,
       });
       next();
     } catch (err: unknown) {
