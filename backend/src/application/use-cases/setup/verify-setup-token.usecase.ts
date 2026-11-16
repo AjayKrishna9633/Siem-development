@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
 import type { IVerifySetupTokenUseCase } from '../../interfaces/use-cases/setup.interface.ts';
 import type { IVerifySetupTokenInput } from '../../dtos/setup/request/setup-request.dto.ts';
@@ -17,7 +17,7 @@ export class VerifySetupTokenUseCase implements IVerifySetupTokenUseCase {
   constructor(
     @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
     @inject(TYPES.OpaqueTokenService) private readonly _tokens: IOpaqueTokenService,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   async execute(input: IVerifySetupTokenInput): Promise<void> {
@@ -25,7 +25,7 @@ export class VerifySetupTokenUseCase implements IVerifySetupTokenUseCase {
     if (settings.isSetupCompleted) throw setupAlreadyCompleted();
 
     if (!isSetupTokenValid(settings, input.token, this._tokens, new Date())) {
-      await recordRejectedSetupToken(this._audit, input.context);
+      await recordRejectedSetupToken(this._audit);
       throw invalidSetupToken();
     }
   }

@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IChangeUserRoleUseCase } from '../../interfaces/use-cases/users.interface.ts';
 import type { IChangeUserRoleInput } from '../../dtos/user/request/user-request.dto.ts';
 import type { IManagedUser } from '../../types/use-case/user-mgmt.types.ts';
@@ -19,7 +19,7 @@ import { toManagedUser } from './managed-user.ts';
 export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
   constructor(
     @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   async execute(input: IChangeUserRoleInput): Promise<IManagedUser> {
@@ -27,24 +27,28 @@ export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
     assertNotSelf(input.actor, input.userId);
 
     let previousRole: UserRole | null = null;
-    const user = await this._users.changeWithAdminLock(input.userId, (target, activeAdmins) => {
-      previousRole = target.role;
-      const wasActiveAdmin = target.isActiveAdmin;
-      target.changeRole(input.role, new Date());
-      assertAnAdminRemains(wasActiveAdmin, target, activeAdmins);
-    });
+    // The audit row is written inside the same transaction as the role change (see
+    // changeWithAdminLock), so a permission change can never exist without its audit row.
+    const user = await this._users.changeWithAdminLock(
+      input.userId,
+      (target, activeAdmins) => {
+        previousRole = target.role;
+        const wasActiveAdmin = target.isActiveAdmin;
+        target.changeRole(input.role, new Date());
+        assertAnAdminRemains(wasActiveAdmin, target, activeAdmins);
+      },
+      (updated) =>
+        previousRole === input.role
+          ? null
+          : this._audit.prepare({
+              action: AuditAction.USER_ROLE_CHANGED,
+              targetType: AuditTargetType.USER,
+              targetId: updated.id,
+              targetLabel: updated.email,
+              metadata: { from: previousRole, to: input.role },
+            }),
+    );
     if (!user) throw new AppError(AppErrorCode.USER_NOT_FOUND, ErrorMessage.USER_NOT_FOUND);
-
-    if (previousRole !== input.role) {
-      await this._audit.append({
-        actorUserId: input.actor.userId,
-        action: AuditAction.USER_ROLE_CHANGED,
-        targetType: AuditTargetType.USER,
-        targetId: user.id,
-        context: input.context,
-        metadata: { from: previousRole, to: input.role },
-      });
-    }
 
     return toManagedUser(user);
   }

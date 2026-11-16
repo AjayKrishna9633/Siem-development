@@ -2,7 +2,7 @@ import { injectable, inject } from 'inversify';
 import { randomUUID } from 'node:crypto';
 import TYPES from '../../../domain/constants/types.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { IOpaqueTokenService } from '../../interfaces/services/opaque-token.service.interface.ts';
@@ -13,9 +13,11 @@ import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
 import { User } from '../../../domain/entities/user.entity.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
 import { startSession } from '../shared/user-views.ts';
+import { auditActorOf } from '../shared/audit-actor.ts';
 import {
   invalidSetupToken,
   isSetupTokenValid,
+  recordAcceptedSetupToken,
   recordRejectedSetupToken,
   setupAlreadyCompleted,
 } from './setup-token.ts';
@@ -25,7 +27,7 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
   constructor(
     @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
     @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
     @inject(TYPES.OpaqueTokenService) private readonly _tokens: IOpaqueTokenService,
     @inject(TYPES.HashService) private readonly _hasher: IHashService,
     @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
@@ -55,16 +57,19 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
         });
       });
     } catch (err) {
-      if (tokenRejected) await recordRejectedSetupToken(this._audit, input.context);
+      if (tokenRejected) await recordRejectedSetupToken(this._audit);
       throw err;
     }
 
-    await this._audit.append({
-      actorUserId: admin.id,
+    // The admin exists now but isn't authenticated on this request, so name them explicitly.
+    const actor = auditActorOf(admin);
+    await recordAcceptedSetupToken(this._audit, actor);
+    await this._audit.record({
       action: AuditAction.SETUP_COMPLETED,
+      actor,
       targetType: AuditTargetType.USER,
       targetId: admin.id,
-      context: input.context,
+      targetLabel: admin.email,
       metadata: { email: admin.email, orgName: input.orgName },
     });
 

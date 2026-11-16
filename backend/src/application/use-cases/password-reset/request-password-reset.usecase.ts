@@ -2,7 +2,7 @@ import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interface.ts';
 import type { IEmailService } from '../../interfaces/services/email.service.interface.ts';
@@ -22,7 +22,7 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
     @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
     @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
     @inject(TYPES.EmailService) private readonly _email: IEmailService,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
     @inject(TYPES.Logger) private readonly _logger: ILogger,
   ) {}
 
@@ -32,12 +32,12 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
     const user = await this._users.findByEmail(input.email);
     if (!user || user.status !== UserStatus.ACTIVE) return;
 
-    void this.sendLink(user, input).catch((err: unknown) =>
+    void this.sendLink(user).catch((err: unknown) =>
       this._logger.error('Password reset link could not be sent', { userId: user.id, err }),
     );
   }
 
-  private async sendLink(user: User, input: IRequestPasswordResetInput): Promise<void> {
+  private async sendLink(user: User): Promise<void> {
     const { link, expiresAt } = await createResetLink(this._settings, this._tokens, user, null);
     const { delivered } = await this._mailer.sendPasswordReset({
       to: user.email,
@@ -47,12 +47,13 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
       byAdmin: false,
     });
 
-    await this._audit.append({
-      actorUserId: null,
+    await this._audit.record({
       action: AuditAction.PASSWORD_RESET_REQUESTED,
+      // Anonymous: anyone can ask for a reset link for an address they know.
+      actor: null,
       targetType: AuditTargetType.USER,
       targetId: user.id,
-      context: input.context,
+      targetLabel: user.email,
       metadata: { email: user.email, via: 'forgot-password', emailed: delivered },
     });
   }

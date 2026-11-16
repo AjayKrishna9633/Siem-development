@@ -2,7 +2,7 @@ import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { IAuthMailer } from '../../interfaces/services/auth-mailer.interface.ts';
 import type { IResendInviteUseCase } from '../../interfaces/use-cases/invites.interface.ts';
@@ -24,7 +24,7 @@ export class ResendInviteUseCase implements IResendInviteUseCase {
     @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
     @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
     @inject(TYPES.AuthMailer) private readonly _mailer: IAuthMailer,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   async execute(input: IManageInviteInput): Promise<IInviteDelivery> {
@@ -41,12 +41,11 @@ export class ResendInviteUseCase implements IResendInviteUseCase {
       true,
     );
 
-    await this._audit.append({
-      actorUserId: input.actor.userId,
+    await this._audit.record({
       action: AuditAction.INVITE_RESENT,
       targetType: AuditTargetType.USER,
       targetId: user.id,
-      context: input.context,
+      targetLabel: user.email,
       metadata: { email: user.email, emailed: invite.delivered },
     });
 

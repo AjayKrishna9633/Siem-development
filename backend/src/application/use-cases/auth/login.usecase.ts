@@ -3,7 +3,7 @@ import { startSession } from '../shared/user-views.ts';
 import { randomBytes } from 'node:crypto';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
 import type { ILoginInput } from '../../dtos/session/request/session-request.dto.ts';
@@ -12,9 +12,11 @@ import type { ILoginUseCase } from '../../interfaces/use-cases/login.interface.t
 import type { User } from '../../../domain/entities/user.entity.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
+import { AuditOutcome } from '../../../domain/enums/AuditOutcome.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
+import { auditActorOf } from '../shared/audit-actor.ts';
 
 type FailureReason = 'unknown_account' | 'not_activated' | 'locked' | 'wrong_password' | 'disabled';
 
@@ -24,7 +26,7 @@ export class LoginUseCase implements ILoginUseCase {
     @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
     @inject(TYPES.HashService) private readonly _hasher: IHashService,
     @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   private _timingHash: Promise<string> | null = null;
@@ -49,6 +51,9 @@ export class LoginUseCase implements ILoginUseCase {
       user.recordFailedLogin(now);
       await this._users.save(user);
       await this.recordFailure(input, user, 'wrong_password');
+      // The check above ruled out an already-locked account, so being locked now means this
+      // attempt is the one that tripped the lockout.
+      if (user.isLocked(now)) await this.recordLockout(user);
       throw invalidCredentials;
     }
 
@@ -63,24 +68,42 @@ export class LoginUseCase implements ILoginUseCase {
     user.recordSuccessfulLogin(input.context.ip, now);
     await this._users.save(user);
 
-    await this._audit.append({
-      actorUserId: user.id,
+    await this._audit.record({
       action: AuditAction.LOGIN_SUCCEEDED,
+      // Nobody is authenticated on this request yet, so name the user explicitly.
+      actor: auditActorOf(user),
       targetType: AuditTargetType.USER,
       targetId: user.id,
-      context: input.context,
+      targetLabel: user.email,
     });
 
     return startSession(this._sessions, user);
   }
 
   private recordFailure(input: ILoginInput, user: User | null, reason: FailureReason) {
-    return this._audit.append({
-      actorUserId: null,
+    return this._audit.record({
       action: AuditAction.LOGIN_FAILED,
-      ...(user && { targetType: AuditTargetType.USER, targetId: user.id }),
-      context: input.context,
+      outcome: AuditOutcome.FAILURE,
+      // Even a correct-looking account isn't the actor: the person failing to sign in is unproven.
+      actor: null,
+      ...(user && {
+        targetType: AuditTargetType.USER,
+        targetId: user.id,
+        targetLabel: user.email,
+      }),
       metadata: { email: input.email, reason },
+    });
+  }
+
+  private recordLockout(user: User) {
+    return this._audit.record({
+      action: AuditAction.ACCOUNT_LOCKED,
+      outcome: AuditOutcome.FAILURE,
+      actor: null,
+      targetType: AuditTargetType.USER,
+      targetId: user.id,
+      targetLabel: user.email,
+      metadata: { lockedUntil: user.toSnapshot().lockedUntil?.toISOString() ?? null },
     });
   }
 }
