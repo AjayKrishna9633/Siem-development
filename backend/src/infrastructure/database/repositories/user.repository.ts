@@ -5,6 +5,8 @@ import type { IUserRepository } from '../../../application/interfaces/repositori
 import type { IMapper } from '../../../application/interfaces/IMapper.ts';
 import { BaseRepository } from './base.repository.ts';
 import { UserModel } from '../models/user.model.ts';
+import { insertAuditRecord } from './audit-log.repository.ts';
+import type { IAuditRecord } from '../../../application/interfaces/repositories/audit-log.repository.interface.ts';
 import type { User } from '../../../domain/entities/user.entity.ts';
 import type {
   IUserListQuery,
@@ -101,6 +103,7 @@ export class TypeOrmUserRepository
   changeWithAdminLock(
     userId: string,
     change: (user: User, activeAdminCount: number) => void,
+    audit?: (user: User) => IAuditRecord | null,
   ): Promise<User | null> {
     return this.db.transaction(async (manager) => {
       await manager.query(`SELECT pg_advisory_xact_lock(hashtext('users_admin_change'))`);
@@ -115,6 +118,11 @@ export class TypeOrmUserRepository
       const user = this.mapper.toDomain(model);
       change(user, activeAdminCount);
       await manager.save(UserModel, this.mapper.toPersistence(user));
+
+      // Same manager, so a failed insert rolls the change back with it. That is the one place a
+      // broken audit write is allowed to fail a request.
+      const record = audit?.(user);
+      if (record) await insertAuditRecord(manager, record);
       return user;
     });
   }

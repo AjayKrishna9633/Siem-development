@@ -5,6 +5,8 @@ import { env } from '../config/env.config.ts';
 import { UserRole } from '../domain/enums/UserRole.ts';
 import { UserStatus } from '../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../domain/enums/AuditAction.ts';
+import { AuditOutcome } from '../domain/enums/AuditOutcome.ts';
+import { AUDIT_CATEGORY_BY_ACTION } from '../domain/constants/audit.ts';
 
 // Development-only demo data. Every account that can sign in shares this password.
 const DEMO_PASSWORD = 'SiempleDemo#2026';
@@ -150,12 +152,32 @@ const seedAuditLogs = async (runner: QueryRunner, ids: Map<string, string>) => {
     ],
   ];
 
+  // Raw SQL on purpose: the demo rows are backdated, which the application never does. INSERT is
+  // allowed by the append-only trigger. The actor and target names are copied from `users` the
+  // same way the application copies them at write time.
   for (const [actor, action, targetType, targetId, age] of entries) {
     await runner.query(
       `INSERT INTO "audit_logs"
-         ("actor_user_id", "action", "target_type", "target_id", "ip", "user_agent", "metadata", "created_at")
-       VALUES ($1, $2, $3, $4, '127.0.0.1', 'seed-script', $5, $6)`,
-      [actor, action, targetType, targetId, JSON.stringify({ seeded: true }), hoursAgo(age)],
+         ("actor_id", "actor_username", "actor_role", "action", "category", "outcome",
+          "target_type", "target_id", "target_label", "ip_address", "user_agent", "metadata",
+          "occurred_at")
+       VALUES (
+         $1::uuid,
+         (SELECT COALESCE("username", "email") FROM "users" WHERE "id" = $1::uuid),
+         (SELECT "role"::text FROM "users" WHERE "id" = $1::uuid),
+         $2, $3, $4, $5, $6::text,
+         (SELECT "email" FROM "users" WHERE "id"::text = $6::text),
+         '127.0.0.1', 'seed-script', $7, $8)`,
+      [
+        actor,
+        action,
+        AUDIT_CATEGORY_BY_ACTION[action],
+        action === AuditAction.LOGIN_FAILED ? AuditOutcome.FAILURE : AuditOutcome.SUCCESS,
+        targetType,
+        targetId,
+        JSON.stringify({ seeded: true }),
+        hoursAgo(age),
+      ],
     );
   }
   return entries.length;
