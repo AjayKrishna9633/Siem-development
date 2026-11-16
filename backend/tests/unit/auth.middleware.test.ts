@@ -56,28 +56,50 @@ describe('authenticate', () => {
     verifyAccessToken: () => tokenPayload,
   };
   const withBearer = { headers: { authorization: 'Bearer abc' } } as Request;
+  const contextSpy = () => ({ run: vi.fn(), current: vi.fn(), setActor: vi.fn() });
 
   it('uses the role from the database, not the one in the token', async () => {
-    const sessionUsers = { execute: vi.fn(async () => ({ ...tokenPayload, role: 't1_analyst' })) };
+    const sessionUsers = {
+      execute: vi.fn(async () => ({ ...tokenPayload, role: 't1_analyst', displayName: 'Ann' })),
+    };
     const req = { ...withBearer } as Request;
 
-    expect(await run(authenticate(tokens, sessionUsers), req)).toBeUndefined();
+    expect(await run(authenticate(tokens, sessionUsers, contextSpy()), req)).toBeUndefined();
     expect(sessionUsers.execute).toHaveBeenCalledWith({ userId: 'u1', tokenVersion: 3 });
     expect(req.user?.role).toBe('t1_analyst');
+  });
+
+  it('names the actor for the audit log from the database record', async () => {
+    const sessionUsers = {
+      execute: vi.fn(async () => ({ ...tokenPayload, role: 't1_analyst', displayName: 'Ann' })),
+    };
+    const context = contextSpy();
+
+    await run(authenticate(tokens, sessionUsers, context), { ...withBearer } as Request);
+
+    expect(context.setActor).toHaveBeenCalledWith({
+      userId: 'u1',
+      username: 'Ann',
+      role: 't1_analyst',
+    });
   });
 
   it('rejects the request when the session user check fails', async () => {
     const revoked = new AppError(AppErrorCode.SESSION_REVOKED, 'revoked');
     const sessionUsers = { execute: vi.fn(async () => Promise.reject(revoked)) };
+    const context = contextSpy();
 
-    expect(await run(authenticate(tokens, sessionUsers), { ...withBearer } as Request)).toBe(
-      revoked,
-    );
+    expect(
+      await run(authenticate(tokens, sessionUsers, context), { ...withBearer } as Request),
+    ).toBe(revoked);
+    expect(context.setActor).not.toHaveBeenCalled();
   });
 
   it('rejects a missing token without touching the database', async () => {
     const sessionUsers = { execute: vi.fn() };
-    const err = await run(authenticate(tokens, sessionUsers), { headers: {} } as Request);
+    const err = await run(authenticate(tokens, sessionUsers, contextSpy()), {
+      headers: {},
+    } as Request);
 
     expect(err?.code).toBe(AppErrorCode.UNAUTHORIZED);
     expect(sessionUsers.execute).not.toHaveBeenCalled();

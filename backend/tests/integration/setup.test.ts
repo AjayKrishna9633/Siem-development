@@ -45,7 +45,7 @@ describe('first-run setup', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('INVALID_SETUP_TOKEN');
-    expect(await auditActions()).toContain('setup.token_rejected');
+    expect(await auditActions()).toContain('auth.setup_token.used');
   });
 
   it('keeps a live token across restarts instead of printing a new one', async () => {
@@ -73,7 +73,7 @@ describe('first-run setup', () => {
     expect(res.body.data.user).toMatchObject({ email: 'ada@example.com', role: 'admin' });
     expect(res.body.data.accessToken).toEqual(expect.any(String));
     expect(res.headers['set-cookie']?.[0]).toMatch(/^refreshToken=.*HttpOnly/);
-    expect(await auditActions()).toContain('setup.completed');
+    expect(await auditActions()).toContain('system.setup.completed');
   });
 
   it('answers 404 on every setup route from then on, even with the old token', async () => {
