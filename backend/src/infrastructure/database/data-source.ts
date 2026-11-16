@@ -10,6 +10,7 @@ import { CreateAuditLogs1793577600000 } from './migrations/1793577600000-CreateA
 import { CreateSystemSettings1793664000000 } from './migrations/1793664000000-CreateSystemSettings.ts';
 import { CreateAuthTokens1793750400000 } from './migrations/1793750400000-CreateAuthTokens.ts';
 import { DropSettingsTimezone1793836800000 } from './migrations/1793836800000-DropSettingsTimezone.ts';
+import { ExtendAuditLogs1793923200000 } from './migrations/1793923200000-ExtendAuditLogs.ts';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -24,5 +25,6 @@ export const AppDataSource = new DataSource({
     CreateSystemSettings1793664000000,
     CreateAuthTokens1793750400000,
     DropSettingsTimezone1793836800000,
+    ExtendAuditLogs1793923200000,
   ],
 });
