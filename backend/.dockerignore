@@ -1,0 +1,15 @@
+# Keep the build context small and free of secrets: the image installs its own dependencies
+# and compiles its own dist/, and configuration comes from compose, never from a baked-in .env.
+node_modules
+dist
+coverage
+tests
+scripts
+*.log
+.env
+.env.*
+Dockerfile
+.dockerignore
+eslint.config.js
+vitest.config.ts
+tsconfig.test.json
