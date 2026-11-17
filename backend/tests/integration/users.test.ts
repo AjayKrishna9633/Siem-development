@@ -93,7 +93,7 @@ describe('roles, permissions and account status', () => {
   it('records every role and status change in the audit log', async () => {
     const actions = await auditActions();
     expect(actions).toEqual(
-      expect.arrayContaining(['user.role_changed', 'user.disabled', 'user.enabled']),
+      expect.arrayContaining(['user.role.change', 'user.disable', 'user.enable']),
     );
   });
 });

@@ -141,7 +141,10 @@ infrastructure/           ── technology ──
   database/repositories/  TypeORM implementations of the repository ports
   redis/                  Redis client + cache service with in-memory fallback
   services/               bcrypt, JWT, refresh sessions, opaque tokens, auth tokens,
-                          email, auth mailer, security mailer, verification codes
+                          email, auth mailer, security mailer, verification codes,
+                          audit service
+  context/                AsyncLocalStorage request scope (request id, IP, actor)
+  database/queries/       Pure SQL builders (the audit log filter)
   services/templates/     Email HTML/text
   di/                     The Inversify container and every binding
 presentation/             ── HTTP ──
@@ -167,6 +170,7 @@ components/ui/            Generic building blocks (Button, Modal, Table, Confirm
 components/common/        Shared pieces (LinkDeliveryDetails, ListToolbar, LocalTime…)
 components/users/         UserTable, InviteUserForm, invite/reset dialogs, role and status dialogs
 components/profile/       Change password / change email dialogs
+features/audit/           The audit log page: api, table, filters, detail drawer, URL filter state
 lib/                      permissions (can, homePathFor), roles, password, validation, errors
 types/auth.ts             Shapes returned by the API
 ```
@@ -186,21 +190,22 @@ Example: an administrator invites an analyst. The browser sends `POST /api/users
 3. `helmet()` security headers; `cors()` restricted to `FRONTEND_URL`.
 4. **`setupGuard`** ([setup-guard.middleware.ts](../backend/src/presentation/middlewares/setup-guard.middleware.ts)) — if first-run setup isn't done, every API call except `/api/setup/*` gets `403 SETUP_REQUIRED`. Here setup is done, so it passes.
 5. `express.json({ limit: '100kb' })`, `cookieParser()`.
+6. **`requestContextMiddleware`** ([request-context.middleware.ts](../backend/src/presentation/middlewares/request-context.middleware.ts)) — opens a per-request scope (`AsyncLocalStorage`) holding the request id, IP and user agent. This is how the audit log knows where an action came from without every use case being handed the request. `authenticate` (below) adds who is calling.
 
 **3 — Route middleware** ([users.routes.ts](../backend/src/presentation/routes/users.routes.ts)):
 
-1. **`authenticate`** ([auth.middleware.ts](../backend/src/presentation/middlewares/auth.middleware.ts)) verifies the JWT, then **loads the user from the database** ([resolve-session-user.usecase.ts](../backend/src/application/use-cases/auth/resolve-session-user.usecase.ts)): the account must be active and its `tokenVersion` must match. `req.user.role` is the role **in the database now**, not the one in the token.
+1. **`authenticate`** ([auth.middleware.ts](../backend/src/presentation/middlewares/auth.middleware.ts)) verifies the JWT, then **loads the user from the database** ([resolve-session-user.usecase.ts](../backend/src/application/use-cases/auth/resolve-session-user.usecase.ts)): the account must be active and its `tokenVersion` must match. `req.user.role` is the role **in the database now**, not the one in the token. It then records the caller (id, name, role) in the request scope, so anything audited later in this request is attributed to them.
 2. **`authorize(Permission.USERS_MANAGE)`** — 403 unless the role has that permission.
 3. `validate(inviteUserSchema)` — replaces `req.body` with the cleaned result: `{ email: "ana@acme.co", role: "t1_analyst" }`.
 
-**4 — Controller** ([users.controller.ts](../backend/src/presentation/controllers/users.controller.ts)) passes the actor, the body fields one by one, and the request context (IP, user agent) to the use case, then answers 201.
+**4 — Controller** ([users.controller.ts](../backend/src/presentation/controllers/users.controller.ts)) passes the actor and the body fields one by one to the use case, then answers 201.
 
 **5 — Use case** ([invite-user.usecase.ts](../backend/src/application/use-cases/invites/invite-user.usecase.ts)):
 
 1. `assertPermission(actor, USERS_MANAGE)` again (defence in depth: use cases are safe to call from anywhere).
 2. Refuses a taken email; creates the user as `invited` with no name and no password.
 3. [`deliverInvite`](../backend/src/application/use-cases/invites/invite-delivery.ts): issues a single-use link (section 12), builds `${base_url}/accept-invite?token=…`, asks the mailer to send it.
-4. Appends `invite.created` to the audit log.
+4. Records `user.invite.create` through `AuditService` (section 14); the actor, IP, user agent and request id come from the request scope.
 5. Returns the user and `{ delivered, expiresAt, link? }` — `link` only when the email wasn't delivered.
 
 **6 — Response** (shape from [apiResponse.ts](../backend/src/presentation/http/helpers/implementation/apiResponse.ts)):
@@ -279,6 +284,7 @@ The schema changes **only through migrations** ([migrations/](../backend/src/inf
 | [CreateAuditLogs](../backend/src/infrastructure/database/migrations/1793577600000-CreateAuditLogs.ts)           | The audit table and the trigger that makes it append-only                                   |
 | [CreateSystemSettings](../backend/src/infrastructure/database/migrations/1793664000000-CreateSystemSettings.ts) | The single settings row                                                                     |
 | [CreateAuthTokens](../backend/src/infrastructure/database/migrations/1793750400000-CreateAuthTokens.ts)         | Single-use links; makes `users.username` nullable                                           |
+| [ExtendAuditLogs](../backend/src/infrastructure/database/migrations/1793923200000-ExtendAuditLogs.ts)           | Audit v2: actor snapshot, category, outcome, target label, request id; new indexes          |
 
 Every migration has a working `down`. `RemoveTenancy.down` is lossy by nature (deleted companies can't come back).
 
@@ -320,7 +326,19 @@ Index `(user_id, type)` serves "delete this user's earlier unused links".
 
 ### `audit_logs` — [audit-log.model.ts](../backend/src/infrastructure/database/models/audit-log.model.ts)
 
-`actor_user_id`, `action`, `target_type`, `target_id`, `ip`, `user_agent`, `metadata` (jsonb, flat), `created_at`. Indexed on `actor_user_id` and `created_at`. **No foreign key** to users, so history outlives accounts. A trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` (section 14).
+| Column                                     | Meaning                                                                                  |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `id` uuid PK                               | Assigned by the database                                                                 |
+| `occurred_at` timestamptz                  | Set by the database (`clock_timestamp()`), microsecond precision; the app never sends it |
+| `actor_id`, `actor_username`, `actor_role` | Who did it, **copied at write time** so the row stays readable after a rename or removal |
+| `action`                                   | Dot notation, e.g. `auth.login.failure`                                                  |
+| `category`                                 | `auth`, `user`, `system`, `agent`, `rule`, `alert` (`CHECK`); derived from the action    |
+| `outcome`                                  | `success`, `failure`, `denied` (`CHECK`)                                                 |
+| `target_type`, `target_id`, `target_label` | What it was done to; the label (usually an email) is also copied at write time           |
+| `ip_address`, `user_agent`, `request_id`   | From the request; the id matches the `X-Request-Id` in the server log                    |
+| `metadata` jsonb                           | Details, including before/after; secrets redacted before the insert                      |
+
+Indexes: `(occurred_at DESC, id DESC)` serves the newest-first, keyset-paged list; `(actor_id, occurred_at DESC)` serves "this person's activity"; plus `action` and `category`. **No foreign key** to users, so history outlives accounts. A trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` (section 14).
 
 ---
 
@@ -458,19 +476,67 @@ User management ([UserManagement.tsx](../frontend/src/pages/settings/UserManagem
 
 ## 14. The audit log
 
-Append-only by construction: the repository ([audit-log.repository.ts](../backend/src/infrastructure/database/repositories/audit-log.repository.ts)) only has `append()`, and a database trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` — so even a bug or a compromised application account can't rewrite history.
+Every security-relevant action is written to the `audit_logs` table, and an admin can read it back in the UI (`/audit`) or through the API (below).
 
-| Action                                                                       | Recorded when                      | Notable metadata                                                                   |
-| ---------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `setup.token_rejected` / `setup.completed`                                   | Wrong setup token / setup finished | email, org name                                                                    |
-| `auth.login_succeeded` / `auth.login_failed` / `auth.logged_out`             | Sign-in and sign-out               | failure `reason`: unknown_account, not_activated, locked, wrong_password, disabled |
-| `invite.created` / `resent` / `revoked` / `accepted`                         | Invitation lifecycle               | email, role, whether it was emailed                                                |
-| `user.role_changed` / `user.disabled` / `user.enabled`                       | Role and status changes            | from / to                                                                          |
-| `password.changed` / `password.reset_requested` / `password.reset_completed` | Password lifecycle                 | `via`: forgot-password, admin, cli                                                 |
+### How a row gets written
 
-Every entry has the actor (null if nobody was signed in), target, IP and user agent. **Never secrets** — no passwords, no tokens. A failure's reason is visible only here; the person signing in always sees the generic message.
+- **One entry point.** Code never inserts a row itself; it calls `AuditService.record({ action, … })` ([audit.service.ts](../backend/src/infrastructure/services/audit.service.ts)). The caller says only what happened. The service fills in **who** (the signed-in user's id, name and role, copied now), **where from** (IP, user agent) and the **request id**, all read from the per-request scope (section 5), and derives the **category** from the action ([audit.ts](../backend/src/domain/constants/audit.ts) — adding an action without a category doesn't compile).
+- **Secrets never get in.** Before insert, metadata is walked recursively and any key matching `password`, `token`, `secret`, `authorization` or `cookie` (any case, any depth) is replaced with `[REDACTED]` ([audit-redaction.policy.ts](../backend/src/domain/policies/audit-redaction.policy.ts)). Only keys are judged, and two safe ones (`tokenVersion`, `passwordChangedAt`) are allow-listed.
+- **Who counts as the actor.** On an authenticated request, the caller. Where nobody is signed in yet (sign-in, accepting an invite, finishing a reset) the use case names the user explicitly; a failed sign-in has **no** actor, because the person is unproven. Terminal commands (`reset-admin`) are recorded as `system`.
+- **The database stamps the time**, so no caller or bug can backdate a row.
 
-Two deliberate choices: rejected-token entries are written **after** the transaction rolls back (inside it, they'd be undone too); the forgot-password entry is written in the background with the email.
+### What is recorded
+
+| Action                                                                         | Recorded when                                        | Notable metadata                                                                   |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `auth.login.success` / `auth.login.failure` / `auth.logout`                    | Sign-in and sign-out                                 | failure `reason`: unknown_account, not_activated, locked, wrong_password, disabled |
+| `auth.account.locked`                                                          | The failed attempt that trips the lockout (once)     | `lockedUntil`                                                                      |
+| `auth.password.change` / `auth.password.reset_request` / `auth.password.reset` | Password lifecycle                                   | `via`: forgot-password, admin, cli                                                 |
+| `auth.setup_token.used`                                                        | Setup token accepted (success) or rejected (failure) |                                                                                    |
+| `access.denied`                                                                | A signed-in user was refused a permission (403)      | method, path (no query string), error code                                         |
+| `user.invite.create` / `resend` / `revoke` / `accept`                          | Invitation lifecycle                                 | email, role, whether it was emailed                                                |
+| `user.role.change` / `user.disable` / `user.enable`                            | Role and status changes                              | from / to                                                                          |
+| `user.update`                                                                  | Profile name or email changed                        | `before` / `after`                                                                 |
+| `system.setup.completed`                                                       | First-run setup finished                             | email, org name                                                                    |
+| `audit.export`                                                                 | The log was exported to CSV                          | filters used, row count                                                            |
+| `system.settings.changed`                                                      | Reserved: there is no settings editor yet            |                                                                                    |
+
+`outcome` is `success`, `failure` or `denied`. A failure's reason is visible only here; the person signing in always sees the generic message. `access.denied` is written only for a signed-in user's permission refusals. Setup-pending and disabled-account 403s are not recorded: they say nothing about what a person tried to do, and would bury the log.
+
+### Append-only
+
+Three layers, each tested ([audit-guarantees.test.ts](../backend/tests/integration/audit-guarantees.test.ts)):
+
+1. The repository has `insert` and reads only: no update or delete method exists.
+2. A database **trigger** rejects `UPDATE`, `DELETE` and `TRUNCATE` on the table, whatever SQL is sent, including from the ORM or inside a transaction.
+3. `CHECK` constraints keep `category` and `outcome` to the allowed values.
+
+**What this does not stop:** the application connects as the role that owns the table, and an owner can disable a trigger. So this defeats bugs, injected SQL and anyone using the app's normal queries, but not someone who already has the database owner's credentials. Closing that gap needs a separate, limited runtime role (below). The one deliberate bypass in the code is the `ExtendAuditLogs` migration, which lifts the trigger inside its own transaction to rewrite old rows, then puts it back; if it fails, the rollback restores it.
+
+### When a write fails
+
+An audit failure **must not** take the product down, with one exception.
+
+- **Everything except role and status changes:** `record()` catches the error, logs it (the action and target, never the metadata), and the request carries on. Signing in still works if the entry can't be written.
+- **Role changes, disable and enable:** the audit row is written **inside the same database transaction** as the change ([user.repository.ts](../backend/src/infrastructure/database/repositories/user.repository.ts), `changeWithAdminLock`). Both commit or neither does: a permission change can never exist without its entry, and if the entry can't be written the change is refused with a 500.
+
+Two smaller choices: a rejected setup token is recorded **after** the transaction rolls back (inside it, the entry would be undone too), and the forgot-password entry is written in the background with the email.
+
+### Reading it back
+
+`GET /api/audit-logs` (Admin only):
+
+- Filters: `from`, `to`, `actorId`, `category`, `outcome`, `action` (exact), and `q` (free text over actor name, target label and action; metadata is not searched). The range may be at most **90 days**; with no dates it is the last 7 days.
+- **Keyset pagination** on `(occurred_at, id)`, newest first. The cursor carries the exact timestamp as text, microseconds included. A JavaScript `Date` holds only milliseconds, so rounding it would skip or repeat rows written in the same millisecond. Rows written while you page never cause repeats or gaps. The cursor is validated like any other input.
+- `GET /api/audit-logs/:id` returns one entry.
+- `GET /api/audit-logs/export?format=csv` streams the same filters in batches of 1,000, so memory stays flat. An export over **100,000 rows** is refused with a 400 asking for a narrower range, _before_ any byte is sent, rather than cut short. It is rate-limited (10 per 15 minutes) and **is itself audited** (`audit.export`, written before streaming starts, so an interrupted export is still on record).
+- **CSV safety:** several columns hold text an outsider chose (the email typed into a failed login, a User-Agent). Cells starting with `=`, `+`, `-`, `@`, tab or CR get a leading apostrophe so a spreadsheet shows them as text instead of running them as formulas.
+
+The page ([features/audit](../frontend/src/features/audit)) shows time (relative, exact on hover), actor, action in words ([actionLabels.ts](../frontend/src/features/audit/constants/actionLabels.ts)), target, outcome and IP. Range, filters, search and the open entry live in the URL, so a link reproduces the view. A failure or denial is orange; a success is neutral; red is reserved for Critical alerts.
+
+### Not built yet
+
+Retention (a purge job: the trigger forbids `DELETE`, so it would need a deliberate, audited bypass, and the table grows without limit until then), **tamper evidence** (a hash chain over rows would make an edit by a database owner detectable), **brute-force detection** (the data is there: failed logins with IP and target), and a separate migration and runtime database role.
 
 ---
 
@@ -478,33 +544,36 @@ Two deliberate choices: rejected-token entries are written **after** the transac
 
 Base URL `/api`. 🔒 = access token required. Permission = what `authorize` checks.
 
-| Method | Path                           | Auth   | Permission     | Use case                              |
-| ------ | ------------------------------ | ------ | -------------- | ------------------------------------- |
-| POST   | `/setup/verify-token`          | —      | setup pending  | VerifySetupToken                      |
-| POST   | `/setup/complete`              | —      | setup pending  | CompleteSetup                         |
-| POST   | `/auth/login`                  | —      | —              | Login                                 |
-| POST   | `/auth/refresh`                | cookie | —              | RefreshSession                        |
-| POST   | `/auth/logout`                 | cookie | —              | Logout                                |
-| GET    | `/auth/me`                     | 🔒     | —              | GetCurrentUser                        |
-| PUT    | `/auth/profile`                | 🔒     | —              | UpdateProfile                         |
-| POST   | `/auth/password`               | 🔒     | —              | ChangePassword                        |
-| POST   | `/auth/email/code`             | 🔒     | `users.manage` | RequestEmailChange                    |
-| POST   | `/auth/email`                  | 🔒     | `users.manage` | ChangeEmail                           |
-| GET    | `/auth/invite?token=`          | —      | —              | GetInvite                             |
-| POST   | `/auth/invite/accept`          | —      | —              | AcceptInvite                          |
-| POST   | `/auth/password-reset/request` | —      | —              | RequestPasswordReset                  |
-| GET    | `/auth/password-reset?token=`  | —      | —              | GetPasswordReset                      |
-| POST   | `/auth/password-reset`         | —      | —              | ResetPassword                         |
-| GET    | `/users`                       | 🔒     | `users.manage` | ListUsers                             |
-| GET    | `/users/invites`               | 🔒     | `users.manage` | ListPendingInvites                    |
-| POST   | `/users/invites`               | 🔒     | `users.manage` | InviteUser                            |
-| POST   | `/users/:id/invite/resend`     | 🔒     | `users.manage` | ResendInvite                          |
-| DELETE | `/users/:id/invite`            | 🔒     | `users.manage` | RevokeInvite                          |
-| POST   | `/users/:id/password-reset`    | 🔒     | `users.manage` | IssueResetLink                        |
-| PATCH  | `/users/:id/role`              | 🔒     | `users.manage` | ChangeUserRole                        |
-| POST   | `/users/:id/disable`           | 🔒     | `users.manage` | SetUserStatus                         |
-| POST   | `/users/:id/enable`            | 🔒     | `users.manage` | SetUserStatus                         |
-| GET    | `/health` (no `/api`)          | —      | —              | Database ping; never blocked by setup |
+| Method | Path                            | Auth   | Permission     | Use case                              |
+| ------ | ------------------------------- | ------ | -------------- | ------------------------------------- |
+| POST   | `/setup/verify-token`           | —      | setup pending  | VerifySetupToken                      |
+| POST   | `/setup/complete`               | —      | setup pending  | CompleteSetup                         |
+| POST   | `/auth/login`                   | —      | —              | Login                                 |
+| POST   | `/auth/refresh`                 | cookie | —              | RefreshSession                        |
+| POST   | `/auth/logout`                  | cookie | —              | Logout                                |
+| GET    | `/auth/me`                      | 🔒     | —              | GetCurrentUser                        |
+| PUT    | `/auth/profile`                 | 🔒     | —              | UpdateProfile                         |
+| POST   | `/auth/password`                | 🔒     | —              | ChangePassword                        |
+| POST   | `/auth/email/code`              | 🔒     | `users.manage` | RequestEmailChange                    |
+| POST   | `/auth/email`                   | 🔒     | `users.manage` | ChangeEmail                           |
+| GET    | `/auth/invite?token=`           | —      | —              | GetInvite                             |
+| POST   | `/auth/invite/accept`           | —      | —              | AcceptInvite                          |
+| POST   | `/auth/password-reset/request`  | —      | —              | RequestPasswordReset                  |
+| GET    | `/auth/password-reset?token=`   | —      | —              | GetPasswordReset                      |
+| POST   | `/auth/password-reset`          | —      | —              | ResetPassword                         |
+| GET    | `/users`                        | 🔒     | `users.manage` | ListUsers                             |
+| GET    | `/users/invites`                | 🔒     | `users.manage` | ListPendingInvites                    |
+| POST   | `/users/invites`                | 🔒     | `users.manage` | InviteUser                            |
+| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage` | ResendInvite                          |
+| DELETE | `/users/:id/invite`             | 🔒     | `users.manage` | RevokeInvite                          |
+| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage` | IssueResetLink                        |
+| PATCH  | `/users/:id/role`               | 🔒     | `users.manage` | ChangeUserRole                        |
+| POST   | `/users/:id/disable`            | 🔒     | `users.manage` | SetUserStatus                         |
+| POST   | `/users/:id/enable`             | 🔒     | `users.manage` | SetUserStatus                         |
+| GET    | `/audit-logs`                   | 🔒     | `audit.view`   | ListAuditLogs                         |
+| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`   | ExportAuditLogs                       |
+| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`   | GetAuditLog                           |
+| GET    | `/health` (no `/api`)           | —      | —              | Database ping; never blocked by setup |
 
 Until setup is complete, every `/api` route except `/setup/*` answers `403 { code: "SETUP_REQUIRED" }`; afterwards `/setup/*` answers 404.
 
@@ -533,6 +602,8 @@ npm run migration:check  # models and migrated schema match
 - **Unit tests** ([tests/unit](../backend/tests/unit)) use in-memory fakes: the permission matrix, `authorize`/`authenticate`, the session re-check, admin guards, token hashing and lifetimes, invite delivery, login auditing and hash upgrades, bcrypt cost, settings rules.
 - **Integration tests** ([tests/integration](../backend/tests/integration)) run the real app against a **real Postgres** that [database.ts](../backend/tests/helpers/database.ts) drops and rebuilds from the migrations (a fresh install every file). They refuse to run unless `TEST_DATABASE_URL` is set and differs from `DATABASE_URL`.
 - **Tests never send email:** [setup-env.ts](../backend/tests/setup-env.ts) blanks the email settings, so links always come back in responses.
+
+The audit log's guarantees are tested at the database, not just in code: [audit-guarantees.test.ts](../backend/tests/integration/audit-guarantees.test.ts) proves `UPDATE`, `DELETE` and `TRUNCATE` are rejected (and the rows are byte-identical afterwards), and makes audit inserts fail for real to prove that sign-in and 403s survive a failed write while a role change is rolled back. [audit-api.test.ts](../backend/tests/integration/audit-api.test.ts) covers paging over rows with identical timestamps, every filter, validation, access control and the CSV export; [audit-events.test.ts](../backend/tests/integration/audit-events.test.ts) and [audit-trail.test.ts](../backend/tests/integration/audit-trail.test.ts) cover what each event records and that simultaneous requests keep their own actor and request id.
 
 The concurrency guarantees each have a test: setup ([setup-race.test.ts](../backend/tests/integration/setup-race.test.ts), 10 simultaneous requests → exactly one admin), single-use invite and reset links (two simultaneous submissions → exactly one succeeds), and the last-admin lock ([admin-race.test.ts](../backend/tests/integration/admin-race.test.ts), which calls the use case directly so only the lock can decide).
 
@@ -603,7 +674,11 @@ The audit log is something else: a permanent, database-backed record of security
 
 **What happens without email?** Invites and admin reset links come back in the API response with a copy box; "forgot password" sends nothing (and says to ask an admin); verification codes for email change fail with a clear 503.
 
-**Can the audit log be edited?** Not through the app (no update/delete methods) and not through the app's database account (a trigger rejects update, delete and truncate).
+**Can the audit log be edited?** Not through the app (no update or delete method exists) and not by SQL sent through the app's connection: a trigger rejects update, delete and truncate, and a test proves it. But the app's database role owns the table, and an owner can disable a trigger, so someone holding the database owner's credentials could still alter history. A separate limited runtime role and a hash chain over the rows are the next steps (section 21).
+
+**Why is the audit row part of the transaction for a role change but not for a login?** A permission change without its record is a hole in the log, so those two commit together or not at all. A login that fails because an audit insert failed would lock everyone out over a logging fault, so for everything else the failure is logged and the request carries on.
+
+**Why does the audit cursor carry the timestamp as text?** The database stores microseconds and JavaScript dates hold milliseconds. Rounding would make two rows from the same millisecond skip or repeat across a page boundary.
 
 **Why do migrations run on server start?** So a customer upgrades by restarting. Each migration runs in a transaction; a failure stops start-up before any request is served.
 
@@ -613,13 +688,17 @@ The audit log is something else: a permanent, database-backed record of security
 
 ## 21. Known limitations and next steps
 
-| Item                                      | Detail                                                                                             |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Audit log has no UI yet                   | `audit.view` exists; a read-only page is the natural next step                                     |
-| Settings can't be edited after setup      | `settings.manage` exists; org name, base URL, time zone and SMTP in the UI would use it            |
-| Rate limits are per process               | `express-rate-limit` keeps counts in memory; fine for one server, needs a shared store for several |
-| Redis fallback loses sessions on restart  | Production should require Redis                                                                    |
-| Accepting an invite isn't one transaction | The link is spent, then the user saved; a crash in between burns the link (resend fixes it)        |
-| Audit writes happen after the main change | If an audit insert failed after a commit, the action would stand without its entry                 |
-| Alert and rule permissions are unused     | Defined now for the alert module                                                                   |
-| Email delivery is untested end to end     | Tests always run without email by design; check a real invite by hand                              |
+| Item                                      | Detail                                                                                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit log never expires                   | No retention job yet; the trigger forbids `DELETE`, so a purge needs a deliberate, audited bypass                                      |
+| Audit log isn't tamper-evident            | A database owner could disable the trigger; a hash chain would make an edit detectable                                                 |
+| Same database role migrates and runs      | Needed to lift the trigger in a migration; a limited runtime role would make the log truly append-only                                 |
+| No brute-force detection                  | Failed logins are recorded with IP and target; nothing reads them yet                                                                  |
+| Audit export is held in browser memory    | Bounded by the 100,000-row cap; true streaming to disk would need a different download path                                            |
+| Settings can't be edited after setup      | `settings.manage` exists; org name, base URL, time zone and SMTP in the UI would use it                                                |
+| Rate limits are per process               | `express-rate-limit` keeps counts in memory; fine for one server, needs a shared store for several                                     |
+| Redis fallback loses sessions on restart  | Production should require Redis                                                                                                        |
+| Accepting an invite isn't one transaction | The link is spent, then the user saved; a crash in between burns the link (resend fixes it)                                            |
+| Most audit writes follow the change       | Only role and status changes share its transaction; for other actions a failed write is logged, so the action stands without its entry |
+| Alert and rule permissions are unused     | Defined now for the alert module                                                                                                       |
+| Email delivery is untested end to end     | Tests always run without email by design; check a real invite by hand                                                                  |

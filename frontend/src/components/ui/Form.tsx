@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 const fieldBase =
   'w-full rounded border border-line-strong bg-canvas text-sm text-ink placeholder:text-subtle transition-colors focus:border-accent/70 focus:outline-none focus:ring-1 focus:ring-accent/40 disabled:opacity-60';

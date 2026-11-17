@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { toast } from 'sonner';
-import { server } from '../test/server.ts';
+import { server } from '@/test/server.ts';
 import { api, INLINE_ERRORS, setAccessToken } from './api.ts';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));

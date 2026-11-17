@@ -26,6 +26,9 @@ const TYPES = {
   GetSetupStatusUseCase: Symbol.for('GetSetupStatusUseCase'),
   VerifySetupTokenUseCase: Symbol.for('VerifySetupTokenUseCase'),
   CompleteSetupUseCase: Symbol.for('CompleteSetupUseCase'),
+  ListAuditLogsUseCase: Symbol.for('ListAuditLogsUseCase'),
+  GetAuditLogUseCase: Symbol.for('GetAuditLogUseCase'),
+  ExportAuditLogsUseCase: Symbol.for('ExportAuditLogsUseCase'),
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
   AuditLogRepository: Symbol.for('AuditLogRepository'),
@@ -43,6 +46,8 @@ const TYPES = {
   VerificationCodeService: Symbol.for('VerificationCodeService'),
   SecurityMailer: Symbol.for('SecurityMailer'),
   OpaqueTokenService: Symbol.for('OpaqueTokenService'),
+  AuditService: Symbol.for('AuditService'),
+  RequestContextProvider: Symbol.for('RequestContextProvider'),
 
   AuthMiddleware: Symbol.for('AuthMiddleware'),
 
@@ -52,6 +57,7 @@ const TYPES = {
   InviteController: Symbol.for('InviteController'),
   UsersController: Symbol.for('UsersController'),
   SetupController: Symbol.for('SetupController'),
+  AuditLogsController: Symbol.for('AuditLogsController'),
 
   DataSource: Symbol.for('DataSource'),
   RedisClient: Symbol.for('RedisClient'),

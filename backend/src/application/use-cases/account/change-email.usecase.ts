@@ -7,6 +7,8 @@ import type { ISecurityMailer } from '../../interfaces/services/security-mailer.
 import type { IChangeEmailUseCase } from '../../interfaces/use-cases/account.interface.ts';
 import type { IChangeEmailInput } from '../../dtos/account/request/account-request.dto.ts';
 import type { ILoginResponse } from '../../types/use-case/auth.types.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
+import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
@@ -23,6 +25,7 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
     @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
     @inject(TYPES.VerificationCodeService) private readonly _codes: IVerificationCodeService,
     @inject(TYPES.SecurityMailer) private readonly _mailer: ISecurityMailer,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   async execute(input: IChangeEmailInput): Promise<ILoginResponse> {
@@ -45,6 +48,13 @@ export class ChangeEmailUseCase implements IChangeEmailUseCase {
     user.changeEmail(pending.newEmail, new Date());
     await this._users.save(user);
     await this._codes.consume('email-change', user.id);
+    await this._audit.record({
+      action: AuditAction.USER_UPDATED,
+      targetType: AuditTargetType.USER,
+      targetId: user.id,
+      targetLabel: user.email,
+      metadata: { before: { email: oldEmail }, after: { email: user.email } },
+    });
     await this._mailer.notifyEmailChanged({
       oldEmail,
       newEmail: user.email,

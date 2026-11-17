@@ -2,10 +2,11 @@ import { injectable, inject } from 'inversify';
 import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { ISystemSettingsRepository } from '../../interfaces/repositories/system-settings.repository.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { IAuthTokenService } from '../../interfaces/services/auth-token.service.interface.ts';
 import type { ICreateRecoveryLinkUseCase } from '../../interfaces/use-cases/password-reset.interface.ts';
 import type { IRecoveryLink } from '../../types/use-case/password-reset.types.ts';
+import { SYSTEM_ACTOR } from '../../../domain/constants/audit.ts';
 import { UserRole } from '../../../domain/enums/UserRole.ts';
 import { UserStatus } from '../../../domain/enums/UserStatus.ts';
 import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.ts';
@@ -20,7 +21,7 @@ export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
     @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
     @inject(TYPES.SystemSettingsRepository) private readonly _settings: ISystemSettingsRepository,
     @inject(TYPES.AuthTokenService) private readonly _tokens: IAuthTokenService,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
   ) {}
 
   async execute(input: { email: string }): Promise<IRecoveryLink> {
@@ -37,12 +38,13 @@ export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
 
     const recovery = await createResetLink(this._settings, this._tokens, user, null);
 
-    await this._audit.append({
-      actorUserId: null,
+    await this._audit.record({
       action: AuditAction.PASSWORD_RESET_REQUESTED,
+      // Run from the `reset-admin` command on the server, outside any request.
+      actor: SYSTEM_ACTOR,
       targetType: AuditTargetType.USER,
       targetId: user.id,
-      context: { ip: null, userAgent: 'reset-admin command' },
+      targetLabel: user.email,
       metadata: { email: user.email, via: 'cli' },
     });
 

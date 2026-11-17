@@ -41,7 +41,7 @@ export const countUsers = async (): Promise<number> => {
 
 export const auditActions = async (): Promise<string[]> => {
   const rows = await AppDataSource.query<{ action: string }[]>(
-    'SELECT action FROM audit_logs ORDER BY created_at',
+    'SELECT action FROM audit_logs ORDER BY occurred_at, id',
   );
   return rows.map((r) => r.action);
 };

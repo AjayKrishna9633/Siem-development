@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { Toaster } from 'sonner';
-import { server } from '../test/server.ts';
+import { server } from '@/test/server.ts';
 import { api } from './api.ts';
 
 // End to end with the real sonner: a failed request makes a visible toast.

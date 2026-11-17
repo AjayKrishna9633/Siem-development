@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfirmDialog } from '../ui/ConfirmDialog.tsx';
-import type { IManagedUser } from '../../types/auth.ts';
+import type { IManagedUser } from '@/types/auth.ts';
 
 export const UserStatusDialog: React.FC<{
   user: IManagedUser;

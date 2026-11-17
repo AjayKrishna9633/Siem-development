@@ -3,7 +3,7 @@ import TYPES from '../../../domain/constants/types.ts';
 import type { IUserRepository } from '../../interfaces/repositories/user.repository.interface.ts';
 import type { IHashService } from '../../interfaces/services/hash.service.interface.ts';
 import type { ISessionService } from '../../interfaces/services/session.service.interface.ts';
-import type { IAuditLogRepository } from '../../interfaces/repositories/audit-log.repository.interface.ts';
+import type { IAuditService } from '../../interfaces/services/audit.service.interface.ts';
 import type { ISecurityMailer } from '../../interfaces/services/security-mailer.interface.ts';
 import type { IChangePasswordUseCase } from '../../interfaces/use-cases/account.interface.ts';
 import type { IChangePasswordInput } from '../../dtos/account/request/account-request.dto.ts';
@@ -22,7 +22,7 @@ export class ChangePasswordUseCase implements IChangePasswordUseCase {
     @inject(TYPES.UserRepository) private readonly _users: IUserRepository,
     @inject(TYPES.HashService) private readonly _hasher: IHashService,
     @inject(TYPES.SessionService) private readonly _sessions: ISessionService,
-    @inject(TYPES.AuditLogRepository) private readonly _audit: IAuditLogRepository,
+    @inject(TYPES.AuditService) private readonly _audit: IAuditService,
     @inject(TYPES.SecurityMailer) private readonly _mailer: ISecurityMailer,
   ) {}
 
@@ -43,12 +43,11 @@ export class ChangePasswordUseCase implements IChangePasswordUseCase {
 
     user.changePassword(await this._hasher.hash(input.newPassword), new Date());
     await this._users.save(user);
-    await this._audit.append({
-      actorUserId: user.id,
+    await this._audit.record({
       action: AuditAction.PASSWORD_CHANGED,
       targetType: AuditTargetType.USER,
       targetId: user.id,
-      context: input.context,
+      targetLabel: user.email,
     });
     await this._mailer.notifyPasswordChanged({ to: user.email, username: user.displayName });
 

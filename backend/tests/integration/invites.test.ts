@@ -126,10 +126,10 @@ describe('invitations', () => {
   it('audits every step', async () => {
     expect(await auditActions()).toEqual(
       expect.arrayContaining([
-        'invite.created',
-        'invite.accepted',
-        'invite.resent',
-        'invite.revoked',
+        'user.invite.create',
+        'user.invite.accept',
+        'user.invite.resend',
+        'user.invite.revoke',
       ]),
     );
   });

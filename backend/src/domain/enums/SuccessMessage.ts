@@ -23,4 +23,6 @@ export enum SuccessMessage {
   VERIFICATION_CODE_SENT = 'Verification code sent',
   PASSWORD_CHANGED = 'Password changed successfully',
   EMAIL_CHANGED = 'Email address changed successfully',
+  AUDIT_LOGS_FETCHED = 'Audit log retrieved successfully',
+  AUDIT_LOG_FETCHED = 'Audit log entry retrieved successfully',
 }

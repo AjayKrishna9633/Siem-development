@@ -23,20 +23,17 @@ describe('last-admin protection under the lock', () => {
 
   it('lets exactly one of two simultaneous mutual demotions through', async () => {
     const changeRole = di.container.get<IChangeUserRoleUseCase>(TYPES.ChangeUserRoleUseCase);
-    const context = { ip: null, userAgent: 'test' };
 
     const results = await Promise.allSettled([
       changeRole.execute({
         actor: { userId: adminA, role: UserRole.ADMIN },
         userId: adminB,
         role: UserRole.T2_ANALYST,
-        context,
       }),
       changeRole.execute({
         actor: { userId: adminB, role: UserRole.ADMIN },
         userId: adminA,
         role: UserRole.T2_ANALYST,
-        context,
       }),
     ]);
 

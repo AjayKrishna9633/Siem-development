@@ -72,7 +72,6 @@ export class SessionController {
   logout = catchAsync(async (req: Request, res: Response): Promise<void> => {
     await this._logoutUseCase.execute({
       refreshToken: readRefreshCookie(req),
-      context: requestContextFrom(req),
     });
 
     clearRefreshCookie(res);

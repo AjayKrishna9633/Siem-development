@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import type { IRequestContext } from '../../application/interfaces/repositories/audit-log.repository.interface.ts';
+import type { IRequestContext } from '../../application/interfaces/services/request-context.provider.interface.ts';
 
 const USER_AGENT_MAX = 512;
 

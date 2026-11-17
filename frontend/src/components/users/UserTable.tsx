@@ -5,9 +5,10 @@ import { Avatar } from '../ui/Misc.tsx';
 import { Table, THead, Th, Tr, Td } from '../ui/Table.tsx';
 import { TableStatusRow } from '../common/TableStatusRow.tsx';
 import { LocalTime } from '../common/LocalTime.tsx';
-import type { IManagedUser, UserStatus } from '../../types/auth.ts';
-import { roleLabel } from '../../lib/roles.ts';
-import { cn } from '../../lib/cn.ts';
+import type { IManagedUser } from '@/types/auth.ts';
+import type { UserStatus } from '@/features/auth';
+import { roleLabel } from '@/features/auth';
+import { cn } from '@/lib/cn.ts';
 
 const statusTone: Record<UserStatus, 'success' | 'info' | 'neutral'> = {
   active: 'success',

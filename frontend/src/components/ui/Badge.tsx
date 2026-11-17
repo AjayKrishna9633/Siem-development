@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../../lib/cn.ts';
-import type { Severity } from '../../lib/severity.ts';
+import { cn } from '@/lib/cn.ts';
+import type { Severity } from '@/lib/severity.ts';
 
 const solid: Record<Severity, string> = {
   critical: 'bg-critical text-white',
@@ -40,11 +40,13 @@ export const SeverityBadge: React.FC<ISeverityBadgeProps> = ({
   </span>
 );
 
-type Tone = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'accent';
+type Tone = 'success' | 'danger' | 'high' | 'warning' | 'info' | 'neutral' | 'accent';
 
 const toneClasses: Record<Tone, string> = {
   success: 'border-success/40 bg-success/10 text-success',
   danger: 'border-critical/50 bg-critical/10 text-critical',
+  // The High severity colour, for things that need attention but are not a Critical alert.
+  high: 'border-high/50 bg-high/10 text-high',
   warning: 'border-medium/50 bg-medium/10 text-medium',
   info: 'border-low/50 bg-low/10 text-low',
   neutral: 'border-line-strong bg-raised text-muted',
@@ -54,6 +56,7 @@ const toneClasses: Record<Tone, string> = {
 const toneDot: Record<Tone, string> = {
   success: 'bg-success',
   danger: 'bg-critical',
+  high: 'bg-high',
   warning: 'bg-medium',
   info: 'bg-low',
   neutral: 'bg-subtle',

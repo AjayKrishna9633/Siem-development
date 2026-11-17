@@ -120,12 +120,12 @@ describe('passwords: change, reset links and recovery', () => {
 
     expect(await auditActions()).toEqual(
       expect.arrayContaining([
-        'auth.login_succeeded',
-        'auth.login_failed',
-        'auth.logged_out',
-        'password.changed',
-        'password.reset_requested',
-        'password.reset_completed',
+        'auth.login.success',
+        'auth.login.failure',
+        'auth.logout',
+        'auth.password.change',
+        'auth.password.reset_request',
+        'auth.password.reset',
       ]),
     );
   });

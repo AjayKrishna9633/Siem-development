@@ -34,6 +34,7 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.LAST_ADMIN]: HttpStatusCode.CONFLICT,
   [AppErrorCode.EMAIL_NOT_DELIVERED]: HttpStatusCode.SERVICE_UNAVAILABLE,
   [AppErrorCode.CANNOT_CHANGE_OWN_ACCESS]: HttpStatusCode.FORBIDDEN,
+  [AppErrorCode.AUDIT_LOG_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
 };
 
 const PG_INVALID_TEXT_REPRESENTATION = '22P02';

@@ -5,11 +5,11 @@ import { Info } from 'lucide-react';
 import { Button } from '../ui/Button.tsx';
 import { Field, Input, Select } from '../ui/Form.tsx';
 import { FormSection } from '../common/FormSection.tsx';
-import { inviteUserSchema, type InviteUserValues } from '../../lib/schemas.ts';
-import { usersService } from '../../services/users.service.ts';
-import type { IInviteResult } from '../../types/auth.ts';
-import { ALL_ROLES, roleDescription, roleLabel } from '../../lib/roles.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
+import { inviteUserSchema, type InviteUserValues } from '@/utils/validation.ts';
+import { usersService } from '@/services/users.service.ts';
+import type { IInviteResult } from '@/types/auth.ts';
+import { ALL_ROLES, roleDescription, roleLabel } from '@/features/auth';
+import { apiErrorMessage } from '@/lib/errors.ts';
 
 export const InviteUserForm: React.FC<{
   onInvited: (result: IInviteResult) => void;

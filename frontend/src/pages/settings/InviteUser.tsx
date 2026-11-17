@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { CircleCheck } from 'lucide-react';
-import { Page, PageHeader } from '../../components/ui/PageHeader.tsx';
-import { Panel } from '../../components/ui/Panel.tsx';
-import { Button } from '../../components/ui/Button.tsx';
-import { InviteUserForm } from '../../components/users/InviteUserForm.tsx';
-import { LinkDeliveryDetails } from '../../components/common/LinkDeliveryDetails.tsx';
-import type { IInviteResult } from '../../types/auth.ts';
-import { roleLabel } from '../../lib/roles.ts';
+import { Page, PageHeader } from '@/components/ui/PageHeader.tsx';
+import { Panel } from '@/components/ui/Panel.tsx';
+import { Button } from '@/components/ui/Button.tsx';
+import { InviteUserForm } from '@/components/users/InviteUserForm.tsx';
+import { LinkDeliveryDetails } from '@/components/common/LinkDeliveryDetails.tsx';
+import type { IInviteResult } from '@/types/auth.ts';
+import { roleLabel } from '@/features/auth';
 
 export const InviteUser: React.FC = () => {
   const navigate = useNavigate();

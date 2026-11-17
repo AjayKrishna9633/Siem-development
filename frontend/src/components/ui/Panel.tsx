@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '@/lib/cn.ts';
 
 interface IPanelProps extends React.HTMLAttributes<HTMLElement> {
   as?: 'section' | 'div' | 'article';

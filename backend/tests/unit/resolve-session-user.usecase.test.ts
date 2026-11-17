@@ -22,6 +22,11 @@ describe('ResolveSessionUserUseCase', () => {
     expect(resolved.role).toBe(UserRole.T2_ANALYST);
   });
 
+  it('returns the name the audit log should show for the user', async () => {
+    const resolved = await useCaseWith(activeAdmin()).execute({ userId: 'u1', tokenVersion: 0 });
+    expect(resolved.displayName).toBe('Ann');
+  });
+
   it('revokes the session of a disabled user', async () => {
     const user = activeAdmin();
     user.disable(now);

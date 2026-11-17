@@ -25,6 +25,10 @@ import { ChangeEmailUseCase } from '../../application/use-cases/account/change-e
 import { AuthTokenService } from '../services/auth-token.service.ts';
 import { AuthMailer } from '../services/auth-mailer.service.ts';
 import { OpaqueTokenService } from '../services/opaque-token.service.ts';
+import { AuditService } from '../services/audit.service.ts';
+import { AsyncRequestContext } from '../context/async-request-context.ts';
+import type { IAuditService } from '../../application/interfaces/services/audit.service.interface.ts';
+import type { IRequestContextProvider } from '../../application/interfaces/services/request-context.provider.interface.ts';
 
 import { RequestPasswordResetUseCase } from '../../application/use-cases/password-reset/request-password-reset.usecase.ts';
 import { GetPasswordResetUseCase } from '../../application/use-cases/password-reset/get-password-reset.usecase.ts';
@@ -66,6 +70,10 @@ import { AccountController } from '../../presentation/controllers/account.contro
 import { InviteController } from '../../presentation/controllers/invite.controller.ts';
 import { UsersController } from '../../presentation/controllers/users.controller.ts';
 import { SetupController } from '../../presentation/controllers/setup.controller.ts';
+import { AuditLogsController } from '../../presentation/controllers/audit-logs.controller.ts';
+import { ListAuditLogsUseCase } from '../../application/use-cases/audit/list-audit-logs.usecase.ts';
+import { GetAuditLogUseCase } from '../../application/use-cases/audit/get-audit-log.usecase.ts';
+import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export-audit-logs.usecase.ts';
 
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 container.bind(TYPES.Logger).toConstantValue(logger);
@@ -94,6 +102,8 @@ container.bind(TYPES.AuthMailer).to(AuthMailer);
 container.bind(TYPES.VerificationCodeService).to(VerificationCodeService);
 container.bind(TYPES.SecurityMailer).to(SecurityMailer);
 container.bind(TYPES.OpaqueTokenService).to(OpaqueTokenService);
+container.bind(TYPES.RequestContextProvider).to(AsyncRequestContext);
+container.bind(TYPES.AuditService).to(AuditService);
 
 container.bind(TYPES.RequestPasswordResetUseCase).to(RequestPasswordResetUseCase);
 container.bind(TYPES.GetPasswordResetUseCase).to(GetPasswordResetUseCase);
@@ -122,6 +132,9 @@ container.bind(TYPES.IssueSetupTokenUseCase).to(IssueSetupTokenUseCase);
 container.bind(TYPES.GetSetupStatusUseCase).to(GetSetupStatusUseCase);
 container.bind(TYPES.VerifySetupTokenUseCase).to(VerifySetupTokenUseCase);
 container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
+container.bind(TYPES.ListAuditLogsUseCase).to(ListAuditLogsUseCase);
+container.bind(TYPES.GetAuditLogUseCase).to(GetAuditLogUseCase);
+container.bind(TYPES.ExportAuditLogsUseCase).to(ExportAuditLogsUseCase);
 
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
@@ -129,6 +142,7 @@ container.bind(TYPES.AccountController).to(AccountController);
 container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
+container.bind(TYPES.AuditLogsController).to(AuditLogsController);
 
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
@@ -137,10 +151,16 @@ export const passwordResetController = container.get<PasswordResetController>(
 export const accountController = container.get<AccountController>(TYPES.AccountController);
 export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
+export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
+export const auditService = container.get<IAuditService>(TYPES.AuditService);
+export const requestContextProvider = container.get<IRequestContextProvider>(
+  TYPES.RequestContextProvider,
+);
 export const authMiddleware = authenticate(
   tokenService,
   container.get<IResolveSessionUserUseCase>(TYPES.ResolveSessionUserUseCase),
+  requestContextProvider,
 );
 export const createRecoveryLink = container.get<ICreateRecoveryLinkUseCase>(
   TYPES.CreateRecoveryLinkUseCase,
@@ -160,8 +180,11 @@ export const di = {
   accountController,
   inviteController,
   usersController,
+  auditLogsController,
   setupController,
   authMiddleware,
+  auditService,
+  requestContextProvider,
   setupGuardMiddleware,
   issueSetupToken,
   createRecoveryLink,

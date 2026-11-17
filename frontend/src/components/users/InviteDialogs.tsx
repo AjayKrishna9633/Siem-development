@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { LinkDeliveryDetails } from '../common/LinkDeliveryDetails.tsx';
-import type { ILinkDelivery } from '../../types/auth.ts';
+import type { ILinkDelivery } from '@/types/auth.ts';
 
 export const ResendInviteDialog: React.FC<{
   email: string;

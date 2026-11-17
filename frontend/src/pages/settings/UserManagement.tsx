@@ -2,35 +2,29 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Page, PageHeader } from '../../components/ui/PageHeader.tsx';
-import { Panel } from '../../components/ui/Panel.tsx';
-import { Button } from '../../components/ui/Button.tsx';
-import { StatTiles } from '../../components/common/StatTiles.tsx';
-import { FilterSelect, ListToolbar, type IPaging } from '../../components/common/ListToolbar.tsx';
-import { UserTable } from '../../components/users/UserTable.tsx';
-import { useRemote } from '../../hooks/useRemote.ts';
-import { useDebounced } from '../../hooks/useDebounced.ts';
-import { useAuthStore } from '../../store/auth.store.ts';
-import { usersService } from '../../services/users.service.ts';
-import { SortControl } from '../../components/common/SortControl.tsx';
+import { Page, PageHeader } from '@/components/ui/PageHeader.tsx';
+import { Panel } from '@/components/ui/Panel.tsx';
+import { Button } from '@/components/ui/Button.tsx';
+import { StatTiles } from '@/components/common/StatTiles.tsx';
+import { FilterSelect, ListToolbar, type IPaging } from '@/components/common/ListToolbar.tsx';
+import { UserTable } from '@/components/users/UserTable.tsx';
+import { useRemote } from '@/hooks/useRemote.ts';
+import { useDebounced } from '@/hooks/useDebounced.ts';
+import { useAuthStore, ALL_ROLES, roleLabel } from '@/features/auth';
+import { usersService } from '@/services/users.service.ts';
+import { SortControl } from '@/components/common/SortControl.tsx';
 import {
   IssueResetLinkDialog,
   LinkIssuedNotice,
   ResendInviteDialog,
   RevokeInviteDialog,
-} from '../../components/users/InviteDialogs.tsx';
-import { ChangeRoleDialog } from '../../components/users/ChangeRoleDialog.tsx';
-import { UserStatusDialog } from '../../components/users/UserStatusDialog.tsx';
-import type {
-  ILinkDelivery,
-  IManagedUser,
-  UserRole,
-  UserSortKey,
-  UserStatus,
-} from '../../types/auth.ts';
-import { apiErrorMessage } from '../../lib/errors.ts';
-import type { ISortField, SortDirection } from '../../lib/sort.ts';
-import { ALL_ROLES, roleLabel } from '../../lib/roles.ts';
+} from '@/components/users/InviteDialogs.tsx';
+import { ChangeRoleDialog } from '@/components/users/ChangeRoleDialog.tsx';
+import { UserStatusDialog } from '@/components/users/UserStatusDialog.tsx';
+import type { ILinkDelivery, IManagedUser, UserSortKey } from '@/types/auth.ts';
+import type { UserRole, UserStatus } from '@/features/auth';
+import { apiErrorMessage } from '@/lib/errors.ts';
+import type { ISortField, SortDirection } from '@/lib/sort.ts';
 
 const PAGE_SIZE = 10;
 
