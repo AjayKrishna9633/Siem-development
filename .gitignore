@@ -42,6 +42,9 @@ out/
 .env.local
 .env.*.local
 
+# Database dumps made by `install.sh backup`: they contain every user, password hash and audit record
+backups/
+
 # IDEs and Editors
 .vscode/
 .idea/

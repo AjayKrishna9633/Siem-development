@@ -1,8 +1,4 @@
 {
-  "dependencies": {
-    "ioredis": "^6.0.0",
-    "nodemailer": "^10.0.13"
-  },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
@@ -18,6 +14,10 @@
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
-    "lint:fix": "npm run lint --prefix backend -- --fix && npm run lint --prefix frontend -- --fix"
+    "lint:fix": "npm run lint --prefix backend -- --fix && npm run lint --prefix frontend -- --fix",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "stack:up": "docker compose up -d --build --wait",
+    "stack:down": "docker compose down"
   }
 }

@@ -1,0 +1,58 @@
+# Local development: only Postgres and Redis, for `npm run dev` on the host.
+#
+#   npm run db:up      start them (waits until both are healthy)
+#   npm run db:down    stop them; data is kept in the siemple-dev_pgdata volume
+#
+# backend/.env then points at them (see backend/.env.example):
+#   DATABASE_URL=postgresql://siemple:siemple@localhost:5433/siemple_dev
+#   TEST_DATABASE_URL=postgresql://siemple:siemple@localhost:5433/siemple_test
+#   REDIS_URL=redis://127.0.0.1:6379
+#
+# The credentials are fixed and not secret: both ports listen on 127.0.0.1 only.
+
+# A separate project name, so dev data never mixes with a full stack started from the same folder.
+name: siemple-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: siemple
+      POSTGRES_PASSWORD: siemple
+      POSTGRES_DB: siemple_dev
+    ports:
+      # 5433 by default so it doesn't clash with a Postgres installed natively on 5432.
+      - '127.0.0.1:${DB_PORT:-5433}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    configs:
+      # Scripts in this folder run once, when the data volume is first created.
+      - source: create-test-db
+        target: /docker-entrypoint-initdb.d/10-create-test-db.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U siemple -d siemple_dev']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+configs:
+  # The integration tests drop and rebuild this database's schema on every run, so it must be
+  # separate from siemple_dev.
+  create-test-db:
+    content: |
+      CREATE DATABASE siemple_test;
+
+volumes:
+  pgdata:
