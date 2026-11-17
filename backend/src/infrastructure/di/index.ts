@@ -74,12 +74,24 @@ import { AuditLogsController } from '../../presentation/controllers/audit-logs.c
 import { ListAuditLogsUseCase } from '../../application/use-cases/audit/list-audit-logs.usecase.ts';
 import { GetAuditLogUseCase } from '../../application/use-cases/audit/get-audit-log.usecase.ts';
 import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export-audit-logs.usecase.ts';
+import { HealthCheckService } from '../services/health-check.service.ts';
+import { HealthController } from '../../presentation/controllers/health.controller.ts';
+import { env } from '../../config/env.config.ts';
 
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 container.bind(TYPES.Logger).toConstantValue(logger);
 
 const redisClient = createRedisClient(logger.child({ module: 'redis' }));
 container.bind(TYPES.RedisClient).toConstantValue(redisClient);
+
+container.bind(TYPES.HealthCheckService).toConstantValue(
+  new HealthCheckService({
+    pingDatabase: () => AppDataSource.query('SELECT 1'),
+    redis: redisClient,
+    redisRequired: env.NODE_ENV === 'production',
+    logger,
+  }),
+);
 
 const mailTransport = createMailTransport();
 container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
@@ -143,6 +155,7 @@ container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 container.bind(TYPES.AuditLogsController).to(AuditLogsController);
+container.bind(TYPES.HealthController).to(HealthController);
 
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
@@ -152,6 +165,7 @@ export const accountController = container.get<AccountController>(TYPES.AccountC
 export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
+export const healthController = container.get<HealthController>(TYPES.HealthController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const auditService = container.get<IAuditService>(TYPES.AuditService);
 export const requestContextProvider = container.get<IRequestContextProvider>(
@@ -181,6 +195,7 @@ export const di = {
   inviteController,
   usersController,
   auditLogsController,
+  healthController,
   setupController,
   authMiddleware,
   auditService,

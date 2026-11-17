@@ -27,7 +27,7 @@ describe('first-run setup', () => {
   });
   afterAll(closeDatabase);
 
-  it('blocks every API route with SETUP_REQUIRED, but not /health', async () => {
+  it('blocks every API route with SETUP_REQUIRED, but not /health or /api/health', async () => {
     const blocked = await request(app)
       .post('/api/auth/login')
       .send({ email: 'x@y.co', password: 'p' });
@@ -36,6 +36,11 @@ describe('first-run setup', () => {
 
     const health = await request(app).get('/health');
     expect(health.status).toBe(200);
+
+    // Docker polls this before anyone has completed setup.
+    const apiHealth = await request(app).get('/api/health');
+    expect(apiHealth.status).toBe(200);
+    expect(apiHealth.body).toEqual({ status: 'ok' });
   });
 
   it('rejects a wrong token and records the attempt', async () => {

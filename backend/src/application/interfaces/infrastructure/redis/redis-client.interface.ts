@@ -15,4 +15,5 @@ export interface IRedisClient {
   ): Promise<'OK' | null>;
   get(key: string): Promise<string | null>;
   del(key: string): Promise<number>;
+  ping(): Promise<string>;
 }

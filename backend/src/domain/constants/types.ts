@@ -58,6 +58,8 @@ const TYPES = {
   UsersController: Symbol.for('UsersController'),
   SetupController: Symbol.for('SetupController'),
   AuditLogsController: Symbol.for('AuditLogsController'),
+  HealthController: Symbol.for('HealthController'),
+  HealthCheckService: Symbol.for('HealthCheckService'),
 
   DataSource: Symbol.for('DataSource'),
   RedisClient: Symbol.for('RedisClient'),

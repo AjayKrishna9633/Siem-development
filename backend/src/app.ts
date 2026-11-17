@@ -3,7 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
-import { env } from './config/env.config.ts';
+import { appOrigin, env } from './config/env.config.ts';
 import { httpLogger } from './infrastructure/logging/http-logger.ts';
 import { di } from './infrastructure/di/index.ts';
 import { sessionRoutes } from './presentation/routes/session.routes.ts';
@@ -13,6 +13,7 @@ import { inviteRoutes } from './presentation/routes/invite.routes.ts';
 import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { auditLogsRoutes } from './presentation/routes/audit-logs.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
+import { healthRoutes } from './presentation/routes/health.routes.ts';
 import { auditAccessDenied } from './presentation/middlewares/access-denied-audit.middleware.ts';
 import { requestContextMiddleware } from './presentation/middlewares/request-context.middleware.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
@@ -21,7 +22,7 @@ const app = express();
 if (env.TRUST_PROXY !== undefined) app.set('trust proxy', env.TRUST_PROXY);
 app.use(httpLogger);
 app.use(helmet());
-app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(cors({ origin: appOrigin, credentials: true }));
 app.use(di.setupGuardMiddleware);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
@@ -36,6 +37,7 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+app.use('/api/health', healthRoutes(di.healthController));
 app.use('/api/setup', setupRoutes(di.setupController));
 app.use('/api/auth', sessionRoutes(di.sessionController));
 app.use('/api/auth', passwordResetRoutes(di.passwordResetController));

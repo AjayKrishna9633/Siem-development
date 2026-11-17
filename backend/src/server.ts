@@ -1,26 +1,25 @@
 import app from './app.ts';
-import { env } from './config/env.config.ts';
+import { appOrigin, env } from './config/env.config.ts';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
+import { connectWithRetry } from './infrastructure/database/connect-with-retry.ts';
 import { emailConfigured, issueSetupToken, redisClient } from './infrastructure/di/index.ts';
 import { logger } from './infrastructure/logging/logger.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
 
-await AppDataSource.initialize();
+await connectWithRetry(() => AppDataSource.initialize(), logger);
 const [row] = await AppDataSource.query<{ now: Date }[]>('SELECT now()');
 logger.info('Database connected', { databaseTime: row?.now.toISOString() });
 
+// In Docker the migrate service has already done this and it finds nothing to apply. It stays
+// for `npm run dev`, which has no migrate step.
 const applied = await AppDataSource.runMigrations({ transaction: 'each' });
 for (const migration of applied) logger.info('Migration applied', { migration: migration.name });
 
-const setup = await issueSetupToken.execute({ replaceExisting: false });
-if (setup.status === 'issued') {
-  printSetupTokenBanner(setup.token, setup.expiresAt);
-} else if (setup.status === 'existing') {
-  logger.warn(
-    'Setup is not complete. Use the setup token printed earlier, or run "npm run setup-token" if you no longer have it.',
-    { setupTokenExpiresAt: setup.expiresAt.toISOString() },
-  );
-}
+// Only a hash of the setup token is stored, so an earlier token can't be shown again. Until
+// setup is complete, every start issues a new one and prints it, so the newest log line always
+// holds the one that works. Once setup is done this returns 'completed' and prints nothing.
+const setup = await issueSetupToken.execute({ replaceExisting: true });
+if (setup.status === 'issued') printSetupTokenBanner(setup.token, setup.expiresAt, appOrigin);
 
 if (emailConfigured) {
   logger.info('Email is configured');

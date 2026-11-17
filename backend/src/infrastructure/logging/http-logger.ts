@@ -6,7 +6,9 @@ import { rootLogger } from './logger.ts';
 
 const REQUEST_ID = /^[\w.-]{1,128}$/;
 
-const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0];
+const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0] ?? '';
+
+const HEALTH_PATHS = new Set(['/health', '/api/health']);
 
 export const createHttpLogger = (logger: Logger) =>
   pinoHttp({
@@ -18,7 +20,8 @@ export const createHttpLogger = (logger: Logger) =>
       res.setHeader('X-Request-Id', id);
       return id;
     },
-    autoLogging: { ignore: (req) => pathOnly(req.url) === '/health' },
+    // Health checks arrive every few seconds from Docker; logging them would bury real traffic.
+    autoLogging: { ignore: (req) => HEALTH_PATHS.has(pathOnly(req.url)) },
     customLogLevel(_req, res, err) {
       if (err || res.statusCode >= 500) return 'error';
       if (res.statusCode >= 400) return 'warn';

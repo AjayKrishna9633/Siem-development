@@ -1,18 +1,15 @@
-export const printSetupTokenBanner = (token: string, expiresAt: Date): void => {
-  const rule = '='.repeat(72);
+// The marker line has a fixed shape on purpose: install.sh finds the token in `docker compose
+// logs api` by matching "SIEMple setup token:", so change both together.
+export const setupTokenLine = (token: string, appUrl: string): string =>
+  `==== SIEMple setup token: ${token} (open ${appUrl} to complete setup) ====`;
+
+export const printSetupTokenBanner = (token: string, expiresAt: Date, appUrl: string): void => {
   console.log(
     [
       '',
-      rule,
-      '  SIEMple first-run setup',
-      '',
-      '  Open SIEMple in your browser and enter this setup token:',
-      '',
-      `      ${token}`,
-      '',
-      `  Valid until ${expiresAt.toISOString()}. It is shown only once.`,
-      '  Lost it? Run "npm run setup-token" in the backend folder for a new one.',
-      rule,
+      setupTokenLine(token, appUrl),
+      `     Valid until ${expiresAt.toISOString()}. Any earlier setup token no longer works.`,
+      '     A new one is issued every time the server starts, until setup is complete.',
       '',
     ].join('\n'),
   );
