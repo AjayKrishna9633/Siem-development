@@ -1,0 +1,10 @@
+# The image installs its own dependencies and builds its own dist/. .env files are excluded so
+# nothing from a developer's machine (BACKEND_URL and the like) leaks into the bundle.
+node_modules
+dist
+coverage
+*.log
+.env
+.env.*
+Dockerfile
+.dockerignore

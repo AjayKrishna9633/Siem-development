@@ -1,0 +1,99 @@
+# SIEMple web server: serves the React build and proxies /api to the API container.
+#
+# This is a template. At container start the nginx image's entrypoint replaces ${API_UPSTREAM}
+# (set in the Dockerfile, overridable from compose) and writes the result to conf.d/default.conf.
+# Only variables that exist in the environment are replaced, so nginx's own $variables are safe.
+
+# WebSocket support: forward the Upgrade handshake when the client asks for one, otherwise
+# send a normal keep-alive Connection header.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      '';
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+
+    # Don't advertise the nginx version in headers or error pages.
+    server_tokens off;
+
+    # The API caps JSON bodies at 100 kB; this is a little above that so the API, not nginx,
+    # returns the error a client sees. Raise both together if uploads are added.
+    client_max_body_size 1m;
+
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml text/csv;
+
+    root /usr/share/nginx/html;
+
+    # Docker's embedded DNS. Resolving the API name per request (via the variable below) instead
+    # of once at startup means nginx keeps working when the api container is recreated with a new
+    # IP during an update, and doesn't refuse to start if the api isn't up yet.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $api_backend http://${API_UPSTREAM};
+
+    # Proto the API should see. Normally our own scheme; behind the optional Caddy proxy (the only
+    # client whose X-Forwarded-For nginx trusts, see 40-siemple-real-ip.sh) take Caddy's value.
+    # $realip_remote_addr differs from $remote_addr only when that trusted proxy rewrote it.
+    set $forwarded_proto $scheme;
+    if ($realip_remote_addr != $remote_addr) {
+        set $forwarded_proto $http_x_forwarded_proto;
+    }
+
+    location /api/ {
+        # A variable in proxy_pass with no URI part forwards the request path unchanged.
+        proxy_pass $api_backend;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        # Overwrite, never append: a client could otherwise send its own X-Forwarded-For and have
+        # the API (which trusts exactly one proxy hop, us) log a forged IP in the audit trail.
+        # $remote_addr is the real client, or the address Caddy reported when behind Caddy.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Long enough for slow exports and idle WebSockets that ping less often than nginx's 60s
+        # default. The API sets its own security and cache headers (helmet), so none are added here.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # Container healthcheck (see the Dockerfile). Kept out of the access log so it isn't flooded.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Vite puts a content hash in every file name under /assets, so a changed file always gets a
+    # new URL and the browser can cache these forever. A missing asset is a real 404, never the
+    # app shell (which would fail to parse as JS and hide the error).
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # The app shell must be revalidated on every load, otherwise browsers keep running an old
+    # build that points at asset files the new image no longer has.
+    location = /index.html {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Everything else: real files (favicon, icons) if they exist, otherwise the app shell, so a
+    # page reload on a client-side route like /audit-logs works.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=3600" always;
+        try_files $uri /index.html;
+    }
+}
