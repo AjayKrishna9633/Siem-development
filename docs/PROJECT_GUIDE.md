@@ -71,6 +71,7 @@ Defined in [UserRole.ts](../backend/src/domain/enums/UserRole.ts); what each can
 | Frontend             | React 19, Vite, Tailwind CSS 4, Zustand, Axios, React Router              | UI                                                    |
 | Tests                | Vitest + Supertest against a real Postgres                                | Unit and integration                                  |
 | Quality gates        | ESLint, Prettier, Husky + lint-staged, commitlint, `verify-standards.cjs` | Run on every commit                                   |
+| Packaging            | Docker (Node and nginx on Alpine), Compose, Caddy, GitHub Actions + GHCR  | One-command self-hosted install (section 18)          |
 
 ---
 
@@ -187,7 +188,7 @@ Example: an administrator invites an analyst. The browser sends `POST /api/users
 
 1. `trust proxy` (only if `TRUST_PROXY` is set) — makes `req.ip` the real client behind a reverse proxy.
 2. **`httpLogger`** ([http-logger.ts](../backend/src/infrastructure/logging/http-logger.ts)) — gives the request an id (returned as `X-Request-Id`) and logs one line when it finishes: method, path **without the query string**, status, time, IP. See [Logging](#logging).
-3. `helmet()` security headers; `cors()` restricted to `FRONTEND_URL`.
+3. `helmet()` security headers; `cors()` restricted to the origin of `APP_URL` (`FRONTEND_URL` is the older name, still read).
 4. **`setupGuard`** ([setup-guard.middleware.ts](../backend/src/presentation/middlewares/setup-guard.middleware.ts)) — if first-run setup isn't done, every API call except `/api/setup/*` gets `403 SETUP_REQUIRED`. Here setup is done, so it passes.
 5. `express.json({ limit: '100kb' })`, `cookieParser()`.
 6. **`requestContextMiddleware`** ([request-context.middleware.ts](../backend/src/presentation/middlewares/request-context.middleware.ts)) — opens a per-request scope (`AsyncLocalStorage`) holding the request id, IP and user agent. This is how the audit log knows where an action came from without every use case being handed the request. `authenticate` (below) adds who is calling.
@@ -275,7 +276,7 @@ Code never compares role names. It checks **named permissions**, and one map say
 
 ## 8. Database: tables, migrations and indexes
 
-The schema changes **only through migrations** ([migrations/](../backend/src/infrastructure/database/migrations)); `synchronize` is off. The server runs pending migrations on start, so upgrading an install is a restart. `npm run migration:check` confirms the models and the migrated database match exactly.
+The schema changes **only through migrations** ([migrations/](../backend/src/infrastructure/database/migrations)); `synchronize` is off. Pending migrations run before the app serves anything: in Docker a one-shot `migrate` container ([cli/migrate.ts](../backend/src/cli/migrate.ts)) applies them and the API starts only if it succeeds; `npm run dev` applies them on start. Upgrading an install is pulling the new images and restarting. `npm run migration:check` confirms the models and the migrated database match exactly.
 
 | Migration                                                                                                       | What it does                                                                                |
 | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -371,7 +372,7 @@ If Redis is unreachable, the cache silently uses memory and the terminal says so
 | Access token              | 15 minutes, HS256                   | [jwt-token.service.ts](../backend/src/infrastructure/services/jwt-token.service.ts)             |
 | Refresh token             | 7 days, rotated on every use        | [refresh-session.service.ts](../backend/src/infrastructure/services/refresh-session.service.ts) |
 
-Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `FRONTEND_URL`, `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`. The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
+Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `APP_URL` (the address people open; decides the CORS origin and, when it starts with `https://`, Secure cookies; falls back to the older `FRONTEND_URL`), `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`. A Docker install sets these from the root [.env.example](../.env.example) instead, through [docker-compose.yml](../docker-compose.yml) (section 18). The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
 
 ---
 
@@ -427,7 +428,7 @@ Only someone who can read the server's log has the setup token. Completing setup
 
 ### Other protections
 
-`helmet` headers · CORS limited to `FRONTEND_URL` · per-IP rate limits on every unauthenticated route · route IDs must be UUIDs · permissions checked at the route **and** in the use case · `TRUST_PROXY` so IPs aren't the proxy's · client-supplied `X-Forwarded-For` is never trusted directly.
+`helmet` headers · CORS limited to the `APP_URL` origin · per-IP rate limits on every unauthenticated route · route IDs must be UUIDs · permissions checked at the route **and** in the use case · `TRUST_PROXY` so IPs aren't the proxy's · client-supplied `X-Forwarded-For` is never trusted directly.
 
 ---
 
@@ -573,9 +574,12 @@ Base URL `/api`. 🔒 = access token required. Permission = what `authorize` che
 | GET    | `/audit-logs`                   | 🔒     | `audit.view`   | ListAuditLogs                         |
 | GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`   | ExportAuditLogs                       |
 | GET    | `/audit-logs/:id`               | 🔒     | `audit.view`   | GetAuditLog                           |
-| GET    | `/health` (no `/api`)           | —      | —              | Database ping; never blocked by setup |
+| GET    | `/health`                       | —      | —              | Database ping; never blocked by setup |
+| GET    | `/api/health`                   | —      | —              | Container healthcheck (see below)     |
 
-Until setup is complete, every `/api` route except `/setup/*` answers `403 { code: "SETUP_REQUIRED" }`; afterwards `/setup/*` answers 404.
+`/health` has no `/api` prefix. `/api/health` is what Docker and the installer poll: it pings Postgres, and Redis too when `NODE_ENV=production` (in development the in-memory cache stands in), each with a 2-second timeout. It answers only `200 {"status":"ok"}` or `503 {"status":"unavailable"}`, never which part failed, because it's public ([health-check.service.ts](../backend/src/infrastructure/services/health-check.service.ts)).
+
+Until setup is complete, every `/api` route except `/setup/*` and `/health` answers `403 { code: "SETUP_REQUIRED" }`; afterwards `/setup/*` answers 404.
 
 ---
 
@@ -594,6 +598,7 @@ Until setup is complete, every `/api` route except `/setup/*` answers `403 { cod
 
 ```bash
 cd backend
+npm run db:up            # (repository root) Postgres + Redis in Docker, including the siemple_test database
 npm test                 # unit + integration (integration needs TEST_DATABASE_URL)
 npm run typecheck:tests  # tests use the same strict TypeScript as the app
 npm run migration:check  # models and migrated schema match
@@ -611,24 +616,54 @@ The concurrency guarantees each have a test: setup ([setup-race.test.ts](../back
 
 ## 18. Operating an install
 
-| Task                 | How                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Configure            | Copy [backend/.env.example](../backend/.env.example) to `.env`                       |
-| First start          | `npm run dev` (or `start`): runs migrations, prints the setup token banner           |
-| Lost the setup token | `npm run setup-token` (only while setup is pending)                                  |
-| Upgrade              | Deploy the new code and restart: pending migrations run on start                     |
-| Admin locked out     | `npm run reset-admin -- admin@acme.com` → open the printed link (30 min, once)       |
-| Behind nginx/Traefik | Set `TRUST_PROXY` (e.g. `1`) so audit IPs are real                                   |
-| No mail server       | Leave `SMTP_HOST` empty: admins get copy-link boxes; "forgot password" sends nothing |
-| Migrations by hand   | `npm run migration:run` / `migration:revert` / `migration:show`                      |
-| More or less logging | `LOG_LEVEL=debug` (or `warn`, `error`…); logs are JSON lines on stdout               |
+Customers install with Docker; [INSTALL.md](../INSTALL.md) is their manual. This section is how it's built.
+
+```text
+browser ──► web (nginx) ──► api (Node) ──► postgres, redis
+            serves the React build,       migrate: one-shot job that applies
+            proxies /api                  migrations before api starts
+```
+
+| Piece                                               | What it does                                                                                                                                                                                       |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [backend/Dockerfile](../backend/Dockerfile)         | Multi-stage `node:24-alpine`: compiles TypeScript, installs production dependencies only, runs as the `node` user. The same image runs the API and `node dist/cli/migrate.js`.                     |
+| [frontend/Dockerfile](../frontend/Dockerfile)       | Builds the Vite bundle, serves it from `nginx:1.30-alpine`                                                                                                                                         |
+| [frontend/nginx/](../frontend/nginx)                | SPA fallback, caching (hashed assets forever, `index.html` never), CSP and other security headers, gzip, the `/api` proxy                                                                          |
+| [docker-compose.yml](../docker-compose.yml)         | The install: postgres, redis, migrate, api, web, and Caddy for HTTPS under the `https` profile. Only web (or Caddy) publishes a port. Settings come from `.env` ([.env.example](../.env.example)). |
+| [install.sh](../install.sh)                         | `install`, `update`, `backup`, `restore`, `status`, `token`, `uninstall [--purge]`; downloads a GitHub release's files into `/opt/siemple`                                                         |
+| [docker.yml](../.github/workflows/docker.yml)       | Builds both images and scans them with Trivy on every PR; publishes amd64 + arm64 images to GHCR on `main` and on `v*` tags; attaches the install files to the release                             |
+| [docker-compose.dev.yml](../docker-compose.dev.yml) | Development only: Postgres (`localhost:5433`, with `siemple_test`) and Redis for `npm run dev` (`npm run db:up` / `db:down`)                                                                       |
+
+**Start order.** Postgres and Redis must be healthy, then `migrate` must exit 0, then the API starts; web waits for the API's healthcheck (`/api/health`, section 15). A failed migration leaves the old schema in place and the API stopped. The API also retries the database for about two minutes at boot, and Redis forever, so a slow start or a Docker restart after a reboot doesn't need a human.
+
+**Client IPs.** nginx overwrites `X-Forwarded-For` with the address it sees and the API trusts exactly one proxy (`TRUST_PROXY=1`), so a client can't forge the IP in the audit log. Behind Caddy, nginx takes the client IP from Caddy's header, but only for connections from the Caddy container (`TRUSTED_PROXY=caddy`, [40-siemple-real-ip.sh](../frontend/nginx/40-siemple-real-ip.sh)).
+
+**Cookies.** The refresh cookie is `Secure` only when `APP_URL` starts with `https://`. Tying it to `NODE_ENV` instead would make browsers drop it on a plain-HTTP LAN install and sign everyone out on every reload.
+
+**Setup token.** Only its hash is stored, so a lost token can't be shown again. Until setup is complete, every start issues a new one and prints it as a fixed line (`==== SIEMple setup token: … ====`); `install.sh token` runs [setup-token.ts](../backend/src/cli/setup-token.ts) inside the API container.
+
+**Releasing.** Push a tag `vX.Y.Z`: CI publishes images tagged `X.Y.Z`, `X.Y` and `latest`, then attaches `docker-compose.yml`, `env.example` and `install.sh` to the GitHub release (GitHub renames uploads that start with a dot). A tag with a hyphen (`v1.3.0-rc.1`) is a pre-release and never becomes `latest`.
+
+Running the code directly, without Docker:
+
+| Task                 | How                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configure            | Copy [backend/.env.example](../backend/.env.example) to `.env`                                                                                                   |
+| First start          | `npm run dev` (or `start`): runs migrations, prints the setup token banner                                                                                       |
+| Lost the setup token | `npm run setup-token` (only while setup is pending)                                                                                                              |
+| Upgrade              | Deploy the new code and restart: pending migrations run on start                                                                                                 |
+| Admin locked out     | `npm run reset-admin -- admin@acme.com` → open the printed link (30 min, once). In Docker: `docker compose exec api node dist/cli/reset-admin.js admin@acme.com` |
+| Behind nginx/Traefik | Set `TRUST_PROXY` (e.g. `1`) so audit IPs are real                                                                                                               |
+| No mail server       | Leave `SMTP_HOST` empty: admins get copy-link boxes; "forgot password" sends nothing                                                                             |
+| Migrations by hand   | `npm run migration:run` / `migration:revert` / `migration:show`                                                                                                  |
+| More or less logging | `LOG_LEVEL=debug` (or `warn`, `error`…); logs are JSON lines on stdout                                                                                           |
 
 ### Logging
 
 The backend logs with **pino** ([logger.ts](../backend/src/infrastructure/logging/logger.ts)) to stdout: one JSON object per line in production, so customers can ship it to their own log tooling; coloured readable lines when `NODE_ENV=development` (via `pino-pretty`, a dev dependency); nothing during tests.
 
 - **Application code** depends on the `ILogger` port ([logger.interface.ts](../backend/src/application/interfaces/services/logger.interface.ts)), injected as `TYPES.Logger`; `logger.child({ module: 'email' })` tags entries. Pino itself stays in infrastructure.
-- **Requests** get one line each from `pino-http`, with a request id. A well-formed `X-Request-Id` from the proxy is reused, so proxy and app logs line up. `/health` is not logged. 4xx logs as `warn`, 5xx as `error`.
+- **Requests** get one line each from `pino-http`, with a request id. A well-formed `X-Request-Id` from the proxy is reused, so proxy and app logs line up. `/health` and `/api/health` are not logged (Docker polls the latter every few seconds). 4xx logs as `warn`, 5xx as `error`.
 - **Unhandled errors** are logged by the error handler through `req.log`, so the stack carries the request id.
 - **Secrets stay out:** request headers, cookies and bodies are never logged; query strings are dropped (invite and reset links carry `?token=`); and fields named `password`, `token`, `refreshToken`, `link`… are replaced with `[REDACTED]` as a second line of defence.
 - **Plain console output on purpose:** the setup-token banner (the one place a raw token is printed, for a person), the CLI commands, and the invalid-config message (printed before the logger exists).
@@ -680,7 +715,7 @@ The audit log is something else: a permanent, database-backed record of security
 
 **Why does the audit cursor carry the timestamp as text?** The database stores microseconds and JavaScript dates hold milliseconds. Rounding would make two rows from the same millisecond skip or repeat across a page boundary.
 
-**Why do migrations run on server start?** So a customer upgrades by restarting. Each migration runs in a transaction; a failure stops start-up before any request is served.
+**Why do migrations run before the app starts?** So a customer upgrades by pulling new images and restarting. In Docker a separate one-shot `migrate` container applies them and the API starts only if it exits successfully; without Docker the server applies them itself on start. Each migration runs in a transaction; a failure stops start-up before any request is served.
 
 **Why does "forgot password" do its work in the background?** Issuing a link and talking to the mail server take time only for real accounts; doing it before answering would let anyone time the response to learn which emails exist.
 
