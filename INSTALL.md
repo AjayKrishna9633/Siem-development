@@ -2,8 +2,11 @@
 
 SIEMple runs as a set of Docker containers on one Linux server. A single command installs it, and the same script handles updates, backups and restores afterwards.
 
+To use a Windows, Mac or Linux PC as the server instead, built from the source code (this also works before any release is published), see [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux).
+
 - [Requirements](#requirements)
 - [Install](#install)
+- [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux)
 - [First-time setup](#first-time-setup)
 - [HTTPS](#https)
 - [Everyday tasks](#everyday-tasks)
@@ -220,6 +223,117 @@ Don't change `POSTGRES_PASSWORD`, `POSTGRES_USER` or `POSTGRES_DB` after the fir
    docker compose up -d --wait
    docker compose logs api | grep "setup token"
    ```
+
+## Running on your own PC (Windows, Mac or Linux)
+
+This turns any computer with Docker into the SIEMple server for your network, built from the source code. It doesn't need a published release, and it works on Windows and Mac, where `install.sh` doesn't run. Every command below works in PowerShell, Command Prompt and Linux or Mac terminals unless it says otherwise, and runs from the project folder.
+
+### 1. Prepare the server PC
+
+- Install [Git](https://git-scm.com/downloads) and [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows or Mac) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux). Docker Desktop is free for personal use, education and small businesses; larger companies need a paid subscription.
+- **Start Docker automatically.** Docker Desktop: Settings → General → turn on _Start Docker Desktop when you sign in_. Linux: `sudo systemctl enable docker`.
+- **Give the PC a fixed address on your network.** In your router's settings, reserve its current IP address for it (often called a DHCP reservation). The address goes into the invitation and password-reset links SIEMple sends, and those can't be changed after setup yet, so it mustn't change.
+- **Stop it sleeping.** Windows: Settings → System → Power → set sleep to _Never_ when plugged in. Mac: System Settings → Energy → turn on _Prevent automatic sleeping_.
+
+Find the PC's address with `ipconfig` (Windows, the _IPv4 Address_ line), `ipconfig getifaddr en0` (Mac) or `hostname -I` (Linux). The examples below use `192.168.1.20`.
+
+### 2. Get the code
+
+```bash
+git clone https://github.com/AjayKrishna9633/Siem-development.git
+cd Siem-development
+git checkout feat/docker
+```
+
+`git checkout feat/docker` is needed only until the Docker files are merged into `main`.
+
+### 3. Create the settings file
+
+Copy the template: `copy .env.example .env` on Windows, `cp .env.example .env` on Linux or Mac. Then open `.env` in a text editor and set:
+
+```ini
+POSTGRES_PASSWORD=<random letters and digits>
+REDIS_PASSWORD=<random letters and digits>
+JWT_SECRET=<random letters and digits, at least 32>
+APP_URL=http://192.168.1.20
+```
+
+Generate each secret with:
+
+- **Windows (PowerShell):** `-join ((1..32) | % { '{0:x2}' -f (Get-Random -Max 256) })`
+- **Linux or Mac:** `openssl rand -hex 32`
+
+If port 80 is already taken on this PC (by IIS or another web server, for example), also set `WEB_PORT=8080` and add `:8080` to `APP_URL`.
+
+### 4. Build and start SIEMple
+
+```bash
+docker compose up -d --build --wait
+```
+
+The first build takes a few minutes. When the command returns, every container is healthy. Get the setup token:
+
+```bash
+docker compose exec api node dist/cli/setup-token.js
+```
+
+This prints a fresh token (any earlier one stops working). Open `http://localhost` on the server, enter the token, and when asked for the address people will use, enter your `APP_URL` (`http://192.168.1.20`).
+
+### 5. Let other computers connect
+
+Allow the web port through the server's firewall:
+
+- **Windows:** in PowerShell opened as Administrator:
+
+  ```powershell
+  New-NetFirewallRule -DisplayName "SIEMple" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Private
+  ```
+
+  Your network must be set to _Private_ (Settings → Network & internet → your connection → _Private network_). Use your `WEB_PORT` if you changed it.
+
+- **Mac:** System Settings → Network → Firewall → Options: allow incoming connections for Docker.
+- **Linux:** `sudo ufw allow 80/tcp` (if `ufw` is active).
+
+Then open `http://192.168.1.20` from any computer on the same network.
+
+### 6. Day-to-day commands
+
+| Task                           | Command                                                                          |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| See what's running             | `docker compose ps`                                                              |
+| Follow the application log     | `docker compose logs -f api`                                                     |
+| Stop SIEMple                   | `docker compose stop`                                                            |
+| Start it again                 | `docker compose up -d`                                                           |
+| Get a new setup token          | `docker compose exec api node dist/cli/setup-token.js`                           |
+| An administrator is locked out | `docker compose exec api node dist/cli/reset-admin.js admin@example.com`         |
+| Update to the latest code      | Back up first (below), then `git pull` and `docker compose up -d --build --wait` |
+
+SIEMple restarts by itself whenever Docker starts. On Windows and Mac, Docker Desktop only runs while someone is signed in to the PC, so after a reboot someone has to sign in before SIEMple is back. For a server that must always be up, Linux is the better choice.
+
+An update runs any new database migrations before the application starts.
+
+### 7. Back up and restore
+
+Back up (the dump is made inside the container and copied out, which keeps the file intact on Windows too):
+
+```bash
+mkdir backups
+docker compose exec -T postgres pg_dump -U siemple -d siemple --format=custom -f /tmp/siemple.dump
+docker compose cp postgres:/tmp/siemple.dump backups/siemple-2026-11-18.dump
+```
+
+Use a new file name each time, and copy backups to another machine. Don't redirect the output with `>` instead: Windows PowerShell rewrites it as text and the backup can't be restored.
+
+Restore, which **replaces all current data** with the backup:
+
+```bash
+docker compose stop api web
+docker compose cp backups/siemple-2026-11-18.dump postgres:/tmp/restore.dump
+docker compose exec -T postgres pg_restore -U siemple -d siemple --clean --if-exists --no-owner --single-transaction /tmp/restore.dump
+docker compose up -d --wait
+```
+
+The restore runs in one transaction: if it fails, the current data is left as it was.
 
 ## Uninstalling
 
