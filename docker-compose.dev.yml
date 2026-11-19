@@ -1,0 +1,128 @@
+# Local development: Postgres, Redis, Loki and Grafana, for `npm run dev` on the host.
+#
+#   npm run db:up      start them (waits until all but Loki report healthy; Loki needs ~20s)
+#   npm run db:down    stop them; data is kept in the siemple-dev_* volumes
+#
+# backend/.env then points at them (see backend/.env.example):
+#   DATABASE_URL=postgresql://siemple:siemple@localhost:5433/siemple_dev
+#   TEST_DATABASE_URL=postgresql://siemple:siemple@localhost:5433/siemple_test
+#   REDIS_URL=redis://127.0.0.1:6379
+#
+# The credentials are fixed and not secret: every port listens on 127.0.0.1 only.
+
+# A separate project name, so dev data never mixes with a full stack started from the same folder.
+name: siemple-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: siemple
+      POSTGRES_PASSWORD: siemple
+      POSTGRES_DB: siemple_dev
+    ports:
+      # 5433 by default so it doesn't clash with a Postgres installed natively on 5432.
+      - '127.0.0.1:${DB_PORT:-5433}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    configs:
+      # Scripts in this folder run once, when the data volume is first created.
+      - source: create-test-db
+        target: /docker-entrypoint-initdb.d/10-create-test-db.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U siemple -d siemple_dev']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # Log storage for `npm run dev` (LOKI_URL=http://localhost:3100). It takes ~20s after starting
+  # before it accepts logs. Same setup as docker-compose.yml, but logs are kept for 7 days.
+  loki:
+    image: grafana/loki:3.7.10
+    restart: unless-stopped
+    command: ['-config.file=/etc/loki/config.yaml']
+    ports:
+      - '127.0.0.1:${LOKI_PORT:-3100}:3100'
+    configs:
+      - source: loki-config
+        target: /etc/loki/config.yaml
+    volumes:
+      - loki-data:/loki
+
+  # The log viewer, built from ./grafana like the production image: http://localhost:3000/grafana/
+  # Sign in as admin / siemple (fixed, like the database password: it listens on 127.0.0.1 only).
+  grafana:
+    build: ./grafana
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${GRAFANA_PORT:-3000}:3000'
+    environment:
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_PORT:-3000}/grafana/
+      GF_SECURITY_ADMIN_PASSWORD: siemple
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+
+configs:
+  # The integration tests drop and rebuild this database's schema on every run, so it must be
+  # separate from siemple_dev.
+  create-test-db:
+    content: |
+      CREATE DATABASE siemple_test;
+
+  # A copy of the config in docker-compose.yml (a compose file can't reuse another file's
+  # config) with a shorter retention. Keep the two in step.
+  loki-config:
+    content: |
+      auth_enabled: false
+      server:
+        http_listen_port: 3100
+        log_level: warn
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+      schema_config:
+        configs:
+          - from: 2026-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+      limits_config:
+        retention_period: 168h
+        allow_structured_metadata: true
+        volume_enabled: true
+      compactor:
+        working_directory: /loki/compactor
+        retention_enabled: true
+        delete_request_store: filesystem
+      analytics:
+        reporting_enabled: false
+
+volumes:
+  pgdata:
+  loki-data:
+  grafana-data:

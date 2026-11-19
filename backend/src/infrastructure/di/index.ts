@@ -7,6 +7,7 @@ import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.re
 import { TypeOrmSystemSettingsRepository } from '../database/repositories/system-settings.repository.ts';
 import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper.ts';
 import { TypeOrmAuthTokenRepository } from '../database/repositories/auth-token.repository.ts';
+import { TypeOrmIngestKeyRepository } from '../database/repositories/ingest-key.repository.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
@@ -74,12 +75,45 @@ import { AuditLogsController } from '../../presentation/controllers/audit-logs.c
 import { ListAuditLogsUseCase } from '../../application/use-cases/audit/list-audit-logs.usecase.ts';
 import { GetAuditLogUseCase } from '../../application/use-cases/audit/get-audit-log.usecase.ts';
 import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export-audit-logs.usecase.ts';
+import { CreateIngestKeyUseCase } from '../../application/use-cases/ingest-keys/create-ingest-key.usecase.ts';
+import { ListIngestKeysUseCase } from '../../application/use-cases/ingest-keys/list-ingest-keys.usecase.ts';
+import { RevokeIngestKeyUseCase } from '../../application/use-cases/ingest-keys/revoke-ingest-key.usecase.ts';
+import type {
+  ICreateIngestKeyUseCase,
+  IListIngestKeysUseCase,
+  IRevokeIngestKeyUseCase,
+} from '../../application/interfaces/use-cases/ingest-keys.interface.ts';
+import { IngestKeysController } from '../../presentation/controllers/ingest-keys.controller.ts';
+import { AuthenticateIngestKeyUseCase } from '../../application/use-cases/ingest/authenticate-ingest-key.usecase.ts';
+import { IngestEventsUseCase } from '../../application/use-cases/ingest/ingest-events.usecase.ts';
+import type { IAuthenticateIngestKeyUseCase } from '../../application/interfaces/use-cases/ingest.interface.ts';
+import { IngestController } from '../../presentation/controllers/ingest.controller.ts';
+import { authenticateIngestKey } from '../../presentation/middlewares/ingest-key.middleware.ts';
+import { LokiLogStoreService } from '../services/loki-log-store.service.ts';
+import { HealthCheckService } from '../services/health-check.service.ts';
+import { HealthController } from '../../presentation/controllers/health.controller.ts';
+import { env } from '../../config/env.config.ts';
 
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 container.bind(TYPES.Logger).toConstantValue(logger);
 
 const redisClient = createRedisClient(logger.child({ module: 'redis' }));
 container.bind(TYPES.RedisClient).toConstantValue(redisClient);
+
+container.bind(TYPES.HealthCheckService).toConstantValue(
+  new HealthCheckService({
+    pingDatabase: () => AppDataSource.query('SELECT 1'),
+    redis: redisClient,
+    redisRequired: env.NODE_ENV === 'production',
+    logger,
+  }),
+);
+
+container
+  .bind(TYPES.LogStoreService)
+  .toConstantValue(
+    new LokiLogStoreService({ url: env.LOKI_URL, logger: logger.child({ module: 'ingest' }) }),
+  );
 
 const mailTransport = createMailTransport();
 container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
@@ -91,6 +125,7 @@ container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
 container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
 container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
 container.bind(TYPES.AuthTokenRepository).to(TypeOrmAuthTokenRepository);
+container.bind(TYPES.IngestKeyRepository).to(TypeOrmIngestKeyRepository);
 
 container.bind(TYPES.HashService).to(BcryptHashService);
 container.bind(TYPES.CacheService).to(RedisCacheService);
@@ -135,6 +170,11 @@ container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 container.bind(TYPES.ListAuditLogsUseCase).to(ListAuditLogsUseCase);
 container.bind(TYPES.GetAuditLogUseCase).to(GetAuditLogUseCase);
 container.bind(TYPES.ExportAuditLogsUseCase).to(ExportAuditLogsUseCase);
+container.bind(TYPES.CreateIngestKeyUseCase).to(CreateIngestKeyUseCase);
+container.bind(TYPES.ListIngestKeysUseCase).to(ListIngestKeysUseCase);
+container.bind(TYPES.RevokeIngestKeyUseCase).to(RevokeIngestKeyUseCase);
+container.bind(TYPES.AuthenticateIngestKeyUseCase).to(AuthenticateIngestKeyUseCase);
+container.bind(TYPES.IngestEventsUseCase).to(IngestEventsUseCase);
 
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
@@ -143,6 +183,9 @@ container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 container.bind(TYPES.AuditLogsController).to(AuditLogsController);
+container.bind(TYPES.IngestKeysController).to(IngestKeysController);
+container.bind(TYPES.IngestController).to(IngestController);
+container.bind(TYPES.HealthController).to(HealthController);
 
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
@@ -152,6 +195,18 @@ export const accountController = container.get<AccountController>(TYPES.AccountC
 export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
+export const healthController = container.get<HealthController>(TYPES.HealthController);
+export const ingestKeysController = container.get<IngestKeysController>(TYPES.IngestKeysController);
+export const ingestController = container.get<IngestController>(TYPES.IngestController);
+export const ingestKeyMiddleware = authenticateIngestKey(
+  container.get<IAuthenticateIngestKeyUseCase>(TYPES.AuthenticateIngestKeyUseCase),
+);
+// For the `ingest-key` server command.
+export const ingestKeys = {
+  create: container.get<ICreateIngestKeyUseCase>(TYPES.CreateIngestKeyUseCase),
+  list: container.get<IListIngestKeysUseCase>(TYPES.ListIngestKeysUseCase),
+  revoke: container.get<IRevokeIngestKeyUseCase>(TYPES.RevokeIngestKeyUseCase),
+};
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const auditService = container.get<IAuditService>(TYPES.AuditService);
 export const requestContextProvider = container.get<IRequestContextProvider>(
@@ -181,6 +236,10 @@ export const di = {
   inviteController,
   usersController,
   auditLogsController,
+  healthController,
+  ingestKeysController,
+  ingestController,
+  ingestKeyMiddleware,
   setupController,
   authMiddleware,
   auditService,
@@ -188,6 +247,7 @@ export const di = {
   setupGuardMiddleware,
   issueSetupToken,
   createRecoveryLink,
+  ingestKeys,
   tokenService,
   redisClient,
   container,

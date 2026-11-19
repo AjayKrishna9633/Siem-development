@@ -1,0 +1,280 @@
+# SIEMple: self-hosted stack.
+#
+#   browser ──► web (nginx: React app + /api proxy) ──► api (Node) ──► postgres, redis, loki
+#                   └─ /grafana/ ──► grafana (log viewer) ──► loki
+#
+# Only `web` publishes a port. With HTTPS enabled (COMPOSE_PROFILES=https in .env), Caddy takes
+# ports 80/443 in front of web and gets certificates automatically.
+#
+# Settings come from .env next to this file (see .env.example); the installer creates it.
+#   docker compose up -d        start, pulling the published images
+#   docker compose up -d --build   (in a source checkout) build the images from ./backend and ./frontend
+
+name: siemple
+
+# Docker keeps container logs forever by default; cap them at 3 x 10 MB per container.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+# Shared by the API and the one-shot migrate job. Values with :? stop compose with that message
+# when missing, instead of starting a half-configured stack.
+x-api-env: &api-env
+  NODE_ENV: production
+  PORT: '4000'
+  # The password goes into a URL, so it must be URL-safe (letters and digits; the installer
+  # generates one like that).
+  DATABASE_URL: postgres://${POSTGRES_USER:-siemple}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-siemple}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 characters)}
+  # The address people open SIEMple at. Decides whether cookies are Secure (https) and the URL
+  # printed with the setup token. The app itself works at any address.
+  APP_URL: ${APP_URL:-http://localhost}
+  # Exactly one proxy (nginx in the web container) sits in front of the API, so the client IP
+  # comes from the header nginx sets, which nginx itself overwrites.
+  TRUST_PROXY: '1'
+  LOG_LEVEL: ${LOG_LEVEL:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-siemple}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-siemple}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # $$ passes a literal $ to the container, so the variables are read inside it.
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    # Through sh so the password is read from the environment rather than written into this file.
+    command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      # REDISCLI_AUTH keeps the password off redis-cli's command line (and its warning quiet).
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  # Applies database migrations, then exits. The api starts only if this exits 0, so a failed
+  # migration never leaves the app running against a half-migrated schema.
+  migrate:
+    image: ${SIEMPLE_API_IMAGE:-ghcr.io/ajaykrishna9633/siemple-api}:${SIEMPLE_VERSION:-latest}
+    build: ./backend
+    command: ['node', 'dist/cli/migrate.js']
+    restart: 'no'
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  api:
+    image: ${SIEMPLE_API_IMAGE:-ghcr.io/ajaykrishna9633/siemple-api}:${SIEMPLE_VERSION:-latest}
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      # Only the long-running API ships its logs; the migrate job's few lines stay in its
+      # container log.
+      LOKI_URL: http://loki:3100
+    depends_on:
+      # Started, not ready: the API keeps its logs until Loki accepts them (~20s).
+      loki:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # A tiny init process as PID 1 forwards signals and reaps zombie processes.
+    init: true
+    # The API writes nothing to disk (logs go to stdout).
+    read_only: true
+    security_opt: ['no-new-privileges:true']
+    # The API's own shutdown gives up after 10s; leave Docker a little longer before SIGKILL.
+    stop_grace_period: 15s
+    logging: *logging
+
+  web:
+    image: ${SIEMPLE_WEB_IMAGE:-ghcr.io/ajaykrishna9633/siemple-web}:${SIEMPLE_VERSION:-latest}
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      # Plain HTTP mode: SIEMple is at http://<this host>:WEB_PORT. In HTTPS mode the installer
+      # sets WEB_BIND=127.0.0.1 and WEB_PORT=8080 so Caddy can have ports 80 and 443.
+      - '${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80'
+    environment:
+      API_UPSTREAM: api:4000
+      # Empty: nginx is the first hop and ignores any X-Forwarded-For. HTTPS mode sets it to
+      # `caddy`, so the real client IP is taken from Caddy, and only from Caddy.
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
+    depends_on:
+      api:
+        condition: service_healthy
+      # Started first when HTTPS is on, so nginx can resolve its name. `required: false` makes
+      # this a no-op when the https profile is off and there is no caddy service.
+      caddy:
+        condition: service_started
+        required: false
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  # Log storage. Only reachable inside the stack: nothing publishes its port. Logs are indexed by
+  # a few labels (service, level, source) and kept for LOKI_RETENTION, then deleted.
+  loki:
+    image: grafana/loki:3.7.10
+    restart: unless-stopped
+    # expand-env fills ${LOKI_RETENTION} in the config from the environment.
+    command: ['-config.file=/etc/loki/config.yaml', '-config.expand-env=true']
+    environment:
+      LOKI_RETENTION: ${LOKI_RETENTION:-720h}
+    configs:
+      - source: loki-config
+        target: /etc/loki/config.yaml
+    volumes:
+      - loki-data:/loki
+    # The image has no shell or HTTP client, so there is no Docker healthcheck; services that use
+    # Loki wait for it to start and cope with it not being ready yet.
+    # Not read_only: compose writes the inline config into the container, which a read-only
+    # filesystem refuses. The image runs as a non-root user and has no shell.
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  # Log viewer, at <APP_URL>/grafana/ through nginx (its port isn't published). Comes with the
+  # Loki data source and the SIEMple dashboards built in. Its own sign-in: GRAFANA_ADMIN_USER /
+  # GRAFANA_ADMIN_PASSWORD, which only take effect on the very first start (after that the
+  # password lives in Grafana's database; change it in Grafana).
+  grafana:
+    image: ${SIEMPLE_GRAFANA_IMAGE:-ghcr.io/ajaykrishna9633/siemple-grafana}:${SIEMPLE_VERSION:-latest}
+    build: ./grafana
+    restart: unless-stopped
+    environment:
+      # Grafana builds its links and redirects from this, so it must be the address people open.
+      GF_SERVER_ROOT_URL: ${APP_URL:-http://localhost}/grafana/
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
+      # true in HTTPS mode, so the sign-in cookie is only ever sent over HTTPS.
+      GF_SECURITY_COOKIE_SECURE: ${GRAFANA_COOKIE_SECURE:-false}
+    volumes:
+      # Grafana's own database: users, saved copies of dashboards, preferences.
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_started
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  # Optional HTTPS: COMPOSE_PROFILES=https and DOMAIN=siem.example.com in .env. The domain's DNS
+  # must point at this host and ports 80/443 must be reachable for Let's Encrypt. For an IP or a
+  # name only resolvable on the LAN, Caddy uses its own local CA instead (browsers will warn
+  # until that CA is trusted).
+  caddy:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      # Certificates and the ACME account. Losing this means re-issuing (and rate limits).
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+configs:
+  # Kept inline so an install needs only this file and .env. {$$DOMAIN} reaches Caddy as
+  # {$DOMAIN}, which Caddy fills from its environment; an empty DOMAIN fails loudly at start.
+  caddyfile:
+    content: |
+      {$$DOMAIN} {
+        # Browsers remember to use HTTPS for a year. No includeSubDomains: other hosts under
+        # the same domain may not have HTTPS.
+        header Strict-Transport-Security "max-age=31536000"
+        # Caddy replaces any client-sent X-Forwarded-For with the address it sees; nginx trusts
+        # that header only from this container.
+        reverse_proxy web:80
+      }
+
+  # Single-process Loki keeping everything on the loki-data volume. $${…} reaches Loki as ${…},
+  # which -config.expand-env fills from its environment.
+  loki-config:
+    content: |
+      auth_enabled: false # one tenant; only the API and Grafana can reach Loki
+      server:
+        http_listen_port: 3100
+        log_level: warn
+      common:
+        instance_addr: 127.0.0.1
+        path_prefix: /loki
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+        storage:
+          filesystem:
+            chunks_directory: /loki/chunks
+            rules_directory: /loki/rules
+      schema_config:
+        configs:
+          - from: 2026-01-01
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+      limits_config:
+        retention_period: $${LOKI_RETENTION:-720h}
+        # Extra per-line fields (request id, user) without making them labels.
+        allow_structured_metadata: true
+        # Lets Grafana draw the log-volume histogram.
+        volume_enabled: true
+      compactor:
+        working_directory: /loki/compactor
+        # The compactor is what actually deletes logs older than retention_period.
+        retention_enabled: true
+        delete_request_store: filesystem
+      analytics:
+        # Don't send usage statistics to Grafana Labs.
+        reporting_enabled: false
+
+volumes:
+  pgdata:
+  redisdata:
+  loki-data:
+  grafana-data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,4 @@
+# Only the provisioning files and dashboards go into the image.
+*
+!provisioning/
+!dashboards/

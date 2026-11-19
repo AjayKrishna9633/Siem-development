@@ -24,6 +24,8 @@ const BACKEND_ACTIONS = [
   'user.update',
   'system.settings.changed',
   'audit.export',
+  'ingest.key.create',
+  'ingest.key.revoke',
 ];
 
 describe('actionLabel', () => {

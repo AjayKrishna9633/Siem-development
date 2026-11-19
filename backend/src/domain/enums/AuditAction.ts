@@ -20,6 +20,8 @@ export enum AuditAction {
   ACCESS_DENIED = 'access.denied',
   USER_UPDATED = 'user.update',
   AUDIT_EXPORTED = 'audit.export',
+  INGEST_KEY_CREATED = 'ingest.key.create',
+  INGEST_KEY_REVOKED = 'ingest.key.revoke',
   // Reserved: there is no settings-editing feature yet. The name is fixed now so the first
   // writer doesn't invent a different one.
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',
@@ -28,4 +30,5 @@ export enum AuditAction {
 export enum AuditTargetType {
   USER = 'user',
   SYSTEM_SETTINGS = 'system_settings',
+  INGEST_KEY = 'ingest_key',
 }

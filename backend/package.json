@@ -2,10 +2,14 @@
   "name": "backend",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "tsx watch --include .env src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "migrate": "node dist/cli/migrate.js",
     "test": "vitest",
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "migration:run": "tsx node_modules/typeorm/cli.js migration:run -d src/infrastructure/database/data-source.ts",
@@ -15,6 +19,7 @@
     "lint": "eslint .",
     "setup-token": "tsx src/cli/setup-token.ts",
     "reset-admin": "tsx src/cli/reset-admin.ts",
+    "ingest-key": "tsx src/cli/ingest-key.ts",
     "seed": "tsx src/cli/seed.ts"
   },
   "dependencies": {
@@ -26,7 +31,9 @@
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "inversify": "^8.2.3",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^10.0.13",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",

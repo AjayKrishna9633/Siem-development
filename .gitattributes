@@ -1,0 +1,11 @@
+# Files that run or are read inside Linux containers must keep LF line endings, even when
+# core.autocrlf converts everything else to CRLF on Windows checkouts. A CRLF shell script fails
+# with "bad interpreter", and CR characters in .env.example would end up inside every value.
+*.sh               text eol=lf
+Dockerfile         text eol=lf
+.dockerignore      text eol=lf
+*.template         text eol=lf
+*.conf             text eol=lf
+docker-compose*.yml text eol=lf
+.env.example       text eol=lf
+.nvmrc             text eol=lf

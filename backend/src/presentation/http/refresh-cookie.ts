@@ -1,12 +1,12 @@
 import type { CookieOptions, Request, Response } from 'express';
-import { env } from '../../config/env.config.ts';
+import { secureCookies } from '../../config/env.config.ts';
 import { REFRESH_TTL_SECONDS } from '../../infrastructure/services/refresh-session.service.ts';
 
 export const REFRESH_COOKIE = 'refreshToken';
 
 const cookieOptions: CookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
+  secure: secureCookies,
   sameSite: 'strict',
   path: '/api/auth',
 };

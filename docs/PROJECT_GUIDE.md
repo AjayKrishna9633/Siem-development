@@ -68,9 +68,11 @@ Defined in [UserRole.ts](../backend/src/domain/enums/UserRole.ts); what each can
 | Passwords            | bcrypt, cost 12                                                           | Slow, salted hashing                                  |
 | Tokens               | JWT (`jsonwebtoken`, HS256) + opaque random tokens                        | Access tokens; refresh, setup, invite and reset links |
 | Email                | Nodemailer, **optional** (any SMTP server)                                | Invitations, reset links, notices                     |
+| Logs                 | Grafana Loki 3.7 (storage) + Grafana 13 (viewer)                          | The API's own logs and events sent to `/api/ingest`   |
 | Frontend             | React 19, Vite, Tailwind CSS 4, Zustand, Axios, React Router              | UI                                                    |
 | Tests                | Vitest + Supertest against a real Postgres                                | Unit and integration                                  |
 | Quality gates        | ESLint, Prettier, Husky + lint-staged, commitlint, `verify-standards.cjs` | Run on every commit                                   |
+| Packaging            | Docker (Node, nginx, Grafana on Alpine), Compose, Caddy, Actions + GHCR   | One-command self-hosted install (section 18)          |
 
 ---
 
@@ -113,7 +115,7 @@ The backend follows **Clean Architecture**: four layers, dependencies pointing *
 ```
 server.ts                 Start-up: connect DB, run migrations, setup-token banner, listen
 app.ts                    Express app: trust proxy, helmet, CORS, setupGuard, routes, errors
-cli/                      Terminal commands: setup-token, reset-admin, the setup banner
+cli/                      Terminal commands: setup-token, reset-admin, ingest-key, the setup banner
 config/
   env.config.ts           Reads and validates .env with Zod; exits if something is wrong
   mailer.ts               Builds the SMTP transport, or null when email isn't configured
@@ -122,7 +124,8 @@ domain/                   ── pure business rules ──
   enums/                  UserRole, UserStatus, Permission, AuthTokenType, AuditAction,
                           AppErrorCode, ErrorMessage, SuccessMessage, HttpStatusCode
   policies/               permissions.policy (role → permissions), credentials.policy
-  constants/              security.ts (lifetimes, bcrypt cost, lockout), types.ts (DI tokens)
+  constants/              security.ts (lifetimes, bcrypt cost, lockout), ingest.ts (ingest limits),
+                          types.ts (DI tokens)
   types/                  Props shapes for entities
   errors/                 AppError (expected failures), DomainError (rule violations)
 application/              ── workflows ──
@@ -132,17 +135,21 @@ application/              ── workflows ──
   use-cases/users/        List users, change role, disable/enable, admin guards
   use-cases/auth/         Login, refresh, logout, current user, profile, session check
   use-cases/account/      Change password, change email
+  use-cases/ingest-keys/  Create, list, revoke ingest keys
+  use-cases/ingest/       Check an ingest key, store a batch of events
   use-cases/shared/       assertPermission, session building
   interfaces/             Ports: repositories, services, use cases
   types/use-case/         Input/output shapes
 infrastructure/           ── technology ──
-  database/models/        TypeORM tables: users, system_settings, auth_tokens, audit_logs
+  database/models/        TypeORM tables: users, system_settings, auth_tokens, audit_logs,
+                          ingest_keys
   database/migrations/    Every schema change, in order (section 8)
   database/repositories/  TypeORM implementations of the repository ports
   redis/                  Redis client + cache service with in-memory fallback
   services/               bcrypt, JWT, refresh sessions, opaque tokens, auth tokens,
                           email, auth mailer, security mailer, verification codes,
-                          audit service
+                          audit service, Loki log store (ingest)
+  logging/                pino logger, request logger, Loki stream (the API's own logs)
   context/                AsyncLocalStorage request scope (request id, IP, actor)
   database/queries/       Pure SQL builders (the audit log filter)
   services/templates/     Email HTML/text
@@ -187,7 +194,7 @@ Example: an administrator invites an analyst. The browser sends `POST /api/users
 
 1. `trust proxy` (only if `TRUST_PROXY` is set) — makes `req.ip` the real client behind a reverse proxy.
 2. **`httpLogger`** ([http-logger.ts](../backend/src/infrastructure/logging/http-logger.ts)) — gives the request an id (returned as `X-Request-Id`) and logs one line when it finishes: method, path **without the query string**, status, time, IP. See [Logging](#logging).
-3. `helmet()` security headers; `cors()` restricted to `FRONTEND_URL`.
+3. `helmet()` security headers; `cors()` restricted to the origin of `APP_URL` (`FRONTEND_URL` is the older name, still read).
 4. **`setupGuard`** ([setup-guard.middleware.ts](../backend/src/presentation/middlewares/setup-guard.middleware.ts)) — if first-run setup isn't done, every API call except `/api/setup/*` gets `403 SETUP_REQUIRED`. Here setup is done, so it passes.
 5. `express.json({ limit: '100kb' })`, `cookieParser()`.
 6. **`requestContextMiddleware`** ([request-context.middleware.ts](../backend/src/presentation/middlewares/request-context.middleware.ts)) — opens a per-request scope (`AsyncLocalStorage`) holding the request id, IP and user agent. This is how the audit log knows where an action came from without every use case being handed the request. `authenticate` (below) adds who is calling.
@@ -260,6 +267,7 @@ Code never compares role names. It checks **named permissions**, and one map say
 | Manage users          | `users.manage`          |  ✅   | ❌  | ❌  |
 | Manage settings       | `settings.manage`       |  ✅   | ❌  | ❌  |
 | View audit log        | `audit.view`            |  ✅   | ❌  | ❌  |
+| Manage ingest keys    | `ingest.manage`         |  ✅   | ❌  | ❌  |
 
 - The map: [permissions.policy.ts](../backend/src/domain/policies/permissions.policy.ts) (`ROLE_PERMISSIONS`, `hasPermission`). The unit test [permissions.policy.test.ts](../backend/tests/unit/permissions.policy.test.ts) checks it row by row against this table.
 - Routes: `authorize(...permissions)` in [auth.middleware.ts](../backend/src/presentation/middlewares/auth.middleware.ts). Use cases: `assertPermission` in [access.ts](../backend/src/application/use-cases/shared/access.ts).
@@ -275,7 +283,7 @@ Code never compares role names. It checks **named permissions**, and one map say
 
 ## 8. Database: tables, migrations and indexes
 
-The schema changes **only through migrations** ([migrations/](../backend/src/infrastructure/database/migrations)); `synchronize` is off. The server runs pending migrations on start, so upgrading an install is a restart. `npm run migration:check` confirms the models and the migrated database match exactly.
+The schema changes **only through migrations** ([migrations/](../backend/src/infrastructure/database/migrations)); `synchronize` is off. Pending migrations run before the app serves anything: in Docker a one-shot `migrate` container ([cli/migrate.ts](../backend/src/cli/migrate.ts)) applies them and the API starts only if it succeeds; `npm run dev` applies them on start. Upgrading an install is pulling the new images and restarting. `npm run migration:check` confirms the models and the migrated database match exactly.
 
 | Migration                                                                                                       | What it does                                                                                |
 | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -285,6 +293,7 @@ The schema changes **only through migrations** ([migrations/](../backend/src/inf
 | [CreateSystemSettings](../backend/src/infrastructure/database/migrations/1793664000000-CreateSystemSettings.ts) | The single settings row                                                                     |
 | [CreateAuthTokens](../backend/src/infrastructure/database/migrations/1793750400000-CreateAuthTokens.ts)         | Single-use links; makes `users.username` nullable                                           |
 | [ExtendAuditLogs](../backend/src/infrastructure/database/migrations/1793923200000-ExtendAuditLogs.ts)           | Audit v2: actor snapshot, category, outcome, target label, request id; new indexes          |
+| [CreateIngestKeys](../backend/src/infrastructure/database/migrations/1794009600000-CreateIngestKeys.ts)         | API keys for `POST /api/ingest`                                                             |
 
 Every migration has a working `down`. `RemoveTenancy.down` is lossy by nature (deleted companies can't come back).
 
@@ -324,6 +333,17 @@ Exactly one row (`CHECK (id = 1)`), inserted by its migration so setup can alway
 
 Index `(user_id, type)` serves "delete this user's earlier unused links".
 
+### `ingest_keys` — [ingest-key.model.ts](../backend/src/infrastructure/database/models/ingest-key.model.ts)
+
+| Column                                         | Meaning                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `name` **unique among unrevoked keys**         | Lowercase, label-safe; becomes the Loki `source` label. A revoked key's name is free again |
+| `key_hash` **unique**                          | SHA-256 of the key (`siemple_ik_` + 64 hex); every ingest request looks it up by this      |
+| `key_prefix`                                   | The key's first 16 characters, to tell keys apart in a list                                |
+| `created_by`, `revoked_by` → users, `SET NULL` | Who; null when done with the `ingest-key` server command                                   |
+| `last_used_at`                                 | Updated at most once a minute per key, not on every request                                |
+| `revoked_at`                                   | Keys are revoked, never deleted, so the audit log can always name them                     |
+
 ### `audit_logs` — [audit-log.model.ts](../backend/src/infrastructure/database/models/audit-log.model.ts)
 
 | Column                                     | Meaning                                                                                  |
@@ -359,19 +379,21 @@ If Redis is unreachable, the cache silently uses memory and the terminal says so
 
 ## 10. Constants and configuration
 
-| Constant                  | Value                               | Where                                                                                           |
-| ------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `PASSWORD_MIN_LENGTH`     | 12 (every role)                     | [credentials.policy.ts](../backend/src/domain/policies/credentials.policy.ts)                   |
-| `PASSWORD_MAX_BYTES`      | 72 (bcrypt ignores the rest)        | same                                                                                            |
-| `BCRYPT_COST`             | 12                                  | [security.ts](../backend/src/domain/constants/security.ts)                                      |
-| `LOGIN_LOCKOUT`           | 5 wrong passwords → 15-minute pause | same                                                                                            |
-| `SETUP_TOKEN_TTL_HOURS`   | 24                                  | same                                                                                            |
-| `INVITE_TOKEN_TTL_HOURS`  | 48                                  | same                                                                                            |
-| `RESET_TOKEN_TTL_MINUTES` | 30                                  | same                                                                                            |
-| Access token              | 15 minutes, HS256                   | [jwt-token.service.ts](../backend/src/infrastructure/services/jwt-token.service.ts)             |
-| Refresh token             | 7 days, rotated on every use        | [refresh-session.service.ts](../backend/src/infrastructure/services/refresh-session.service.ts) |
+| Constant                  | Value                                                                      | Where                                                                                           |
+| ------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `PASSWORD_MIN_LENGTH`     | 12 (every role)                                                            | [credentials.policy.ts](../backend/src/domain/policies/credentials.policy.ts)                   |
+| `PASSWORD_MAX_BYTES`      | 72 (bcrypt ignores the rest)                                               | same                                                                                            |
+| `BCRYPT_COST`             | 12                                                                         | [security.ts](../backend/src/domain/constants/security.ts)                                      |
+| `LOGIN_LOCKOUT`           | 5 wrong passwords → 15-minute pause                                        | same                                                                                            |
+| `SETUP_TOKEN_TTL_HOURS`   | 24                                                                         | same                                                                                            |
+| `INVITE_TOKEN_TTL_HOURS`  | 48                                                                         | same                                                                                            |
+| `RESET_TOKEN_TTL_MINUTES` | 30                                                                         | same                                                                                            |
+| Access token              | 15 minutes, HS256                                                          | [jwt-token.service.ts](../backend/src/infrastructure/services/jwt-token.service.ts)             |
+| Refresh token             | 7 days, rotated on every use                                               | [refresh-session.service.ts](../backend/src/infrastructure/services/refresh-session.service.ts) |
+| `INGEST_LIMITS`           | 1,000 events and 1 MB per request, 600 requests a minute per key, and more | [ingest.ts](../backend/src/domain/constants/ingest.ts)                                          |
+| `MAX_ACTIVE_INGEST_KEYS`  | 100                                                                        | same                                                                                            |
 
-Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `FRONTEND_URL`, `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`. The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
+Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `APP_URL` (the address people open; decides the CORS origin and, when it starts with `https://`, Secure cookies; falls back to the older `FRONTEND_URL`), `LOG_LEVEL`, `LOKI_URL` (also send logs to Loki, and where `/api/ingest` stores events; without it ingest answers 503), `TRUST_PROXY`, `SMTP_*`. A Docker install sets these from the root [.env.example](../.env.example) instead, through [docker-compose.yml](../docker-compose.yml) (section 18). The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
 
 ---
 
@@ -427,7 +449,7 @@ Only someone who can read the server's log has the setup token. Completing setup
 
 ### Other protections
 
-`helmet` headers · CORS limited to `FRONTEND_URL` · per-IP rate limits on every unauthenticated route · route IDs must be UUIDs · permissions checked at the route **and** in the use case · `TRUST_PROXY` so IPs aren't the proxy's · client-supplied `X-Forwarded-For` is never trusted directly.
+`helmet` headers · CORS limited to the `APP_URL` origin · per-IP rate limits on every unauthenticated route · route IDs must be UUIDs · permissions checked at the route **and** in the use case · `TRUST_PROXY` so IPs aren't the proxy's · client-supplied `X-Forwarded-For` is never trusted directly.
 
 ---
 
@@ -499,6 +521,7 @@ Every security-relevant action is written to the `audit_logs` table, and an admi
 | `user.update`                                                                  | Profile name or email changed                        | `before` / `after`                                                                 |
 | `system.setup.completed`                                                       | First-run setup finished                             | email, org name                                                                    |
 | `audit.export`                                                                 | The log was exported to CSV                          | filters used, row count                                                            |
+| `ingest.key.create` / `ingest.key.revoke`                                      | An ingest key was created or revoked                 | name, key prefix (never the key); `via: cli` from the server command               |
 | `system.settings.changed`                                                      | Reserved: there is no settings editor yet            |                                                                                    |
 
 `outcome` is `success`, `failure` or `denied`. A failure's reason is visible only here; the person signing in always sees the generic message. `access.denied` is written only for a signed-in user's permission refusals. Setup-pending and disabled-account 403s are not recorded: they say nothing about what a person tried to do, and would bury the log.
@@ -544,38 +567,47 @@ Retention (a purge job: the trigger forbids `DELETE`, so it would need a deliber
 
 Base URL `/api`. 🔒 = access token required. Permission = what `authorize` checks.
 
-| Method | Path                            | Auth   | Permission     | Use case                              |
-| ------ | ------------------------------- | ------ | -------------- | ------------------------------------- |
-| POST   | `/setup/verify-token`           | —      | setup pending  | VerifySetupToken                      |
-| POST   | `/setup/complete`               | —      | setup pending  | CompleteSetup                         |
-| POST   | `/auth/login`                   | —      | —              | Login                                 |
-| POST   | `/auth/refresh`                 | cookie | —              | RefreshSession                        |
-| POST   | `/auth/logout`                  | cookie | —              | Logout                                |
-| GET    | `/auth/me`                      | 🔒     | —              | GetCurrentUser                        |
-| PUT    | `/auth/profile`                 | 🔒     | —              | UpdateProfile                         |
-| POST   | `/auth/password`                | 🔒     | —              | ChangePassword                        |
-| POST   | `/auth/email/code`              | 🔒     | `users.manage` | RequestEmailChange                    |
-| POST   | `/auth/email`                   | 🔒     | `users.manage` | ChangeEmail                           |
-| GET    | `/auth/invite?token=`           | —      | —              | GetInvite                             |
-| POST   | `/auth/invite/accept`           | —      | —              | AcceptInvite                          |
-| POST   | `/auth/password-reset/request`  | —      | —              | RequestPasswordReset                  |
-| GET    | `/auth/password-reset?token=`   | —      | —              | GetPasswordReset                      |
-| POST   | `/auth/password-reset`          | —      | —              | ResetPassword                         |
-| GET    | `/users`                        | 🔒     | `users.manage` | ListUsers                             |
-| GET    | `/users/invites`                | 🔒     | `users.manage` | ListPendingInvites                    |
-| POST   | `/users/invites`                | 🔒     | `users.manage` | InviteUser                            |
-| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage` | ResendInvite                          |
-| DELETE | `/users/:id/invite`             | 🔒     | `users.manage` | RevokeInvite                          |
-| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage` | IssueResetLink                        |
-| PATCH  | `/users/:id/role`               | 🔒     | `users.manage` | ChangeUserRole                        |
-| POST   | `/users/:id/disable`            | 🔒     | `users.manage` | SetUserStatus                         |
-| POST   | `/users/:id/enable`             | 🔒     | `users.manage` | SetUserStatus                         |
-| GET    | `/audit-logs`                   | 🔒     | `audit.view`   | ListAuditLogs                         |
-| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`   | ExportAuditLogs                       |
-| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`   | GetAuditLog                           |
-| GET    | `/health` (no `/api`)           | —      | —              | Database ping; never blocked by setup |
+| Method | Path                            | Auth       | Permission      | Use case                              |
+| ------ | ------------------------------- | ---------- | --------------- | ------------------------------------- |
+| POST   | `/setup/verify-token`           | —          | setup pending   | VerifySetupToken                      |
+| POST   | `/setup/complete`               | —          | setup pending   | CompleteSetup                         |
+| POST   | `/auth/login`                   | —          | —               | Login                                 |
+| POST   | `/auth/refresh`                 | cookie     | —               | RefreshSession                        |
+| POST   | `/auth/logout`                  | cookie     | —               | Logout                                |
+| GET    | `/auth/me`                      | 🔒         | —               | GetCurrentUser                        |
+| PUT    | `/auth/profile`                 | 🔒         | —               | UpdateProfile                         |
+| POST   | `/auth/password`                | 🔒         | —               | ChangePassword                        |
+| POST   | `/auth/email/code`              | 🔒         | `users.manage`  | RequestEmailChange                    |
+| POST   | `/auth/email`                   | 🔒         | `users.manage`  | ChangeEmail                           |
+| GET    | `/auth/invite?token=`           | —          | —               | GetInvite                             |
+| POST   | `/auth/invite/accept`           | —          | —               | AcceptInvite                          |
+| POST   | `/auth/password-reset/request`  | —          | —               | RequestPasswordReset                  |
+| GET    | `/auth/password-reset?token=`   | —          | —               | GetPasswordReset                      |
+| POST   | `/auth/password-reset`          | —          | —               | ResetPassword                         |
+| GET    | `/users`                        | 🔒         | `users.manage`  | ListUsers                             |
+| GET    | `/users/invites`                | 🔒         | `users.manage`  | ListPendingInvites                    |
+| POST   | `/users/invites`                | 🔒         | `users.manage`  | InviteUser                            |
+| POST   | `/users/:id/invite/resend`      | 🔒         | `users.manage`  | ResendInvite                          |
+| DELETE | `/users/:id/invite`             | 🔒         | `users.manage`  | RevokeInvite                          |
+| POST   | `/users/:id/password-reset`     | 🔒         | `users.manage`  | IssueResetLink                        |
+| PATCH  | `/users/:id/role`               | 🔒         | `users.manage`  | ChangeUserRole                        |
+| POST   | `/users/:id/disable`            | 🔒         | `users.manage`  | SetUserStatus                         |
+| POST   | `/users/:id/enable`             | 🔒         | `users.manage`  | SetUserStatus                         |
+| GET    | `/audit-logs`                   | 🔒         | `audit.view`    | ListAuditLogs                         |
+| GET    | `/audit-logs/export?format=csv` | 🔒         | `audit.view`    | ExportAuditLogs                       |
+| GET    | `/audit-logs/:id`               | 🔒         | `audit.view`    | GetAuditLog                           |
+| GET    | `/ingest-keys`                  | 🔒         | `ingest.manage` | ListIngestKeys                        |
+| POST   | `/ingest-keys`                  | 🔒         | `ingest.manage` | CreateIngestKey (key returned once)   |
+| DELETE | `/ingest-keys/:id`              | 🔒         | `ingest.manage` | RevokeIngestKey                       |
+| POST   | `/ingest`                       | ingest key | —               | AuthenticateIngestKey, IngestEvents   |
+| GET    | `/health`                       | —          | —               | Database ping; never blocked by setup |
+| GET    | `/api/health`                   | —          | —               | Container healthcheck (see below)     |
 
-Until setup is complete, every `/api` route except `/setup/*` answers `403 { code: "SETUP_REQUIRED" }`; afterwards `/setup/*` answers 404.
+`/health` has no `/api` prefix. `/api/health` is what Docker and the installer poll: it pings Postgres, and Redis too when `NODE_ENV=production` (in development the in-memory cache stands in), each with a 2-second timeout. It answers only `200 {"status":"ok"}` or `503 {"status":"unavailable"}`, never which part failed, because it's public ([health-check.service.ts](../backend/src/infrastructure/services/health-check.service.ts)).
+
+Until setup is complete, every `/api` route except `/setup/*` and `/health` answers `403 { code: "SETUP_REQUIRED" }`; afterwards `/setup/*` answers 404.
+
+**`POST /api/ingest`** is for programs, not people. It takes `Authorization: Bearer <ingest key>` instead of a session ([ingest-key.middleware.ts](../backend/src/presentation/middlewares/ingest-key.middleware.ts)), and a body `{ events: [{ message, level?, timestamp?, fields? }] }` checked against Loki's own limits ([ingest.schema.ts](../backend/src/presentation/validators/ingest.schema.ts)). It's mounted before the app-wide 100 KB JSON parser, with its own 1 MB one that only runs once the key checks out. Each event is stored with three labels, `service=ingest`, `source=<key name>` and `level`; everything else stays inside the line, because every distinct label value is a separate Loki stream. The request id goes in as structured metadata. The answer comes only after Loki confirms: `202 { accepted }`, or `503 LOG_STORE_UNAVAILABLE` (nothing stored; retry) when Loki is down. Rate limits: 600 requests a minute per key, and 60 refused requests per 15 minutes per address (Loki outages don't count). The details for senders are in [INSTALL.md](../INSTALL.md#sending-events-to-siemple).
 
 ---
 
@@ -594,6 +626,7 @@ Until setup is complete, every `/api` route except `/setup/*` answers `403 { cod
 
 ```bash
 cd backend
+npm run db:up            # (repository root) Postgres + Redis in Docker, including the siemple_test database
 npm test                 # unit + integration (integration needs TEST_DATABASE_URL)
 npm run typecheck:tests  # tests use the same strict TypeScript as the app
 npm run migration:check  # models and migrated schema match
@@ -601,7 +634,7 @@ npm run migration:check  # models and migrated schema match
 
 - **Unit tests** ([tests/unit](../backend/tests/unit)) use in-memory fakes: the permission matrix, `authorize`/`authenticate`, the session re-check, admin guards, token hashing and lifetimes, invite delivery, login auditing and hash upgrades, bcrypt cost, settings rules.
 - **Integration tests** ([tests/integration](../backend/tests/integration)) run the real app against a **real Postgres** that [database.ts](../backend/tests/helpers/database.ts) drops and rebuilds from the migrations (a fresh install every file). They refuse to run unless `TEST_DATABASE_URL` is set and differs from `DATABASE_URL`.
-- **Tests never send email:** [setup-env.ts](../backend/tests/setup-env.ts) blanks the email settings, so links always come back in responses.
+- **Tests never send email or touch a real Loki:** [setup-env.ts](../backend/tests/setup-env.ts) blanks the email settings and `LOKI_URL`, so links always come back in responses. [ingest.test.ts](../backend/tests/integration/ingest.test.ts) starts its own fake Loki (a small HTTP server) and checks exactly what reaches it.
 
 The audit log's guarantees are tested at the database, not just in code: [audit-guarantees.test.ts](../backend/tests/integration/audit-guarantees.test.ts) proves `UPDATE`, `DELETE` and `TRUNCATE` are rejected (and the rows are byte-identical afterwards), and makes audit inserts fail for real to prove that sign-in and 403s survive a failed write while a role change is rolled back. [audit-api.test.ts](../backend/tests/integration/audit-api.test.ts) covers paging over rows with identical timestamps, every filter, validation, access control and the CSV export; [audit-events.test.ts](../backend/tests/integration/audit-events.test.ts) and [audit-trail.test.ts](../backend/tests/integration/audit-trail.test.ts) cover what each event records and that simultaneous requests keep their own actor and request id.
 
@@ -611,26 +644,61 @@ The concurrency guarantees each have a test: setup ([setup-race.test.ts](../back
 
 ## 18. Operating an install
 
-| Task                 | How                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| Configure            | Copy [backend/.env.example](../backend/.env.example) to `.env`                       |
-| First start          | `npm run dev` (or `start`): runs migrations, prints the setup token banner           |
-| Lost the setup token | `npm run setup-token` (only while setup is pending)                                  |
-| Upgrade              | Deploy the new code and restart: pending migrations run on start                     |
-| Admin locked out     | `npm run reset-admin -- admin@acme.com` → open the printed link (30 min, once)       |
-| Behind nginx/Traefik | Set `TRUST_PROXY` (e.g. `1`) so audit IPs are real                                   |
-| No mail server       | Leave `SMTP_HOST` empty: admins get copy-link boxes; "forgot password" sends nothing |
-| Migrations by hand   | `npm run migration:run` / `migration:revert` / `migration:show`                      |
-| More or less logging | `LOG_LEVEL=debug` (or `warn`, `error`…); logs are JSON lines on stdout               |
+Customers install with Docker; [INSTALL.md](../INSTALL.md) is their manual. This section is how it's built.
+
+```text
+browser ──► web (nginx) ──► api (Node) ──► postgres, redis, loki
+            serves the React build,       migrate: one-shot job that applies
+            proxies /api and /grafana/    migrations before api starts
+                 └──► grafana ──► loki
+```
+
+| Piece                                               | What it does                                                                                                                                                                                                                              |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [backend/Dockerfile](../backend/Dockerfile)         | Multi-stage `node:24-alpine`: compiles TypeScript, installs production dependencies only, runs as the `node` user. The same image runs the API and `node dist/cli/migrate.js`.                                                            |
+| [frontend/Dockerfile](../frontend/Dockerfile)       | Builds the Vite bundle, serves it from `nginx:1.30-alpine`                                                                                                                                                                                |
+| [frontend/nginx/](../frontend/nginx)                | SPA fallback, caching (hashed assets forever, `index.html` never), CSP and other security headers, gzip, the `/api` and `/grafana/` proxies (Grafana keeps its own CSP)                                                                   |
+| [grafana/](../grafana)                              | The `siemple-grafana` image: Grafana 13 with the Loki data source, the SIEMple logs dashboard and Logs Drilldown built in; sign-up, anonymous access and calls home are off                                                               |
+| [docker-compose.yml](../docker-compose.yml)         | The install: postgres, redis, migrate, api, web, loki, grafana, and Caddy for HTTPS under the `https` profile. Only web (or Caddy) publishes a port. Settings come from `.env` ([.env.example](../.env.example)).                         |
+| [install.sh](../install.sh)                         | `install`, `update`, `backup [--no-logs]`, `restore`, `status`, `token`, `uninstall [--purge]`; downloads a GitHub release's files into `/opt/siemple`. A backup is a database dump plus a `-volumes.tar.gz` of Loki's and Grafana's data |
+| [docker.yml](../.github/workflows/docker.yml)       | Builds the three images (api, web, grafana) and scans them with Trivy on every PR; publishes amd64 + arm64 images to GHCR on `main` and on `v*` tags; attaches the install files to the release                                           |
+| [docker-compose.dev.yml](../docker-compose.dev.yml) | Development only: Postgres (`localhost:5433`, with `siemple_test`), Redis, Loki (`localhost:3100`) and Grafana (`localhost:3000/grafana/`, admin / siemple) for `npm run dev` (`npm run db:up` / `db:down`)                               |
+
+**Start order.** Postgres and Redis must be healthy, then `migrate` must exit 0, then the API starts; web waits for the API's healthcheck (`/api/health`, section 15). A failed migration leaves the old schema in place and the API stopped. The API also retries the database for about two minutes at boot, and Redis forever, so a slow start or a Docker restart after a reboot doesn't need a human.
+
+**Client IPs.** nginx overwrites `X-Forwarded-For` with the address it sees and the API trusts exactly one proxy (`TRUST_PROXY=1`), so a client can't forge the IP in the audit log. Behind Caddy, nginx takes the client IP from Caddy's header, but only for connections from the Caddy container (`TRUSTED_PROXY=caddy`, [40-siemple-real-ip.sh](../frontend/nginx/40-siemple-real-ip.sh)).
+
+**Cookies.** The refresh cookie is `Secure` only when `APP_URL` starts with `https://`. Tying it to `NODE_ENV` instead would make browsers drop it on a plain-HTTP LAN install and sign everyone out on every reload.
+
+**Setup token.** Only its hash is stored, so a lost token can't be shown again. Until setup is complete, every start issues a new one and prints it as a fixed line (`==== SIEMple setup token: … ====`); `install.sh token` runs [setup-token.ts](../backend/src/cli/setup-token.ts) inside the API container.
+
+**Logs.** Loki keeps logs on the `loki-data` volume for `LOKI_RETENTION` (30 days), with its port unpublished. Its config is inline in the compose file, so an install still needs only that file and `.env`. Grafana's admin password comes from `GRAFANA_ADMIN_PASSWORD`, which compose requires; the installer generates it, and `install.sh update` adds it to an older `.env`. Grafana reads it only on its first start. Loki's image has no shell, so it has no Docker healthcheck; the API waits for it to start and copes with it not being ready yet.
+
+**Releasing.** Push a tag `vX.Y.Z`: CI publishes images tagged `X.Y.Z`, `X.Y` and `latest`, then attaches `docker-compose.yml`, `env.example` and `install.sh` to the GitHub release (GitHub renames uploads that start with a dot). A tag with a hyphen (`v1.3.0-rc.1`) is a pre-release and never becomes `latest`.
+
+Running the code directly, without Docker:
+
+| Task                 | How                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configure            | Copy [backend/.env.example](../backend/.env.example) to `.env`                                                                                                   |
+| First start          | `npm run dev` (or `start`): runs migrations, prints the setup token banner                                                                                       |
+| Lost the setup token | `npm run setup-token` (only while setup is pending)                                                                                                              |
+| Upgrade              | Deploy the new code and restart: pending migrations run on start                                                                                                 |
+| Admin locked out     | `npm run reset-admin -- admin@acme.com` → open the printed link (30 min, once). In Docker: `docker compose exec api node dist/cli/reset-admin.js admin@acme.com` |
+| Behind nginx/Traefik | Set `TRUST_PROXY` (e.g. `1`) so audit IPs are real                                                                                                               |
+| No mail server       | Leave `SMTP_HOST` empty: admins get copy-link boxes; "forgot password" sends nothing                                                                             |
+| Migrations by hand   | `npm run migration:run` / `migration:revert` / `migration:show`                                                                                                  |
+| More or less logging | `LOG_LEVEL=debug` (or `warn`, `error`…); logs are JSON lines on stdout                                                                                           |
 
 ### Logging
 
 The backend logs with **pino** ([logger.ts](../backend/src/infrastructure/logging/logger.ts)) to stdout: one JSON object per line in production, so customers can ship it to their own log tooling; coloured readable lines when `NODE_ENV=development` (via `pino-pretty`, a dev dependency); nothing during tests.
 
 - **Application code** depends on the `ILogger` port ([logger.interface.ts](../backend/src/application/interfaces/services/logger.interface.ts)), injected as `TYPES.Logger`; `logger.child({ module: 'email' })` tags entries. Pino itself stays in infrastructure.
-- **Requests** get one line each from `pino-http`, with a request id. A well-formed `X-Request-Id` from the proxy is reused, so proxy and app logs line up. `/health` is not logged. 4xx logs as `warn`, 5xx as `error`.
+- **Requests** get one line each from `pino-http`, with a request id. A well-formed `X-Request-Id` from the proxy is reused, so proxy and app logs line up. `/health` and `/api/health` are not logged (Docker polls the latter every few seconds). 4xx logs as `warn`, 5xx as `error`.
 - **Unhandled errors** are logged by the error handler through `req.log`, so the stack carries the request id.
 - **Secrets stay out:** request headers, cookies and bodies are never logged; query strings are dropped (invite and reset links carry `?token=`); and fields named `password`, `token`, `refreshToken`, `link`… are replaced with `[REDACTED]` as a second line of defence.
+- **Loki too:** with `LOKI_URL` set (Docker sets it for the API), every line also goes to Loki through [loki-stream.ts](../backend/src/infrastructure/logging/loki-stream.ts), labelled `service=siemple-backend`, `environment` and `level`, with the request id as structured metadata. stdout still gets every line. Lines are sent every 2 seconds; while Loki is unreachable they're kept (up to 10,000, oldest dropped first) and retried, with one warning when it goes away and one when it's back, and shutdown sends what's left. It's our own code because `pino-loki` turns pino's ISO timestamps into `NaN` and drops batches Loki isn't ready for.
 - **Plain console output on purpose:** the setup-token banner (the one place a raw token is printed, for a person), the CLI commands, and the invalid-config message (printed before the logger exists).
 
 The audit log is something else: a permanent, database-backed record of security events for admins. Logs are for operating and debugging the server.
@@ -680,7 +748,7 @@ The audit log is something else: a permanent, database-backed record of security
 
 **Why does the audit cursor carry the timestamp as text?** The database stores microseconds and JavaScript dates hold milliseconds. Rounding would make two rows from the same millisecond skip or repeat across a page boundary.
 
-**Why do migrations run on server start?** So a customer upgrades by restarting. Each migration runs in a transaction; a failure stops start-up before any request is served.
+**Why do migrations run before the app starts?** So a customer upgrades by pulling new images and restarting. In Docker a separate one-shot `migrate` container applies them and the API starts only if it exits successfully; without Docker the server applies them itself on start. Each migration runs in a transaction; a failure stops start-up before any request is served.
 
 **Why does "forgot password" do its work in the background?** Issuing a link and talking to the mail server take time only for real accounts; doing it before answering would let anyone time the response to learn which emails exist.
 
@@ -702,3 +770,7 @@ The audit log is something else: a permanent, database-backed record of security
 | Most audit writes follow the change       | Only role and status changes share its transaction; for other actions a failed write is logged, so the action stands without its entry |
 | Alert and rule permissions are unused     | Defined now for the alert module                                                                                                       |
 | Email delivery is untested end to end     | Tests always run without email by design; check a real invite by hand                                                                  |
+| Grafana has its own sign-in               | One admin account from `.env`; signing in to Grafana with a SIEMple account (OAuth) would remove the second login                      |
+| Loki indexes only labels                  | Searching inside lines scans them; fine for one organization's volume, slow if many labels were added                                  |
+| Grafana image carries upstream CVEs       | All in Grafana's own Go binaries and bundled plugins; fixed only by new Grafana releases (Trivy reports them without blocking)         |
+| Only HTTP ingest                          | No syslog receiver or host agent yet; a Grafana Alloy agent could ship to the same Loki                                                |
