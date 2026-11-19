@@ -221,7 +221,7 @@ add_missing_settings() {
 show_grafana_login() {
   local user
   user="$(get_env GRAFANA_ADMIN_USER)"
-  echo "Logs: $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
+  echo "Health (Grafana): $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
 }
 
 # Runs a shell command in a throwaway container that has Loki's and Grafana's data mounted at
@@ -450,7 +450,7 @@ cmd_status() {
   echo "Install folder: $SIEMPLE_DIR"
   echo "Version:        $(get_env SIEMPLE_VERSION)"
   echo "Address:        $(get_env APP_URL)"
-  echo "Logs (Grafana): $(get_env APP_URL)/grafana/"
+  echo "Health:         $(get_env APP_URL)/grafana/"
   echo
   compose ps -a --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
   echo

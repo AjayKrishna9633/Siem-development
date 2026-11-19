@@ -9,6 +9,9 @@
 #   REDIS_URL=redis://127.0.0.1:6379
 #
 # The credentials are fixed and not secret: both ports listen on 127.0.0.1 only.
+#
+# No Loki, Alloy or Grafana here: they collect container logs, and `npm run dev` runs the API on
+# the host. To see the SIEMple Health dashboard, run the whole stack: `npm run stack:up`.
 
 # A separate project name, so dev data never mixes with a full stack started from the same folder.
 name: siemple-dev
