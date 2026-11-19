@@ -28,6 +28,8 @@ export const AUDIT_CATEGORY_BY_ACTION: Readonly<Record<AuditAction, AuditCategor
   [AuditAction.ACCESS_DENIED]: AuditCategory.AUTH,
   [AuditAction.USER_UPDATED]: AuditCategory.USER,
   [AuditAction.AUDIT_EXPORTED]: AuditCategory.SYSTEM,
+  [AuditAction.INGEST_KEY_CREATED]: AuditCategory.SYSTEM,
+  [AuditAction.INGEST_KEY_REVOKED]: AuditCategory.SYSTEM,
   [AuditAction.SYSTEM_SETTINGS_CHANGED]: AuditCategory.SYSTEM,
 };
 
