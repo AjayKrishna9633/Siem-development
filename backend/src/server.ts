@@ -3,7 +3,7 @@ import { appOrigin, env } from './config/env.config.ts';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { connectWithRetry } from './infrastructure/database/connect-with-retry.ts';
 import { emailConfigured, issueSetupToken, redisClient } from './infrastructure/di/index.ts';
-import { logger } from './infrastructure/logging/logger.ts';
+import { flushLogs, logger } from './infrastructure/logging/logger.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
 
 await connectWithRetry(() => AppDataSource.initialize(), logger);
@@ -59,6 +59,8 @@ const shutdown = async (signal: NodeJS.Signals) => {
     if (AppDataSource.isInitialized) await AppDataSource.destroy();
     if (redisClient.status === 'ready') await redisClient.quit();
     else redisClient.disconnect();
+    // Last, so the shutdown lines above reach Loki too.
+    await flushLogs();
     process.exit(0);
   } catch (err) {
     logger.error('Shutdown failed', { err });
