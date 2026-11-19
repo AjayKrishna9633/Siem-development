@@ -1,6 +1,6 @@
 # Builds, scans and publishes the SIEMple container images.
 #
-#   pull request -> check the install files, build both images, scan them (nothing is published)
+#   pull request -> check the install files, build the images, scan them (nothing is published)
 #   push to main -> also publish :main and :sha-<commit> (for testing; `latest` doesn't move)
 #   tag vX.Y.Z   -> also publish :X.Y.Z, :X.Y and :latest, and attach the install files to the
 #                   GitHub release that install.sh downloads from
@@ -14,7 +14,9 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - 'grafana/**'
       - 'docker-compose.yml'
+      - 'docker-compose.dev.yml'
       - '.env.example'
       - 'install.sh'
       - '.github/workflows/docker.yml'
@@ -56,9 +58,11 @@ jobs:
           cp .env.example .env
           sed -i -e 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/' \
                  -e 's/^REDIS_PASSWORD=$/REDIS_PASSWORD=ci/' \
-                 -e 's/^JWT_SECRET=$/JWT_SECRET=ci-secret-that-is-at-least-32-characters/' .env
+                 -e 's/^JWT_SECRET=$/JWT_SECRET=ci-secret-that-is-at-least-32-characters/' \
+                 -e 's/^GRAFANA_ADMIN_PASSWORD=$/GRAFANA_ADMIN_PASSWORD=ci/' .env
           docker compose config --quiet
           COMPOSE_PROFILES=https DOMAIN=siem.example.com docker compose config --quiet
+          docker compose -f docker-compose.dev.yml config --quiet
 
   images:
     needs: validate
@@ -77,6 +81,10 @@ jobs:
           - name: web
             context: frontend
             title: SIEMple web
+          # Grafana with SIEMple's data source and dashboards built in.
+          - name: grafana
+            context: grafana
+            title: SIEMple Grafana
     env:
       PUBLISH: ${{ github.event_name == 'push' }}
     steps:
@@ -170,7 +178,7 @@ jobs:
           sbom: true
 
   # Attaches the three files install.sh downloads to the GitHub release for the tag, creating
-  # the release (with generated notes) if it doesn't exist yet. Runs only after both images
+  # the release (with generated notes) if it doesn't exist yet. Runs only after all images
   # are published, so a release never points at images that aren't there.
   release:
     needs: images
