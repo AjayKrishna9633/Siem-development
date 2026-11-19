@@ -47,8 +47,11 @@ Commands:
   update             Back up the database, then upgrade to the latest (or --version X) release
       --version X      Release to move to
       --no-backup      Skip the backup taken before updating
-  backup             Save a database backup to $SIEMPLE_DIR/backups
-  restore FILE       Replace ALL current data with a backup (takes a safety backup first)
+  backup             Save a backup to $SIEMPLE_DIR/backups: the database, plus the stored logs
+                     and Grafana's data (Loki and Grafana pause for the copy)
+      --no-logs        Database only (quick; this is what update takes)
+  restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). Logs
+                     and Grafana are restored too when the matching -volumes.tar.gz is next to it
       --yes            Don't ask for confirmation
   status             Show the containers, their health and the running version
   token              Issue a new setup token (only before setup is completed)
@@ -95,7 +98,7 @@ check_prerequisites() {
 
 # Every command except install runs against an existing install.
 require_install() {
-  [ -f "$SIEMPLE_DIR/docker-compose.yml" ] && [ -f "$SIEMPLE_DIR/.env" ] \
+  { [ -f "$SIEMPLE_DIR/docker-compose.yml" ] && [ -f "$SIEMPLE_DIR/.env" ]; } \
     || die "No SIEMple install found in $SIEMPLE_DIR (set SIEMPLE_DIR if it's elsewhere)."
   cd "$SIEMPLE_DIR"
 }
@@ -183,7 +186,7 @@ start_stack() {
   if ! compose up -d --wait --remove-orphans; then
     warn "SIEMple didn't become healthy. Recent logs:"
     compose ps -a >&2 || true
-    compose logs --tail 30 migrate api web caddy >&2 2>/dev/null || true
+    compose logs --tail 30 migrate api web grafana caddy >&2 2>/dev/null || true
     die "Start failed. Fix the problem above, then run: $SIEMPLE_DIR/install.sh update"
   fi
 }
@@ -201,6 +204,38 @@ show_setup_token() {
   else
     ok "Setup has already been completed: sign in at $(get_env APP_URL)"
   fi
+}
+
+# Settings added by later releases that compose requires. An .env from an older install gets
+# them filled in on update; existing values are never changed.
+add_missing_settings() {
+  if [ -z "$(get_env GRAFANA_ADMIN_PASSWORD)" ]; then
+    set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
+    ok "Generated a Grafana admin password (GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
+  case "$(get_env COMPOSE_PROFILES)" in
+    *https*) [ -n "$(get_env GRAFANA_COOKIE_SECURE)" ] || set_env GRAFANA_COOKIE_SECURE true ;;
+  esac
+}
+
+show_grafana_login() {
+  local user
+  user="$(get_env GRAFANA_ADMIN_USER)"
+  echo "Logs: $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
+}
+
+# Runs a shell command in a throwaway container that has Loki's and Grafana's data mounted at
+# /loki and /var/lib/grafana, and $SIEMPLE_DIR/backups at /backup. It uses the Grafana image
+# (already on this host, and it has tar), as root because Loki's files belong to another user.
+# Containers are found by service, so this works whatever the compose project is called.
+with_data_volumes() {
+  local loki grafana image
+  loki="$(compose ps -aq loki)"
+  grafana="$(compose ps -aq grafana)"
+  { [ -n "$loki" ] && [ -n "$grafana" ]; } || die "Loki or Grafana isn't installed; start SIEMple first."
+  image="$(docker inspect -f '{{.Config.Image}}' "$grafana")"
+  docker run --rm --user 0 --entrypoint sh --volumes-from "$loki" --volumes-from "$grafana" \
+    -v "$SIEMPLE_DIR/backups:/backup" "$image" -c "$1"
 }
 
 # ── Commands ────────────────────────────────────────────────────────────────
@@ -237,8 +272,10 @@ cmd_install() {
     set_env POSTGRES_PASSWORD "$(random_secret 24)"
     set_env REDIS_PASSWORD "$(random_secret 24)"
     set_env JWT_SECRET "$(random_secret 32)"
+    set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
     if [ -n "$domain" ]; then
       set_env COMPOSE_PROFILES https
+      set_env GRAFANA_COOKIE_SECURE true
       set_env DOMAIN "$domain"
       set_env APP_URL "${url:-https://$domain}"
       set_env TRUSTED_PROXY caddy
@@ -254,11 +291,14 @@ cmd_install() {
     ok "Created .env with newly generated secrets"
   fi
   set_env SIEMPLE_VERSION "${tag#v}"
+  # An .env kept from an older install may lack settings this release requires.
+  add_missing_settings
 
   info "Downloading images..."
   compose pull --quiet
   start_stack
   ok "SIEMple ${tag} is running at $(get_env APP_URL)"
+  show_grafana_login
   show_setup_token
 }
 
@@ -278,13 +318,16 @@ cmd_update() {
   current="$(get_env SIEMPLE_VERSION)"
   info "Updating SIEMple ${current:-?} -> ${tag#v}"
 
-  [ "$backup" = 0 ] || cmd_backup
+  # Database only: an update doesn't touch the stored logs, and copying them can take a while.
+  [ "$backup" = 0 ] || cmd_backup --no-logs
 
   # The previous compose file is kept, so a failed update can be rolled back by hand.
   cp docker-compose.yml docker-compose.yml.previous
   fetch_release_files "$tag"
   set_env SIEMPLE_VERSION "${tag#v}"
-  # A release may add settings with safe defaults; existing values are never touched.
+  # A release may add settings: required ones are generated here, the rest have safe defaults.
+  # Existing values are never touched.
+  add_missing_settings
   compose config --quiet || die "The new docker-compose.yml doesn't accept this .env (see above)."
 
   info "Downloading images..."
@@ -296,13 +339,21 @@ cmd_update() {
 }
 
 cmd_backup() {
+  local logs=1
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --no-logs) logs=0; shift ;;
+      *) die "Unknown option for backup: $1" ;;
+    esac
+  done
   require_install
-  local user db file
+  local user db stamp file
   user="$(get_env POSTGRES_USER)"; user="${user:-siemple}"
   db="$(get_env POSTGRES_DB)"; db="${db:-siemple}"
   mkdir -p backups
   chmod 700 backups
-  file="backups/siemple-$(date +%Y%m%d-%H%M%S).dump"
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  file="backups/siemple-$stamp.dump"
   info "Backing up the database to $SIEMPLE_DIR/$file"
   # Custom format: compressed, and restorable with pg_restore --clean into an existing database.
   # Written owner-only, since it holds every account and audit record.
@@ -310,7 +361,23 @@ cmd_backup() {
     rm -f "$file"
     die "Backup failed. Is the postgres container running? (install.sh status)"
   fi
-  ok "Backup saved ($(du -h "$file" | cut -f1)). Copy it somewhere off this machine too."
+  ok "Database saved ($(du -h "$file" | cut -f1))"
+
+  if [ "$logs" = 1 ]; then
+    local volumes="siemple-$stamp-volumes.tar.gz"
+    info "Backing up the stored logs and Grafana to $SIEMPLE_DIR/backups/$volumes"
+    # Stopped for the copy so their files are consistent. Meanwhile the API keeps its own log
+    # lines until Loki is back, and ingest clients get 503 and retry.
+    compose stop loki grafana > /dev/null
+    if ! with_data_volumes "umask 077 && tar czf '/backup/$volumes' -C / loki var/lib/grafana"; then
+      rm -f "backups/$volumes"
+      compose start loki grafana > /dev/null
+      die "Copying the logs failed (the database backup above is fine)."
+    fi
+    compose start loki grafana > /dev/null
+    ok "Logs and Grafana saved ($(du -h "backups/$volumes" | cut -f1))"
+  fi
+  echo "Copy the backups somewhere off this machine too."
 }
 
 cmd_restore() {
@@ -327,14 +394,23 @@ cmd_restore() {
   [ -f "$file" ] || die "Backup file not found: $file"
   file="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
   require_install
+  # Logs and Grafana come from the archive taken with the same backup, when it's there.
+  local volumes="${file%.dump}-volumes.tar.gz"
+  [ -f "$volumes" ] || volumes=''
 
   if [ "$yes" = 0 ]; then
     warn "This replaces ALL current SIEMple data with the contents of $file."
+    if [ -n "$volumes" ]; then
+      warn "Stored logs and Grafana's data are replaced from $volumes."
+    else
+      warn "No matching -volumes.tar.gz: stored logs and Grafana's data stay as they are."
+    fi
     confirm "Type 'restore' to continue: " restore || die "Cancelled."
   fi
 
-  # A safety net in case the wrong file was chosen.
-  cmd_backup
+  # A safety net in case the wrong file was chosen; it includes the logs only when they are
+  # about to be replaced.
+  if [ -n "$volumes" ]; then cmd_backup; else cmd_backup --no-logs; fi
   local user db
   user="$(get_env POSTGRES_USER)"; user="${user:-siemple}"
   db="$(get_env POSTGRES_DB)"; db="${db:-siemple}"
@@ -350,6 +426,20 @@ cmd_restore() {
     start_stack
     die "Restore failed (see the error above)."
   fi
+  if [ -n "$volumes" ]; then
+    info "Restoring the stored logs and Grafana from $volumes"
+    compose stop loki grafana > /dev/null
+    # The helper sees only the backups folder, so an archive from elsewhere is copied in first.
+    local name
+    name="$(basename "$volumes")"
+    if [ "$(dirname "$volumes")" != "$SIEMPLE_DIR/backups" ]; then
+      name="restore-volumes.tar.gz"
+      cp "$volumes" "backups/$name"
+    fi
+    with_data_volumes "rm -rf /loki/* /var/lib/grafana/* && tar xzf '/backup/$name' -C /" \
+      || warn "Restoring the logs failed; the database was restored. See the error above."
+    rm -f "backups/restore-volumes.tar.gz"
+  fi
   # Starting the stack runs migrations, so a backup from an older version is brought up to date.
   start_stack
   ok "Restore complete."
@@ -360,6 +450,7 @@ cmd_status() {
   echo "Install folder: $SIEMPLE_DIR"
   echo "Version:        $(get_env SIEMPLE_VERSION)"
   echo "Address:        $(get_env APP_URL)"
+  echo "Logs (Grafana): $(get_env APP_URL)/grafana/"
   echo
   compose ps -a --format 'table {{.Service}}\t{{.State}}\t{{.Status}}\t{{.Ports}}'
   echo
@@ -391,11 +482,12 @@ cmd_uninstall() {
   fi
 
   if [ "$yes" = 0 ]; then
-    warn "This permanently deletes the SIEMple database, certificates, images and settings (.env)."
+    warn "This permanently deletes the SIEMple database, stored logs, Grafana, certificates, images and settings (.env)."
     [ -d backups ] && warn "Backups in $SIEMPLE_DIR/backups are kept."
     confirm "Type 'delete' to continue: " delete || die "Cancelled."
   fi
-  # -v removes the named volumes (database, Redis, certificates); --rmi all removes the images.
+  # -v removes the named volumes (database, Redis, logs, Grafana, certificates); --rmi all
+  # removes the images.
   compose --profile https down --volumes --rmi all --remove-orphans
   rm -f docker-compose.yml docker-compose.yml.previous .env .env.example install.sh
   cd /
