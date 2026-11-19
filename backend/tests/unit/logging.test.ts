@@ -110,4 +110,29 @@ describe('HTTP request logging', () => {
     await request(appWith(logger)).get('/health');
     expect(lines).toHaveLength(0);
   });
+
+  // The app mounts every feature as a router (app.use('/api/users', router)); inside one, Express
+  // shortens req.url to the part after the mount point.
+  it('names the full path for requests answered inside a mounted router', async () => {
+    const { logger, lines } = captureLogger();
+    const app = express();
+    app.use(createHttpLogger(logger));
+    const router = express.Router();
+    router.post('/complete', (_req, res) => {
+      res.status(201).json({});
+    });
+    router.post('/', (_req, res) => {
+      res.status(202).json({});
+    });
+    app.use('/api/setup', router);
+    app.use('/api/ingest', router);
+
+    await request(app).post('/api/setup/complete?x=1');
+    await request(app).post('/api/ingest');
+
+    expect(lines.map((l) => l.msg)).toEqual([
+      'POST /api/setup/complete 201',
+      'POST /api/ingest 202',
+    ]);
+  });
 });

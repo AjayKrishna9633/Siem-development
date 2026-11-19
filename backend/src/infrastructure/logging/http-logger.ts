@@ -8,6 +8,12 @@ const REQUEST_ID = /^[\w.-]{1,128}$/;
 
 const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0] ?? '';
 
+// The full request path. Inside a router mounted with app.use('/api/users', ...) Express shortens
+// req.url to the part after the mount point, and the response can finish while it still is; the
+// message is written then, so it would read "GET / 200". originalUrl is never shortened.
+const fullPath = (req: IncomingMessage) =>
+  pathOnly((req as IncomingMessage & { originalUrl?: string }).originalUrl ?? req.url);
+
 const HEALTH_PATHS = new Set(['/health', '/api/health']);
 
 export const createHttpLogger = (logger: Logger) =>
@@ -27,8 +33,8 @@ export const createHttpLogger = (logger: Logger) =>
       if (res.statusCode >= 400) return 'warn';
       return 'info';
     },
-    customSuccessMessage: (req, res) => `${req.method} ${pathOnly(req.url)} ${res.statusCode}`,
-    customErrorMessage: (req, res) => `${req.method} ${pathOnly(req.url)} ${res.statusCode}`,
+    customSuccessMessage: (req, res) => `${req.method} ${fullPath(req)} ${res.statusCode}`,
+    customErrorMessage: (req, res) => `${req.method} ${fullPath(req)} ${res.statusCode}`,
     serializers: {
       req: (req: { id: string; method: string; url: string; raw: IncomingMessage }) => ({
         id: req.id,
