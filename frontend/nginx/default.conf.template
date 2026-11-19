@@ -1,7 +1,9 @@
-# SIEMple web server: serves the React build and proxies /api to the API container.
+# SIEMple web server: serves the React build, proxies /api to the API container and /grafana/ to
+# Grafana.
 #
 # This is a template. At container start the nginx image's entrypoint replaces ${API_UPSTREAM}
-# (set in the Dockerfile, overridable from compose) and writes the result to conf.d/default.conf.
+# and ${GRAFANA_UPSTREAM} (set in the Dockerfile, overridable from compose) and writes the result
+# to conf.d/default.conf.
 # Only variables that exist in the environment are replaced, so nginx's own $variables are safe.
 
 # WebSocket support: forward the Upgrade handshake when the client asks for one, otherwise
@@ -36,6 +38,7 @@ server {
     # IP during an update, and doesn't refuse to start if the api isn't up yet.
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $api_backend http://${API_UPSTREAM};
+    set $grafana_backend http://${GRAFANA_UPSTREAM};
 
     # Proto the API should see. Normally our own scheme; behind the optional Caddy proxy (the only
     # client whose X-Forwarded-For nginx trusts, see 40-siemple-real-ip.sh) take Caddy's value.
@@ -64,6 +67,30 @@ server {
         # default. The API sets its own security and cache headers (helmet), so none are added here.
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
+    }
+
+    # Grafana, the log viewer. It serves itself from /grafana/ (GF_SERVER_SERVE_FROM_SUB_PATH), so
+    # the path is passed on unchanged. Grafana sets its own security headers, including a
+    # Content-Security-Policy that fits it; the app's (security-headers.conf) would break it.
+    location /grafana/ {
+        proxy_pass $grafana_backend;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Real-IP $remote_addr;
+        # Grafana Live (dashboard updates) is a WebSocket.
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 300s;
+    }
+
+    # /grafana without the slash. Relative, so it keeps whatever host and port the browser used
+    # (nginx listens on 80 inside the container, which may be published on another port).
+    location = /grafana {
+        absolute_redirect off;
+        return 301 /grafana/;
     }
 
     # Container healthcheck (see the Dockerfile). Kept out of the access log so it isn't flooded.

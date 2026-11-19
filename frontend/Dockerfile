@@ -20,9 +20,11 @@ RUN npm run build
 # running.
 FROM nginx:1.30-alpine AS runtime
 
-# host:port of the API, substituted into the nginx template at startup. Compose can override it.
-# TRUSTED_PROXY is empty by default (trust no X-Forwarded-For); see 40-siemple-real-ip.sh.
+# host:port of the API and of Grafana, substituted into the nginx template at startup. Compose
+# can override them. TRUSTED_PROXY is empty by default (trust no X-Forwarded-For); see
+# 40-siemple-real-ip.sh.
 ENV API_UPSTREAM=api:4000 \
+    GRAFANA_UPSTREAM=grafana:3000 \
     TRUSTED_PROXY=""
 
 # The image's entrypoint renders /etc/nginx/templates/*.template into conf.d/ and runs the
