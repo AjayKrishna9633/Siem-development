@@ -5,7 +5,25 @@ SIEMple is a self-hosted SIEM (Security Information and Event Management) consol
 - The first administrator is created through a first-run setup that only someone with access to the server can complete.
 - Administrators invite people by email and role (Tier 1 Analyst, Tier 2 Analyst, Administrator); nobody signs up on their own.
 - Every security-relevant action lands in an append-only audit log.
-- SIEMple's own logs, and events other programs send to `POST /api/ingest` with an ingest key, are stored in Grafana Loki and browsed in the built-in Grafana at `/grafana/`.
+- A built-in Grafana at `/grafana/` shows whether SIEMple itself is healthy (see [Log flows](#log-flows)).
+
+## Log flows
+
+SIEMple moves logs in exactly two ways, and keeps them apart on purpose:
+
+| Flow               | Path                                                                | What it carries                                                                                                        | Status   |
+| ------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1. Security events | Wazuh agents ──► SIEMple pipeline ──► database ──► rules ──► alerts | Events from the machines you protect                                                                                   | Planned  |
+| 2. SIEMple health  | SIEMple's own containers ──► Alloy ──► Loki ──► Grafana             | HTTP access logs, app logs and container logs of SIEMple's own stack (api, web, postgres, redis, loki, grafana, alloy) | Built in |
+
+Flow 2 answers one question: **is SIEMple itself healthy?** Grafana opens on the **SIEMple Health** dashboard: request rate, 5xx error rate, p95 latency by route, log volume by service and recent errors. The API writes structured JSON to stdout; Alloy reads the log files of this compose project's containers only (read-only, without the Docker socket) and labels each line with just `service`, `level` and `env`. Loki keeps them for 14 days.
+
+What Grafana deliberately does **not** do:
+
+- It never receives security events. Wazuh events go through flow 1 to the database, rules and alerts; nothing sends them to Loki.
+- It accepts nothing from outside: there is no ingest API, syslog receiver, remote agent or Windows event collection, and Loki and Alloy publish no ports.
+- It is not where analysts investigate or alert. That is the SIEMple console.
+- It never sees secrets: request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token are kept out of the logs.
 
 ## Install with Docker
 
@@ -31,14 +49,14 @@ Requires Node.js 24 (see [.nvmrc](.nvmrc)) and Docker for the database.
 
 ```bash
 npm install && npm install --prefix backend && npm install --prefix frontend
-npm run db:up                                # Postgres :5433, Redis :6379, Loki :3100, Grafana :3000, in Docker
+npm run db:up                                # Postgres :5433 and Redis :6379 in Docker
 cp backend/.env.example backend/.env         # points at those; set JWT_SECRET, and NODE_ENV=development for readable logs
 npm run dev                                  # backend on :4000 and frontend on :5173
 ```
 
-The setup token is printed in the backend's output on start. Set `LOKI_URL=http://localhost:3100` in `backend/.env` to also see the backend's logs in Grafana at http://localhost:3000/grafana/ (admin / siemple). `npm run db:down` stops the containers and keeps their data.
+The setup token is printed in the backend's output on start. `npm run db:down` stops the containers and keeps their data.
 
-To run the whole stack in containers the way an install does, built from this checkout: copy [.env.example](.env.example) to `.env` in the repository root, fill in its four secrets, then `npm run stack:up` (open http://localhost) and `npm run stack:down`.
+To run the whole stack in containers the way an install does, built from this checkout: copy [.env.example](.env.example) to `.env` in the repository root, fill in its four secrets, then `npm run stack:up` (open http://localhost, and http://localhost/grafana/ for the SIEMple Health dashboard) and `npm run stack:down`.
 
 | Read                                           | For                                                                  |
 | ---------------------------------------------- | -------------------------------------------------------------------- |

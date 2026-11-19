@@ -8,8 +8,7 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 - [Install](#install)
 - [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux)
 - [First-time setup](#first-time-setup)
-- [Logs (Grafana)](#logs-grafana)
-- [Sending events to SIEMple](#sending-events-to-siemple)
+- [SIEMple health (Grafana)](#siemple-health-grafana)
 - [HTTPS](#https)
 - [Everyday tasks](#everyday-tasks)
 - [Updating](#updating)
@@ -26,7 +25,7 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                  |
 | Memory  | 2 GB RAM                                                                                                                        |
-| Disk    | 5 GB free, plus room for the database and the stored logs to grow (logs are kept 30 days by default)                            |
+| Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                         |
 | Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`) |
 | Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS                                                 |
 
@@ -52,7 +51,7 @@ The installer:
 2. downloads the release's `docker-compose.yml` and settings template into `/opt/siemple`;
 3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only);
 4. downloads the images and starts the containers, waiting until every one reports healthy;
-5. prints the address to open, where to find the logs (Grafana) and a **setup token**.
+5. prints the address to open, where to find the SIEMple Health dashboard (Grafana) and a **setup token**.
 
 Options go after `bash -s --` when piping, or after `install.sh` when running a downloaded copy:
 
@@ -83,13 +82,15 @@ The token is valid for 24 hours. Until setup is complete, a new token is issued 
 sudo /opt/siemple/install.sh token
 ```
 
-## Logs (Grafana)
+## SIEMple health (Grafana)
 
-SIEMple keeps its own logs, and the events other programs send it, in [Loki](https://grafana.com/oss/loki/). You browse them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
+SIEMple collects the logs of its own containers (api, web, postgres, redis, loki, grafana, alloy) with [Alloy](https://grafana.com/oss/alloy/), keeps them in [Loki](https://grafana.com/oss/loki/) and shows them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
 
 ```
 <your SIEMple address>/grafana/
 ```
+
+This answers one question: **is SIEMple itself healthy?** It holds no security events: those come from Wazuh agents through SIEMple's own pipeline, and nothing else can send logs in. There is no ingest API, syslog receiver or remote agent, and Loki and Alloy publish no ports.
 
 Grafana has its own sign-in, separate from SIEMple's. The user is `admin` and the password was generated during the install:
 
@@ -105,55 +106,17 @@ cd /opt/siemple && sudo docker compose exec grafana grafana cli admin reset-admi
 
 What's there:
 
-- **Dashboards → SIEMple → SIEMple logs**: log volume by level, error and warning counts, events per sender, and the log lines themselves. Filter by service, source, level and text at the top. `service` is `siemple-backend` for SIEMple's own logs and `ingest` for events sent to it; `source` is the name of the ingest key an event came with.
+- **Dashboards → SIEMple → SIEMple Health**: API request rate, 5xx error rate, p95 latency by route, log volume by service and the most recent errors.
 - **Drilldown → Logs**: point-and-click exploring, no query language needed.
-- **Explore**: write [LogQL](https://grafana.com/docs/loki/latest/query/) queries, for example `{service="ingest", source="firewall"} | json | level="error"`.
+- **Explore**: write [LogQL](https://grafana.com/docs/loki/latest/query/) queries, for example `{service="api", level="error"}` or `{service="api"} | json | route="/api/users" | status >= 500`.
 
-The SIEMple dashboards can't be edited in place (an update would overwrite them); use **Save as** to make your own copy. Logs are deleted after 30 days; change that with `LOKI_RETENTION` (see [Settings](#settings)).
+Every line has three labels: `service` (the container: `api`, `web`, `postgres`, …), `level` (`info`, `warn`, `error`, `fatal`) and `env`. The API's request lines are JSON with `requestId`, `method`, `route` (the route template, like `/api/users/:id`), `status` and `durationMs`. Request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token never reach the logs, and health checks are left out.
 
-Grafana and Loki don't contact the internet: usage reporting, update checks and plugin downloads are switched off, so they work on networks without internet access.
+The SIEMple dashboard can't be edited in place (an update would overwrite it); use **Save as** to make your own copy. Logs are deleted after 14 days; change that with `LOKI_RETENTION` (see [Settings](#settings)).
 
-## Sending events to SIEMple
+Grafana, Loki and Alloy don't contact the internet: usage reporting, update checks and plugin downloads are switched off, so they work on networks without internet access.
 
-Programs, scripts and devices send events to `POST /api/ingest` with an **ingest key**. Each key has a name, which becomes the event's `source` in Grafana, so make one key per sender.
-
-Create a key on the server (or as an administrator through `POST /api/ingest-keys`):
-
-```bash
-cd /opt/siemple && sudo docker compose exec api node dist/cli/ingest-key.js create firewall
-```
-
-It prints the key once; only a fingerprint of it is stored, so copy it then. `list` shows every key and when it was last used, and `revoke <id>` stops one from working immediately. Creating and revoking keys is recorded in the audit log.
-
-Send events in batches:
-
-```bash
-curl -X POST https://siem.example.com/api/ingest \
-  -H "Authorization: Bearer siemple_ik_..." \
-  -H "Content-Type: application/json" \
-  -d '{"events": [
-        {"level": "error", "message": "Login failed for root", "fields": {"host": "fw-01", "ip": "203.0.113.7"}},
-        {"message": "Config saved"}
-      ]}'
-```
-
-| Field       | Required | Meaning                                                                                                       |
-| ----------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| `message`   | yes      | The event text, up to 32 KB                                                                                   |
-| `level`     | no       | `trace`, `debug`, `info` (default), `warn`, `error` or `fatal`                                                |
-| `timestamp` | no       | When it happened: ISO 8601 with a time zone (`2026-11-18T10:00:00Z`) or milliseconds since 1970. Default: now |
-| `fields`    | no       | Any JSON values (up to 100), searchable in Grafana with `\| json`                                             |
-
-Limits: 1,000 events and 1 MB per request, each event under 64 KB, timestamps from 7 days ago to 10 minutes ahead, and 600 requests a minute per key. Send fewer, larger batches rather than one event per request.
-
-| Answer | Meaning                                                                                      |
-| ------ | -------------------------------------------------------------------------------------------- |
-| `202`  | Stored. The body says how many: `{"data": {"accepted": 2}}`                                  |
-| `400`  | Something in the batch is wrong; the response names the event and field. Nothing was stored. |
-| `401`  | The key is missing, wrong or revoked                                                         |
-| `413`  | The request is over 1 MB                                                                     |
-| `429`  | Too many requests; slow down                                                                 |
-| `503`  | Log storage isn't reachable right now. Nothing was stored: send the same batch again later.  |
+**How Alloy reads the logs.** Alloy reads Docker's log files from `/var/lib/docker/containers`, mounted read-only, and drops every line that doesn't belong to this SIEMple install before sending anything. It deliberately doesn't use the Docker socket, which gives full control of Docker and so root on the server. If Docker keeps its data elsewhere (snap Docker, or a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env`.
 
 ## HTTPS
 
@@ -204,8 +167,7 @@ The installer keeps a copy of itself in the install folder:
 | See what's running             | `sudo /opt/siemple/install.sh status`                                                            |
 | Follow the application log     | `cd /opt/siemple && sudo docker compose logs -f api`                                             |
 | Get a new setup token          | `sudo /opt/siemple/install.sh token`                                                             |
-| Browse the logs                | Open `<your SIEMple address>/grafana/` (see [Logs](#logs-grafana))                               |
-| Create an ingest key           | `cd /opt/siemple && sudo docker compose exec api node dist/cli/ingest-key.js create <name>`      |
+| Check SIEMple's health         | Open `<your SIEMple address>/grafana/` (see [SIEMple health](#siemple-health-grafana))           |
 | Back up                        | `sudo /opt/siemple/install.sh backup`                                                            |
 | Update                         | `sudo /opt/siemple/install.sh update`                                                            |
 | Stop SIEMple                   | `cd /opt/siemple && sudo docker compose stop`                                                    |
@@ -244,8 +206,8 @@ sudo /opt/siemple/install.sh backup
 
 This writes two files to `/opt/siemple/backups/`, both readable by root only:
 
-- `siemple-<date>-<time>.dump`: the whole database, compressed: every account, password hash, setting, ingest key fingerprint and audit record.
-- `siemple-<date>-<time>-volumes.tar.gz`: the stored logs and Grafana's own data (its users and any dashboards you saved). Loki and Grafana pause for the few seconds the copy takes; SIEMple keeps its own log lines until Loki is back, and senders get `503` and retry.
+- `siemple-<date>-<time>.dump`: the whole database, compressed: every account, password hash, setting and audit record.
+- `siemple-<date>-<time>-volumes.tar.gz`: the stored logs and Grafana's own data (its users and any dashboards you saved). Loki and Grafana pause for the few seconds the copy takes; Alloy sends the lines from that pause once Loki is back.
 
 `backup --no-logs` saves only the database, which is quicker when there are many logs; updates take that kind of backup. Copy backups to another machine regularly: a backup on the same disk doesn't survive that disk failing.
 
@@ -285,7 +247,9 @@ Settings you're most likely to change:
 | `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email for invitations and password resets. Without `SMTP_HOST`, administrators get the links to pass on by hand. |
 | `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                         |
-| `LOKI_RETENTION`                                                    | How long logs are kept, in hours: `720h` (30 days) by default, `2160h` for 90 days                               |
+| `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                      |
+| `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                            |
+| `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                       |
 | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.       |
 | `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                           |
 
@@ -367,7 +331,7 @@ docker compose exec api node dist/cli/setup-token.js
 
 This prints a fresh token (any earlier one stops working). Open `http://localhost` on the server, enter the token, and when asked for the address people will use, enter your `APP_URL` (`http://192.168.1.20`).
 
-The logs are at `http://192.168.1.20/grafana/`: sign in as `admin` with your `GRAFANA_ADMIN_PASSWORD` (see [Logs](#logs-grafana)).
+The SIEMple Health dashboard is at `http://192.168.1.20/grafana/`: sign in as `admin` with your `GRAFANA_ADMIN_PASSWORD` (see [SIEMple health](#siemple-health-grafana)).
 
 ### 5. Let other computers connect
 
@@ -395,7 +359,6 @@ Then open `http://192.168.1.20` from any computer on the same network.
 | Stop SIEMple                   | `docker compose stop`                                                            |
 | Start it again                 | `docker compose up -d`                                                           |
 | Get a new setup token          | `docker compose exec api node dist/cli/setup-token.js`                           |
-| Create an ingest key           | `docker compose exec api node dist/cli/ingest-key.js create <name>`              |
 | An administrator is locked out | `docker compose exec api node dist/cli/reset-admin.js admin@example.com`         |
 | Update to the latest code      | Back up first (below), then `git pull` and `docker compose up -d --build --wait` |
 
@@ -455,16 +418,14 @@ cd /opt/siemple && sudo docker compose ps -a && sudo docker compose logs --tail 
 
 **The setup token doesn't work.** A newer one was issued when SIEMple restarted. Run `sudo /opt/siemple/install.sh token` and use the token it prints.
 
-**Grafana says the password is wrong after I changed `GRAFANA_ADMIN_PASSWORD`.** That setting is only read on Grafana's first start. Reset the password with the command under [Logs](#logs-grafana).
+**Grafana says the password is wrong after I changed `GRAFANA_ADMIN_PASSWORD`.** That setting is only read on Grafana's first start. Reset the password with the command under [SIEMple health](#siemple-health-grafana).
 
-**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; SIEMple keeps its lines until then. Check the time range at the top right, then `sudo docker compose logs loki api | grep -i loki`.
-
-**A sender gets `503` from `/api/ingest`.** Loki isn't reachable. `sudo /opt/siemple/install.sh status` shows whether it's running; the events weren't stored, so the sender should retry.
+**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy` (it should be healthy) and `sudo docker compose logs alloy`. If Docker keeps its data outside `/var/lib/docker` (snap Docker, a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env` and run `sudo docker compose up -d`.
 
 ## Security notes
 
-- Only the web port (or ports 80 and 443 with HTTPS) is published. The database, Redis, Loki and the API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
-- Ingest keys are shown once and stored only as a fingerprint. Give each sender its own key, and revoke a key as soon as it's no longer needed or may have leaked.
+- Only the web port (or ports 80 and 443 with HTTPS) is published. The database, Redis, Loki, Alloy and the API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
+- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port. Alloy reads Docker's log files read-only and has no access to the Docker socket.
 - Grafana's image ships with known vulnerabilities in Grafana's own components that only a new Grafana release can fix; SIEMple moves to new Grafana versions as they're published. Keep it behind the sign-in and up to date.
 - `.env` holds every secret and is readable by root only. Don't copy it anywhere it could be read by others.
 - Backups contain everything SIEMple stores. Keep them as protected as the server.
