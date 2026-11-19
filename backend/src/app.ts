@@ -14,8 +14,6 @@ import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { auditLogsRoutes } from './presentation/routes/audit-logs.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { healthRoutes } from './presentation/routes/health.routes.ts';
-import { ingestKeysRoutes } from './presentation/routes/ingest-keys.routes.ts';
-import { ingestRoutes } from './presentation/routes/ingest.routes.ts';
 import { auditAccessDenied } from './presentation/middlewares/access-denied-audit.middleware.ts';
 import { requestContextMiddleware } from './presentation/middlewares/request-context.middleware.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
@@ -26,8 +24,6 @@ app.use(httpLogger);
 app.use(helmet());
 app.use(cors({ origin: appOrigin, credentials: true }));
 app.use(di.setupGuardMiddleware);
-// Before the JSON parser below: ingest batches have their own, larger body limit.
-app.use('/api/ingest', ingestRoutes(di.ingestController, di.ingestKeyMiddleware));
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 app.use(requestContextMiddleware(di.requestContextProvider));
@@ -49,7 +45,6 @@ app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
 app.use('/api/auth', inviteRoutes(di.inviteController));
 app.use('/api/users', usersRoutes(di.usersController, di.authMiddleware));
 app.use('/api/audit-logs', auditLogsRoutes(di.auditLogsController, di.authMiddleware));
-app.use('/api/ingest-keys', ingestKeysRoutes(di.ingestKeysController, di.authMiddleware));
 
 app.use(notFoundHandler);
 app.use(auditAccessDenied(di.auditService));

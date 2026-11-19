@@ -14,7 +14,6 @@ const MATRIX: [Permission, boolean, boolean, boolean][] = [
   [Permission.USERS_MANAGE, true, false, false],
   [Permission.SETTINGS_MANAGE, true, false, false],
   [Permission.AUDIT_VIEW, true, false, false],
-  [Permission.INGEST_MANAGE, true, false, false],
 ];
 
 describe('role permissions', () => {

@@ -25,8 +25,4 @@ export enum SuccessMessage {
   EMAIL_CHANGED = 'Email address changed successfully',
   AUDIT_LOGS_FETCHED = 'Audit log retrieved successfully',
   AUDIT_LOG_FETCHED = 'Audit log entry retrieved successfully',
-  INGEST_KEY_CREATED = 'Ingest key created. Copy it now: it will not be shown again',
-  INGEST_KEYS_FETCHED = 'Ingest keys retrieved',
-  INGEST_KEY_REVOKED = 'Ingest key revoked',
-  EVENTS_STORED = 'Events stored',
 }
