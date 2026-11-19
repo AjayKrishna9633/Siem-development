@@ -64,6 +64,13 @@ jobs:
           COMPOSE_PROFILES=https DOMAIN=siem.example.com docker compose config --quiet
           docker compose -f docker-compose.dev.yml config --quiet
 
+      # The Alloy pipeline lives inline in docker-compose.yml; check it parses with the pinned Alloy.
+      - name: Validate the Alloy config
+        run: |
+          image="$(docker compose config --format json | jq -r '.services.alloy.image')"
+          docker compose config --format json | jq -r '.configs["alloy-config"].content' > config.alloy
+          docker run --rm -v "$PWD/config.alloy:/config.alloy:ro" "$image" fmt /config.alloy > /dev/null
+
   images:
     needs: validate
     runs-on: ubuntu-latest
