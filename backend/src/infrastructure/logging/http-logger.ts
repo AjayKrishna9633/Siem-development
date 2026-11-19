@@ -11,16 +11,29 @@ const HEALTH_PATHS = new Set(['/health', '/api/health']);
 
 const UNMATCHED_ROUTE = 'unmatched';
 
-type RoutedRequest = IncomingMessage & { routeTemplate?: string; ip?: string };
+type RoutedRequest = IncomingMessage & { routeTemplate?: string; mountPath?: string; ip?: string };
 
 const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0] ?? '';
 
 // The route template ("/api/users/:id"), never the raw URL: ids and tokens stay out of the log,
 // and every request to one route groups together in Grafana. Express sets req.route when a route
-// matches, and req.baseUrl is the router's mount path at that moment. It is restored when the
-// request leaves the router (an error handled at app level, for one), so it is read on the spot.
+// matches, and req.baseUrl is the router's mount path at that moment. Both are reset when the
+// request leaves the router (an error handled at app level, for one), so they are read as Express
+// sets them. A request that fails in a router's own middleware (authentication, say) before any
+// route matches is logged under the router's mount path: "/api/users/*".
 const captureRouteTemplate = (req: Request) => {
+  const routed = req as RoutedRequest;
   let route: Request['route'];
+  let baseUrl = req.baseUrl;
+  Object.defineProperty(req, 'baseUrl', {
+    configurable: true,
+    enumerable: true,
+    get: () => baseUrl,
+    set(value: string) {
+      baseUrl = value;
+      if (value && value.length > (routed.mountPath?.length ?? 0)) routed.mountPath = value;
+    },
+  });
   Object.defineProperty(req, 'route', {
     configurable: true,
     enumerable: true,
@@ -29,13 +42,16 @@ const captureRouteTemplate = (req: Request) => {
       route = value;
       const path: unknown = value?.path;
       if (typeof path === 'string') {
-        (req as RoutedRequest).routeTemplate = `${req.baseUrl}${path === '/' ? '' : path}` || '/';
+        routed.routeTemplate = `${baseUrl}${path === '/' ? '' : path}` || '/';
       }
     },
   });
 };
 
-const routeOf = (req: IncomingMessage) => (req as RoutedRequest).routeTemplate ?? UNMATCHED_ROUTE;
+const routeOf = (req: IncomingMessage) => {
+  const { routeTemplate, mountPath } = req as RoutedRequest;
+  return routeTemplate ?? (mountPath ? `${mountPath}/*` : UNMATCHED_ROUTE);
+};
 
 export const createHttpLogger = (logger: Logger) => {
   const pinoMiddleware = pinoHttp({

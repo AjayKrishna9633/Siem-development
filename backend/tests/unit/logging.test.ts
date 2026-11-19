@@ -150,6 +150,14 @@ describe('HTTP request logging', () => {
     });
     app.use('/api/setup', router);
     app.use('/api/users', router);
+    const guarded = express.Router();
+    guarded.use(() => {
+      throw new Error('database is down');
+    });
+    guarded.get('/', (_req, res) => {
+      res.json({});
+    });
+    app.use('/api/audit-logs', guarded);
     app.use(
       (
         _err: unknown,
@@ -164,12 +172,16 @@ describe('HTTP request logging', () => {
     await request(app).post('/api/setup/complete?x=1');
     await request(app).get('/api/users/0b9c6a5e-1111-4222-8333-444455556666');
     await request(app).delete('/api/users/0b9c6a5e-1111-4222-8333-444455556666');
+    await request(app).get('/api/audit-logs?page=2');
+    await request(app).get('/api/users/0b9c6a5e-1111-4222-8333-444455556666/nope');
     await request(app).get('/api/nothing-here/42');
 
     expect(lines.map((l) => [l.msg, l.route, l.level])).toEqual([
       ['POST /api/setup/complete 201', '/api/setup/complete', 'info'],
       ['GET /api/users/:id 200', '/api/users/:id', 'info'],
       ['DELETE /api/users/:id 500', '/api/users/:id', 'error'],
+      ['GET /api/audit-logs/* 500', '/api/audit-logs/*', 'error'],
+      ['GET /api/users/* 404', '/api/users/*', 'warn'],
       ['GET unmatched 404', 'unmatched', 'warn'],
     ]);
     expect(JSON.stringify(lines)).not.toContain('0b9c6a5e');
