@@ -19,7 +19,6 @@
     "lint": "eslint .",
     "setup-token": "tsx src/cli/setup-token.ts",
     "reset-admin": "tsx src/cli/reset-admin.ts",
-    "ingest-key": "tsx src/cli/ingest-key.ts",
     "seed": "tsx src/cli/seed.ts"
   },
   "dependencies": {

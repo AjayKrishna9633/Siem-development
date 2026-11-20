@@ -1,7 +1,11 @@
 # SIEMple: self-hosted stack.
 #
-#   browser ──► web (nginx: React app + /api proxy) ──► api (Node) ──► postgres, redis, loki
-#                   └─ /grafana/ ──► grafana (log viewer) ──► loki
+#   browser ──► web (nginx: React app + /api proxy) ──► api (Node) ──► postgres, redis
+#                   └─ /grafana/ ──► grafana ──► loki ◄── alloy ◄── this stack's container logs
+#
+# Loki, Alloy and Grafana answer one question: is SIEMple itself healthy? They hold only the
+# logs of this stack's own containers, never security events (those will come from Wazuh agents
+# through their own pipeline).
 #
 # Only `web` publishes a port. With HTTPS enabled (COMPOSE_PROFILES=https in .env), Caddy takes
 # ports 80/443 in front of web and gets certificates automatically.
@@ -13,11 +17,14 @@
 name: siemple
 
 # Docker keeps container logs forever by default; cap them at 3 x 10 MB per container.
+# `labels` makes Docker write the compose project and service names into every log line, which
+# is how Alloy tells this stack's lines from any other container's without the Docker socket.
 x-logging: &logging
   driver: json-file
   options:
     max-size: 10m
     max-file: '3'
+    labels: com.docker.compose.project,com.docker.compose.service
 
 # Shared by the API and the one-shot migrate job. Values with :? stop compose with that message
 # when missing, instead of starting a half-configured stack.
@@ -97,15 +104,8 @@ services:
     image: ${SIEMPLE_API_IMAGE:-ghcr.io/ajaykrishna9633/siemple-api}:${SIEMPLE_VERSION:-latest}
     build: ./backend
     restart: unless-stopped
-    environment:
-      <<: *api-env
-      # Only the long-running API ships its logs; the migrate job's few lines stay in its
-      # container log.
-      LOKI_URL: http://loki:3100
+    environment: *api-env
     depends_on:
-      # Started, not ready: the API keeps its logs until Loki accepts them (~20s).
-      loki:
-        condition: service_started
       migrate:
         condition: service_completed_successfully
       postgres:
@@ -145,29 +145,82 @@ services:
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Log storage. Only reachable inside the stack: nothing publishes its port. Logs are indexed by
-  # a few labels (service, level, source) and kept for LOKI_RETENTION, then deleted.
+  # Log storage for this stack's own container logs. Only reachable inside the stack: nothing
+  # publishes its port. Lines are indexed by three labels (service, level, env) and kept for
+  # LOKI_RETENTION (14 days by default), then deleted.
   loki:
     image: grafana/loki:3.7.10
     restart: unless-stopped
     # expand-env fills ${LOKI_RETENTION} in the config from the environment.
     command: ['-config.file=/etc/loki/config.yaml', '-config.expand-env=true']
     environment:
-      LOKI_RETENTION: ${LOKI_RETENTION:-720h}
+      LOKI_RETENTION: ${LOKI_RETENTION:-336h}
     configs:
       - source: loki-config
         target: /etc/loki/config.yaml
     volumes:
       - loki-data:/loki
-    # The image has no shell or HTTP client, so there is no Docker healthcheck; services that use
-    # Loki wait for it to start and cope with it not being ready yet.
+    # The image has no shell or HTTP client, so there is no Docker healthcheck; Alloy and Grafana
+    # wait for it to start and retry until it is ready (~20s).
     # Not read_only: compose writes the inline config into the container, which a read-only
     # filesystem refuses. The image runs as a non-root user and has no shell.
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Log viewer, at <APP_URL>/grafana/ through nginx (its port isn't published). Comes with the
-  # Loki data source and the SIEMple dashboards built in. Its own sign-in: GRAFANA_ADMIN_USER /
+  # Collects the logs of this compose project's containers and sends them to Loki. No ports, no
+  # listeners: it only reads files.
+  #
+  # Why log files and not the Docker socket: the socket is full control of Docker, which is root
+  # on the host, so anything that can read it can take over the machine. The JSON log files are
+  # mounted read-only instead. Alloy can read every container's file there, but it drops each
+  # line whose com.docker.compose.project (written into the line by the x-logging labels option)
+  # isn't this project, before anything is sent.
+  alloy:
+    image: grafana/alloy:v1.21.3
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      # The status page is only for the healthcheck below; it isn't published.
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/alloy-data
+      - --disable-reporting
+    environment:
+      # Lines from containers of any other compose project are dropped.
+      SIEMPLE_PROJECT: ${COMPOSE_PROJECT_NAME:-siemple}
+      # The `env` label, to tell installs apart if their logs are ever viewed together.
+      SIEMPLE_ENV: ${SIEMPLE_ENV:-production}
+    configs:
+      - source: alloy-config
+        target: /etc/alloy/config.alloy
+    volumes:
+      # Where Docker keeps container logs. Different with snap Docker
+      # (/var/snap/docker/common/var-lib-docker/containers) or a custom data-root.
+      - ${DOCKER_CONTAINERS_DIR:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
+      # How far each file has been read, so a restart neither re-sends nor skips lines.
+      - alloy-data:/alloy-data
+    depends_on:
+      loki:
+        condition: service_started
+    healthcheck:
+      # The image has bash but no HTTP client; /dev/tcp is bash's own TCP connection.
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/127.0.0.1/12345 && printf 'GET /-/ready HTTP/1.0\r\n\r\n' >&3 && grep -q ' 200 ' <&3
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    # Runs as root only so it can read the root-owned log files; it needs no capabilities for that.
+    # Not read_only: compose writes the inline config into the container.
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  # Health view, at <APP_URL>/grafana/ through nginx (its port isn't published). Comes with the
+  # Loki data source and the SIEMple Health dashboard built in. Its own sign-in: GRAFANA_ADMIN_USER /
   # GRAFANA_ADMIN_PASSWORD, which only take effect on the very first start (after that the
   # password lives in Grafana's database; change it in Grafana).
   grafana:
@@ -232,7 +285,7 @@ configs:
   # which -config.expand-env fills from its environment.
   loki-config:
     content: |
-      auth_enabled: false # one tenant; only the API and Grafana can reach Loki
+      auth_enabled: false # one tenant; only Alloy and Grafana can reach Loki
       server:
         http_listen_port: 3100
         log_level: warn
@@ -257,9 +310,11 @@ configs:
               prefix: index_
               period: 24h
       limits_config:
-        retention_period: $${LOKI_RETENTION:-720h}
-        # Extra per-line fields (request id, user) without making them labels.
-        allow_structured_metadata: true
+        retention_period: $${LOKI_RETENTION:-336h}
+        # Keep exactly the labels Alloy sets (service, level, env): Loki would otherwise add a
+        # service_name label and a detected level of its own.
+        discover_service_name: []
+        discover_log_levels: false
         # Lets Grafana draw the log-volume histogram.
         volume_enabled: true
       compactor:
@@ -271,10 +326,110 @@ configs:
         # Don't send usage statistics to Grafana Labs.
         reporting_enabled: false
 
+  # Alloy's pipeline: this project's container log files ──► filter and parse ──► Loki.
+  # $$ reaches Alloy as $; sys.env reads Alloy's own environment (set on the service above).
+  alloy-config:
+    content: |
+      // Every container's JSON log file. Docker writes one line per log line:
+      // {"log":"...","stream":"stdout","attrs":{...},"time":"..."}
+      local.file_match "containers" {
+        path_targets = [{"__path__" = "/var/lib/docker/containers/*/*-json.log"}]
+        sync_period  = "10s"
+      }
+
+      loki.source.file "containers" {
+        targets    = local.file_match.containers.targets
+        forward_to = [loki.process.siemple.receiver]
+      }
+
+      loki.process "siemple" {
+        // Unwrap Docker's envelope. attrs holds the compose labels (see x-logging).
+        stage.json {
+          expressions = {
+            line    = "log",
+            time    = "time",
+            project = "attrs.\"com.docker.compose.project\"",
+            service = "attrs.\"com.docker.compose.service\"",
+          }
+        }
+
+        // Only this compose project. Lines from any other container (no attrs, or another
+        // project) are dropped here and never leave Alloy.
+        stage.labels {
+          values = { project = "", service = "" }
+        }
+        stage.match {
+          selector = "{project!=\"" + sys.env("SIEMPLE_PROJECT") + "\"}"
+          action   = "drop"
+          drop_counter_reason = "other_project"
+        }
+
+        stage.timestamp {
+          source = "time"
+          format = "RFC3339Nano"
+        }
+        stage.output {
+          source = "line"
+        }
+
+        // The setup token is printed once at start for the administrator; it is a secret and
+        // never goes to Loki.
+        stage.drop {
+          expression          = ".*SIEMple setup token.*"
+          drop_counter_reason = "secret"
+        }
+        // Health-check noise: nginx access lines and API lines for a successful health check.
+        stage.drop {
+          expression          = ".*\"GET /(api/)?health(z)?[^ \"]* HTTP/[0-9.]+\" 200 .*"
+          drop_counter_reason = "healthcheck"
+        }
+        stage.drop {
+          expression          = ".*\"msg\":\"GET /(api/)?health 200\".*"
+          drop_counter_reason = "healthcheck"
+        }
+
+        // Level: the API writes JSON with "level"; Grafana and Loki write level=...; Postgres
+        // ERROR: / FATAL: / WARNING:; nginx [error] / [warn]. Anything else counts as info.
+        stage.json {
+          expressions = { json_level = "level" }
+        }
+        stage.regex {
+          expression = "(?i)(?:level=|\\[)(?P<tag_level>fatal|panic|error|warning|warn)\\b"
+        }
+        stage.regex {
+          expression = "\\b(?P<pg_level>FATAL|PANIC|ERROR|WARNING):"
+        }
+        stage.template {
+          source   = "level"
+          template = "{{ $$l := or .json_level .tag_level .pg_level \"info\" | ToLower }}{{ if eq $$l \"warning\" }}warn{{ else if eq $$l \"panic\" }}fatal{{ else }}{{ $$l }}{{ end }}"
+        }
+        stage.labels {
+          values = { level = "" }
+        }
+
+        stage.static_labels {
+          values = { env = sys.env("SIEMPLE_ENV") }
+        }
+        // Exactly three labels. User ids, IPs, request ids and paths stay in the line, never
+        // labels: each distinct label value makes a new stream, and these would make millions.
+        stage.label_keep {
+          values = ["service", "level", "env"]
+        }
+
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki:3100/loki/api/v1/push"
+        }
+      }
+
 volumes:
   pgdata:
   redisdata:
   loki-data:
+  alloy-data:
   grafana-data:
   caddy_data:
   caddy_config:

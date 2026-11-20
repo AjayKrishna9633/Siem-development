@@ -17,8 +17,6 @@ const envSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   ),
-  // Loki's address (http://loki:3100 in Docker). When set, logs also go to Loki; stdout is kept.
-  LOKI_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   TRUST_PROXY: z.preprocess(
     (v) => {
       if (v === undefined || v === '' || v === 'false') return undefined;

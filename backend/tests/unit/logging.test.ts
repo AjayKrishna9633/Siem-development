@@ -78,9 +78,10 @@ describe('HTTP request logging', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       msg: 'GET /api/auth/invite 400',
-      level: 40,
-      req: { method: 'GET', path: '/api/auth/invite' },
-      res: { statusCode: 400 },
+      level: 'warn',
+      method: 'GET',
+      route: '/api/auth/invite',
+      status: 400,
     });
     expect(JSON.stringify(lines[0])).not.toMatch(/secret/);
   });
@@ -91,7 +92,7 @@ describe('HTTP request logging', () => {
 
     const id = res.headers['x-request-id'];
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
-    expect((lines[0]?.req as { id: string }).id).toBe(id);
+    expect(lines[0]?.requestId).toBe(id);
   });
 
   it('reuses a well-formed incoming request id and replaces a malformed one', async () => {
@@ -111,9 +112,29 @@ describe('HTTP request logging', () => {
     expect(lines).toHaveLength(0);
   });
 
+  it('writes one flat JSON line per request: requestId, method, route, status, durationMs', async () => {
+    const { logger, lines } = captureLogger();
+    const res = await request(appWith(logger)).get('/api/users');
+
+    expect(lines).toHaveLength(1);
+    const line = lines[0] as Record<string, unknown>;
+    expect(line).toMatchObject({
+      level: 'info',
+      msg: 'GET /api/users 200',
+      requestId: res.headers['x-request-id'],
+      method: 'GET',
+      route: '/api/users',
+      status: 200,
+    });
+    expect(typeof line.timestamp).toBe('string');
+    expect(typeof line.durationMs).toBe('number');
+    expect(line).not.toHaveProperty('req');
+    expect(line).not.toHaveProperty('res');
+  });
+
   // The app mounts every feature as a router (app.use('/api/users', router)); inside one, Express
-  // shortens req.url to the part after the mount point.
-  it('names the full path for requests answered inside a mounted router', async () => {
+  // shortens req.url to the part after the mount point and restores baseUrl when the request leaves.
+  it('logs the route template, not the raw URL, also for errors handled outside the router', async () => {
     const { logger, lines } = captureLogger();
     const app = express();
     app.use(createHttpLogger(logger));
@@ -121,18 +142,75 @@ describe('HTTP request logging', () => {
     router.post('/complete', (_req, res) => {
       res.status(201).json({});
     });
-    router.post('/', (_req, res) => {
-      res.status(202).json({});
+    router.get('/:id', (_req, res) => {
+      res.json({});
+    });
+    router.delete('/:id', () => {
+      throw new Error('boom');
     });
     app.use('/api/setup', router);
-    app.use('/api/ingest', router);
+    app.use('/api/users', router);
+    const guarded = express.Router();
+    guarded.use(() => {
+      throw new Error('database is down');
+    });
+    guarded.get('/', (_req, res) => {
+      res.json({});
+    });
+    app.use('/api/audit-logs', guarded);
+    app.use(
+      (
+        _err: unknown,
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction,
+      ) => {
+        res.status(500).json({});
+      },
+    );
 
     await request(app).post('/api/setup/complete?x=1');
-    await request(app).post('/api/ingest');
+    await request(app).get('/api/users/0b9c6a5e-1111-4222-8333-444455556666');
+    await request(app).delete('/api/users/0b9c6a5e-1111-4222-8333-444455556666');
+    await request(app).get('/api/audit-logs?page=2');
+    await request(app).get('/api/users/0b9c6a5e-1111-4222-8333-444455556666/nope');
+    await request(app).get('/api/nothing-here/42');
 
-    expect(lines.map((l) => l.msg)).toEqual([
-      'POST /api/setup/complete 201',
-      'POST /api/ingest 202',
+    expect(lines.map((l) => [l.msg, l.route, l.level])).toEqual([
+      ['POST /api/setup/complete 201', '/api/setup/complete', 'info'],
+      ['GET /api/users/:id 200', '/api/users/:id', 'info'],
+      ['DELETE /api/users/:id 500', '/api/users/:id', 'error'],
+      ['GET /api/audit-logs/* 500', '/api/audit-logs/*', 'error'],
+      ['GET /api/users/* 404', '/api/users/*', 'warn'],
+      ['GET unmatched 404', 'unmatched', 'warn'],
     ]);
+    expect(JSON.stringify(lines)).not.toContain('0b9c6a5e');
+  });
+
+  it('never logs a login password, cookies, the Authorization header or a setup token', async () => {
+    const { logger, lines } = captureLogger();
+    const app = express();
+    app.use(createHttpLogger(logger));
+    app.use(express.json());
+    app.post('/api/auth/login', (req, res) => {
+      new PinoLogger(logger).info('Login attempt', { body: req.body, headers: req.headers });
+      res.status(401).json({});
+    });
+    app.post('/api/setup/complete', (req, res) => {
+      new PinoLogger(logger).info('Setup', { setupToken: req.body.setupToken, user: req.body });
+      res.status(400).json({});
+    });
+
+    await request(app)
+      .post('/api/auth/login')
+      .set('Cookie', 'refreshToken=secret-cookie-value')
+      .set('Authorization', 'Bearer secret-jwt-value')
+      .send({ email: 'a@example.com', password: 'secret-login-password' });
+    await request(app)
+      .post('/api/setup/complete')
+      .send({ setupToken: 'secret-setup-token', password: 'secret-admin-password' });
+
+    expect(lines).toHaveLength(4);
+    expect(JSON.stringify(lines)).not.toMatch(/secret-/);
   });
 });

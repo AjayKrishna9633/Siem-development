@@ -23,8 +23,6 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   'system.setup.completed': 'Completed initial setup',
   'system.settings.changed': 'Changed system settings',
   'audit.export': 'Exported the audit log',
-  'ingest.key.create': 'Created an ingest key',
-  'ingest.key.revoke': 'Revoked an ingest key',
 };
 
 const sentenceCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);

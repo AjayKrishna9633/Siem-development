@@ -4,7 +4,6 @@ import { UserModel } from './models/user.model.ts';
 import { AuditLogModel } from './models/audit-log.model.ts';
 import { SystemSettingsModel } from './models/system-settings.model.ts';
 import { AuthTokenModel } from './models/auth-token.model.ts';
-import { IngestKeyModel } from './models/ingest-key.model.ts';
 import { Baseline1793404800000 } from './migrations/1793404800000-Baseline.ts';
 import { RemoveTenancy1793491200000 } from './migrations/1793491200000-RemoveTenancy.ts';
 import { CreateAuditLogs1793577600000 } from './migrations/1793577600000-CreateAuditLogs.ts';
@@ -13,13 +12,14 @@ import { CreateAuthTokens1793750400000 } from './migrations/1793750400000-Create
 import { DropSettingsTimezone1793836800000 } from './migrations/1793836800000-DropSettingsTimezone.ts';
 import { ExtendAuditLogs1793923200000 } from './migrations/1793923200000-ExtendAuditLogs.ts';
 import { CreateIngestKeys1794009600000 } from './migrations/1794009600000-CreateIngestKeys.ts';
+import { DropIngestKeys1794096000000 } from './migrations/1794096000000-DropIngestKeys.ts';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: env.DATABASE_URL,
   synchronize: false,
   logging: false,
-  entities: [UserModel, AuditLogModel, SystemSettingsModel, AuthTokenModel, IngestKeyModel],
+  entities: [UserModel, AuditLogModel, SystemSettingsModel, AuthTokenModel],
   migrations: [
     Baseline1793404800000,
     RemoveTenancy1793491200000,
@@ -29,5 +29,6 @@ export const AppDataSource = new DataSource({
     DropSettingsTimezone1793836800000,
     ExtendAuditLogs1793923200000,
     CreateIngestKeys1794009600000,
+    DropIngestKeys1794096000000,
   ],
 });

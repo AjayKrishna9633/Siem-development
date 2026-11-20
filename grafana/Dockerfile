@@ -1,5 +1,6 @@
-# SIEMple's Grafana: the stock image plus the Loki data source and the SIEMple dashboards, so a
-# fresh install opens with logs ready to browse. Served by nginx under /grafana/.
+# SIEMple's Grafana: the stock image plus the Loki data source and the SIEMple Health dashboard,
+# so a fresh install opens ready to show whether SIEMple itself is healthy. Served by nginx under
+# /grafana/. It only ever sees the logs of SIEMple's own containers, never security events.
 FROM grafana/grafana:13.3.1
 
 # Defaults for a self-hosted, single-company install; compose sets the address and admin login.

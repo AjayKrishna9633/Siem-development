@@ -1,16 +1,9 @@
-import {
-  destination,
-  multistream,
-  pino,
-  stdSerializers,
-  transport,
-  type Logger,
-  type LoggerOptions,
-} from 'pino';
+import { pino, stdSerializers, type Logger, type LoggerOptions } from 'pino';
 import { env } from '../../config/env.config.ts';
 import type { ILogger, LogFields } from '../../application/interfaces/services/logger.interface.ts';
-import { LokiStream } from './loki-stream.ts';
 
+// Request bodies, headers and cookies are never logged on purpose; these paths catch them anyway
+// if one is ever passed as a field, along with every secret-carrying field name.
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -31,65 +24,41 @@ const REDACT_PATHS = [
   '*.accessToken',
   '*.setupToken',
   '*.link',
+  'authorization',
+  'cookie',
+  'body',
+  '*.authorization',
+  '*.cookie',
+  '*.body',
+  'headers.authorization',
+  'headers.cookie',
 ];
 
 export const baseLoggerOptions: LoggerOptions = {
   base: { service: 'siemple-backend' },
-  timestamp: pino.stdTimeFunctions.isoTime,
+  // One JSON object per line on stdout. Alloy collects it from the container log and reads
+  // `level` as a word ("warn"), so it can become a label; pino would otherwise write 40.
+  timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
+  formatters: { level: (label) => ({ level: label }) },
   redact: { paths: REDACT_PATHS, censor: '[REDACTED]' },
   serializers: { err: stdSerializers.err },
 };
 
-const level = env.LOG_LEVEL ?? (env.NODE_ENV === 'test' ? 'silent' : 'info');
-
-const prettyTransport = {
-  target: 'pino-pretty',
-  options: { colorize: true, translateTime: 'SYS:HH:MM:ss', ignore: 'pid,hostname,service' },
-};
-
-// Set when LOKI_URL is: every line then also goes to Loki, labelled with these two values.
-const lokiStream =
-  env.LOKI_URL && level !== 'silent'
-    ? new LokiStream({
-        url: env.LOKI_URL,
-        labels: { service: 'siemple-backend', environment: env.NODE_ENV },
-      })
-    : undefined;
-
-const buildRootLogger = (): Logger => {
-  if (!lokiStream) {
-    return pino({
-      ...baseLoggerOptions,
-      level,
-      ...(env.NODE_ENV === 'development' && { transport: prettyTransport }),
-    });
-  }
-  // The console keeps exactly the output it has without Loki.
-  const consoleStream =
-    env.NODE_ENV === 'development' ? transport(prettyTransport) : destination(1);
-  return pino(
-    { ...baseLoggerOptions, level },
-    multistream([
-      { level, stream: consoleStream },
-      { level, stream: lokiStream },
-    ]),
-  );
-};
-
-export const rootLogger: Logger = buildRootLogger();
-
-/** Sends the lines still waiting for Loki. Called on shutdown; gives up after timeoutMs. */
-export const flushLogs = async (timeoutMs = 3000): Promise<void> => {
-  if (!lokiStream) return;
-  let timer: NodeJS.Timeout | undefined;
-  await Promise.race([
-    lokiStream.flush(),
-    new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, timeoutMs);
-    }),
-  ]);
-  clearTimeout(timer);
-};
+export const rootLogger: Logger = pino({
+  ...baseLoggerOptions,
+  level: env.LOG_LEVEL ?? (env.NODE_ENV === 'test' ? 'silent' : 'info'),
+  ...(env.NODE_ENV === 'development' && {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        timestampKey: 'timestamp',
+        translateTime: 'SYS:HH:MM:ss',
+        ignore: 'pid,hostname,service',
+      },
+    },
+  }),
+});
 
 export class PinoLogger implements ILogger {
   constructor(private readonly _logger: Logger = rootLogger) {}
