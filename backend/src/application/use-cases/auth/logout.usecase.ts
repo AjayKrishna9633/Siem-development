@@ -20,8 +20,6 @@ export class LogoutUseCase implements ILogoutUseCase {
     const userId = await this._sessions.revoke(input.refreshToken);
     if (!userId) return;
 
-    // Logout is driven by the refresh cookie, not a bearer token, so nobody is authenticated on
-    // the request: look the user up to record who signed out.
     const user = await this._users.findById(userId);
     await this._audit.record({
       action: AuditAction.LOGGED_OUT,

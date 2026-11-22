@@ -119,8 +119,7 @@ export class TypeOrmUserRepository
       change(user, activeAdminCount);
       await manager.save(UserModel, this.mapper.toPersistence(user));
 
-      // Same manager, so a failed insert rolls the change back with it. That is the one place a
-      // broken audit write is allowed to fail a request.
+      // Same transaction: a failed audit insert rolls the change back.
       const record = audit?.(user);
       if (record) await insertAuditRecord(manager, record);
       return user;

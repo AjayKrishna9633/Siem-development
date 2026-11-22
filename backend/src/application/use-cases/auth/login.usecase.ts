@@ -51,8 +51,6 @@ export class LoginUseCase implements ILoginUseCase {
       user.recordFailedLogin(now);
       await this._users.save(user);
       await this.recordFailure(input, user, 'wrong_password');
-      // The check above ruled out an already-locked account, so being locked now means this
-      // attempt is the one that tripped the lockout.
       if (user.isLocked(now)) await this.recordLockout(user);
       throw invalidCredentials;
     }
@@ -70,7 +68,6 @@ export class LoginUseCase implements ILoginUseCase {
 
     await this._audit.record({
       action: AuditAction.LOGIN_SUCCEEDED,
-      // Nobody is authenticated on this request yet, so name the user explicitly.
       actor: auditActorOf(user),
       targetType: AuditTargetType.USER,
       targetId: user.id,
@@ -84,7 +81,6 @@ export class LoginUseCase implements ILoginUseCase {
     return this._audit.record({
       action: AuditAction.LOGIN_FAILED,
       outcome: AuditOutcome.FAILURE,
-      // Even a correct-looking account isn't the actor: the person failing to sign in is unproven.
       actor: null,
       ...(user && {
         targetType: AuditTargetType.USER,

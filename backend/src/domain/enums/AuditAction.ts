@@ -1,6 +1,4 @@
 export enum AuditAction {
-  // One action for both outcomes: success when the token opened setup, failure when it was wrong
-  // or expired.
   SETUP_TOKEN_USED = 'auth.setup_token.used',
   SETUP_COMPLETED = 'system.setup.completed',
   LOGIN_SUCCEEDED = 'auth.login.success',
@@ -20,8 +18,7 @@ export enum AuditAction {
   ACCESS_DENIED = 'access.denied',
   USER_UPDATED = 'user.update',
   AUDIT_EXPORTED = 'audit.export',
-  // Reserved: there is no settings-editing feature yet. The name is fixed now so the first
-  // writer doesn't invent a different one.
+  // Reserved for a future settings feature.
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',
 }
 

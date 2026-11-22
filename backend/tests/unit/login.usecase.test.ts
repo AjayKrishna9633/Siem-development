@@ -50,7 +50,6 @@ describe('LoginUseCase', () => {
 
     expect(session.accessToken).toBe('access');
     expect(audit.map((e) => e.action)).toEqual(['auth.login.success']);
-    // Nobody is authenticated yet on a login, so the event names the user itself.
     expect(audit[0]).toMatchObject({ actor: { userId: 'u1', username: 'Ann', role: 'admin' } });
     expect(saved[0]?.toSnapshot().lastLoginIp).toBe('203.0.113.7');
   });
@@ -94,7 +93,6 @@ describe('LoginUseCase', () => {
       metadata: { lockedUntil: expect.any(String) },
     });
 
-    // Further attempts hit the lock: they fail, but they don't re-announce it.
     await expect(wrong()).rejects.toBeDefined();
     expect(audit.filter((e) => e.action === 'auth.account.locked')).toHaveLength(1);
     expect(audit.at(-1)?.metadata).toMatchObject({ reason: 'locked' });

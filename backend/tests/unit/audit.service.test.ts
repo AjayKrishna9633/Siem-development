@@ -14,7 +14,6 @@ import type { IRequestScope } from '../../src/application/interfaces/services/re
 
 const admin = { userId: 'u1', username: 'Ann', role: 'admin' };
 
-// AuditService only writes; the read side of the repository is never called here.
 const readsNotUsed = { findPage: vi.fn(), findById: vi.fn(), countUpTo: vi.fn() };
 
 const setup = (options: { insertFails?: boolean } = {}) => {

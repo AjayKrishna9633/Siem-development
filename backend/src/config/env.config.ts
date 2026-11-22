@@ -9,8 +9,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string().startsWith('postgres'),
   JWT_SECRET: z.string().min(32),
   REDIS_URL: z.string().url(),
-  // The address people open SIEMple at. Decides the CORS origin and whether cookies are Secure.
-  // FRONTEND_URL is the older name, still read so existing .env files keep working.
   APP_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   LOG_LEVEL: z.preprocess(
@@ -48,12 +46,9 @@ if (!parsed.success) {
 export const envConfig = parsed.data;
 export const env = envConfig;
 
-// Origin only (no trailing slash or path), so it compares equal to the browser's Origin header.
 export const resolveAppOrigin = (appUrl: string | undefined, frontendUrl: string): string =>
   new URL(appUrl ?? frontendUrl).origin;
 
 export const appOrigin = resolveAppOrigin(env.APP_URL, env.FRONTEND_URL);
 
-// A Secure cookie is never sent over plain HTTP, so it must follow the scheme people actually
-// use: an install reached at http://<server IP> would otherwise lose its session on refresh.
 export const secureCookies = appOrigin.startsWith('https://');

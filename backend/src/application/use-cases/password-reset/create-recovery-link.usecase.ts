@@ -40,7 +40,6 @@ export class CreateRecoveryLinkUseCase implements ICreateRecoveryLinkUseCase {
 
     await this._audit.record({
       action: AuditAction.PASSWORD_RESET_REQUESTED,
-      // Run from the `reset-admin` command on the server, outside any request.
       actor: SYSTEM_ACTOR,
       targetType: AuditTargetType.USER,
       targetId: user.id,

@@ -5,8 +5,6 @@ import { AppDataSource } from '../../src/infrastructure/database/data-source.ts'
 import { closeDatabase, recreateDatabase } from '../helpers/database.ts';
 import { setupFirstAdmin, type ISignedInUser } from '../helpers/users.ts';
 
-// The HTTP ingest API and its keys were removed. Security events will come from Wazuh agents;
-// SIEMple's own logs are collected from its containers by Alloy.
 describe('removed ingest API', () => {
   let admin: ISignedInUser;
 

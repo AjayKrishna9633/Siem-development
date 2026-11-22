@@ -25,8 +25,6 @@ export class SetUserStatusUseCase implements ISetUserStatusUseCase {
     assertPermission(input.actor, Permission.USERS_MANAGE);
     assertNotSelf(input.actor, input.userId);
 
-    // Disabling an account revokes access, so like a role change its audit row is written in the
-    // same transaction as the change itself.
     const user = await this._users.changeWithAdminLock(
       input.userId,
       (target, activeAdmins) => {

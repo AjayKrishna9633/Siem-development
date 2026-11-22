@@ -115,9 +115,6 @@ describe('the audit log cannot be rewritten', () => {
   });
 });
 
-// A broken audit write must not take the product down, except where the audit row and the change
-// are one transaction. To make the audit insert fail for real, a constraint refuses specific
-// actions; it is removed again in `finally` so the other tests in the file are unaffected.
 describe('when an audit write fails', () => {
   let admin: ISignedInUser;
   let target: ISignedInUser;
@@ -189,7 +186,6 @@ describe('when an audit write fails', () => {
         .send({ role: 'admin' });
 
       expect(res.status).toBe(500);
-      // The failure is generic to the client: no SQL, constraint or table names.
       expect(JSON.stringify(res.body)).not.toMatch(/audit_logs|constraint|CHECK/i);
       expect(await roleOf(target.id)).toBe('t1_analyst');
       expect(await count(`action = 'user.role.change'`)).toBe(rows);
@@ -205,7 +201,6 @@ describe('when an audit write fails', () => {
 
       expect(res.status).toBe(500);
       expect(await statusOf(other.id)).toBe('active');
-      // ...and the user can still use the session they would otherwise have lost.
       await request(app).get('/api/auth/me').set(as(other)).expect(200);
     } finally {
       await unblock();

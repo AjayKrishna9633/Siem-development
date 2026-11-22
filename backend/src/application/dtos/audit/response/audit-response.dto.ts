@@ -4,7 +4,6 @@ import type { AuditMetadata } from '../../../../domain/types/audit.types.ts';
 export interface IAuditLogDto {
   id: string;
   occurredAt: string;
-  // userId is null for the system itself and for anonymous events such as a failed login.
   actor: { id: string | null; username: string | null; role: string | null };
   action: string;
   category: string;

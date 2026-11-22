@@ -2,7 +2,6 @@ import type { IActor } from '../../../types/use-case/actor.types.ts';
 import type { AuditCategory } from '../../../../domain/enums/AuditCategory.ts';
 import type { AuditOutcome } from '../../../../domain/enums/AuditOutcome.ts';
 
-// What the caller asked for. Dates are optional here; the use case turns them into a bounded range.
 export interface IAuditLogQuery {
   from?: Date;
   to?: Date;

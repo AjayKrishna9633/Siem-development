@@ -39,7 +39,6 @@ export class ResetPasswordUseCase implements IResetPasswordUseCase {
 
     await this._audit.record({
       action: AuditAction.PASSWORD_RESET_COMPLETED,
-      // Whoever holds a valid reset link is the user; they are not signed in on this request.
       actor: auditActorOf(user),
       targetType: AuditTargetType.USER,
       targetId: user.id,

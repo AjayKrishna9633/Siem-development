@@ -22,12 +22,8 @@ interface IPageBody {
   data: { items: IEntryDto[]; nextCursor: string | null };
 }
 
-// One fixed moment an hour ago, whole seconds, computed once so every insert in the file agrees on
-// it (calling now() per statement could straddle a second boundary and shift rows).
 const BASE = new Date(Math.floor((Date.now() - 3_600_000) / 1000) * 1000).toISOString();
 
-// Inserts one row per entry of `micros`, that many microseconds after BASE. Equal values tie on
-// occurred_at, which is exactly what keyset pagination has to survive.
 const insertRows = async (action: string, micros: number[]) => {
   await AppDataSource.query(
     `INSERT INTO audit_logs (occurred_at, action, category, outcome)
@@ -131,7 +127,6 @@ describe('audit log API', () => {
       expect((await get('category=user')).every((i) => i.category === 'user')).toBe(true);
       expect((await get(`actorId=${admin.id}`)).every((i) => i.actor.id === admin.id)).toBe(true);
 
-      // `q` matches the actor name, the target label or the action, not the metadata.
       expect((await get('q=nobody')).length).toBe(0);
       const named = await get('q=first%20admin');
       expect(named.length).toBeGreaterThan(0);
@@ -186,8 +181,6 @@ describe('audit log API', () => {
       const cursor = (first.body as IPageBody).data.nextCursor;
       expect(seen).toHaveLength(2);
 
-      // Before the next page is asked for: a brand-new row (newer than everything, so it belongs
-      // before the cursor) and one older than the cursor, between two existing rows.
       await AppDataSource.query(
         `INSERT INTO audit_logs (action, category, outcome) VALUES ('test.live', 'system', 'success')`,
       );
@@ -199,8 +192,6 @@ describe('audit log API', () => {
         .expect(200);
       const later = (next.body as IPageBody).data.items.map((i) => i.id);
 
-      // Nothing from page one repeats, the new head row isn't dragged in, and the 4 rows that
-      // were still to come plus the one slotted in among them are all there.
       expect(later.filter((id) => seen.includes(id))).toEqual([]);
       expect(later).toHaveLength(5);
     });

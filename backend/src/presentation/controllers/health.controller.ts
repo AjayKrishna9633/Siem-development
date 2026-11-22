@@ -8,8 +8,7 @@ import type { IHealthCheckService } from '../../application/interfaces/services/
 export class HealthController {
   constructor(@inject(TYPES.HealthCheckService) private readonly _health: IHealthCheckService) {}
 
-  // Public and unauthenticated, so it says only ok or not: which dependency failed is in the
-  // server log, not in a response anyone on the network can read.
+  // Public: says only ok or not; details go to the server log.
   check = async (_req: Request, res: Response): Promise<void> => {
     const { healthy } = await this._health.check();
     res.setHeader('Cache-Control', 'no-store');

@@ -15,12 +15,7 @@ type RoutedRequest = IncomingMessage & { routeTemplate?: string; mountPath?: str
 
 const pathOnly = (url: string | undefined) => (url ?? '').split('?')[0] ?? '';
 
-// The route template ("/api/users/:id"), never the raw URL: ids and tokens stay out of the log,
-// and every request to one route groups together in Grafana. Express sets req.route when a route
-// matches, and req.baseUrl is the router's mount path at that moment. Both are reset when the
-// request leaves the router (an error handled at app level, for one), so they are read as Express
-// sets them. A request that fails in a router's own middleware (authentication, say) before any
-// route matches is logged under the router's mount path: "/api/users/*".
+// Logs the route template, never the raw URL; a failure in router middleware logs as "/base/*".
 const captureRouteTemplate = (req: Request) => {
   const routed = req as RoutedRequest;
   let route: Request['route'];
@@ -63,7 +58,6 @@ export const createHttpLogger = (logger: Logger) => {
       res.setHeader('X-Request-Id', id);
       return id;
     },
-    // Health checks arrive every few seconds from Docker; logging them would bury real traffic.
     autoLogging: { ignore: (req) => HEALTH_PATHS.has(pathOnly(req.url)) },
     customLogLevel(_req, res, err) {
       if (err || res.statusCode >= 500) return 'error';
@@ -73,9 +67,7 @@ export const createHttpLogger = (logger: Logger) => {
     customSuccessMessage: (req, res) => `${req.method} ${routeOf(req)} ${res.statusCode}`,
     customErrorMessage: (req, res) => `${req.method} ${routeOf(req)} ${res.statusCode}`,
     customAttributeKeys: { responseTime: 'durationMs' },
-    // One flat line per request. Headers, cookies, bodies and the query string are never logged.
-    // pino-http calls this when the request starts (for req.log, so every line logged while
-    // handling it carries the request id) and again when the response is finished.
+    // Called at request start (requestId) and on finish (response fields).
     customProps: (req, res) =>
       res.writableEnded
         ? {

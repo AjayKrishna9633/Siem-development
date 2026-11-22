@@ -37,7 +37,6 @@ describe('first-run setup', () => {
     const health = await request(app).get('/health');
     expect(health.status).toBe(200);
 
-    // Docker polls this before anyone has completed setup.
     const apiHealth = await request(app).get('/api/health');
     expect(apiHealth.status).toBe(200);
     expect(apiHealth.body).toEqual({ status: 'ok' });

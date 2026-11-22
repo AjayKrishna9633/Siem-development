@@ -18,10 +18,7 @@ export const AUDIT_CSV_HEADER = [
   'id',
 ] as const;
 
-// A spreadsheet runs a cell that starts with one of these as a formula. Several of these columns
-// hold text an outsider chose (the username typed into a failed login, a User-Agent, a request
-// id), so `=HYPERLINK(...)` could otherwise run on an admin's machine when they open the export.
-// A leading apostrophe makes the program show the text instead of evaluating it.
+// Cells starting with these run as formulas; a leading ' stops CSV injection.
 const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
 
 export const csvCell = (value: string | null | undefined): string => {

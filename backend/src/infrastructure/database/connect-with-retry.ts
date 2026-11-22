@@ -9,12 +9,6 @@ export interface IRetryOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// Postgres can still be starting when the API or the migrate job starts (a reboot, a slow disk,
-// a first run creating the data folder). Compose waits for it to report healthy on `up`, but
-// not when the Docker daemon itself restarts the containers after a reboot, and `npm run dev`
-// doesn't wait at all, so the app waits too instead of exiting on the first refused connection.
-// Startup only: once connected, the pg pool reconnects by itself.
-// 1s, 2s, 4s ... capped at 15s: about 2 minutes over 12 attempts.
 export const connectWithRetry = async (
   connect: () => Promise<unknown>,
   logger: ILogger,

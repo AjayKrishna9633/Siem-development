@@ -11,7 +11,6 @@ export function auditLogsRoutes(
   const router = Router();
   router.use(authMiddleware, authorize(Permission.AUDIT_VIEW));
 
-  // An export reads up to 100k rows, so it gets a tighter limit than browsing does.
   const exportLimiter = createRateLimiter(
     10,
     'Too many audit exports, please try again later.',

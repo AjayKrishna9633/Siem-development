@@ -1,5 +1,4 @@
-// The marker line has a fixed shape on purpose: install.sh finds the token in `docker compose
-// logs api` by matching "SIEMple setup token:", so change both together.
+// install.sh matches "SIEMple setup token:"; change both together.
 export const setupTokenLine = (token: string, appUrl: string): string =>
   `==== SIEMple setup token: ${token} (open ${appUrl} to complete setup) ====`;
 
