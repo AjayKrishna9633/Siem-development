@@ -1,6 +1,10 @@
 import type { IActor } from '../../../types/use-case/actor.types.ts';
 import type { AgentArch, AgentOs } from '../../../../domain/enums/AgentOs.ts';
 
+export interface IListAgentsInput {
+  actor: IActor;
+}
+
 export interface IListAgentGroupsInput {
   actor: IActor;
 }

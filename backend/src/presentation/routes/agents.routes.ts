@@ -11,6 +11,7 @@ export function agentsRoutes(controller: AgentsController, authMiddleware: Reque
 
   const checkLimiter = createUserRateLimiter(1, 3, ErrorMessage.TOO_MANY_ENROLLMENT_CHECKS);
 
+  router.get('/', authorize(Permission.AGENTS_VIEW), controller.list);
   router.get('/groups', authorize(Permission.AGENTS_MANAGE), controller.groups);
   router.post('/enroll-command', authorize(Permission.AGENTS_MANAGE), controller.enrollCommand);
   router.get(

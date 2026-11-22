@@ -29,6 +29,7 @@ const TYPES = {
   ListAuditLogsUseCase: Symbol.for('ListAuditLogsUseCase'),
   GetAuditLogUseCase: Symbol.for('GetAuditLogUseCase'),
   ExportAuditLogsUseCase: Symbol.for('ExportAuditLogsUseCase'),
+  ListAgentsUseCase: Symbol.for('ListAgentsUseCase'),
   ListAgentGroupsUseCase: Symbol.for('ListAgentGroupsUseCase'),
   GenerateEnrollCommandUseCase: Symbol.for('GenerateEnrollCommandUseCase'),
   CheckEnrollmentUseCase: Symbol.for('CheckEnrollmentUseCase'),

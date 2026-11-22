@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GenerateEnrollCommandUseCase } from '../../src/application/use-cases/agents/generate-enroll-command.usecase.ts';
 import { CheckEnrollmentUseCase } from '../../src/application/use-cases/agents/check-enrollment.usecase.ts';
 import { ListAgentGroupsUseCase } from '../../src/application/use-cases/agents/list-agent-groups.usecase.ts';
+import { ListAgentsUseCase } from '../../src/application/use-cases/agents/list-agents.usecase.ts';
 import type { IAuditService } from '../../src/application/interfaces/services/audit.service.interface.ts';
 import type { IAgentRepository } from '../../src/application/interfaces/repositories/agent.repository.interface.ts';
 import type { IAgentEnrollmentConfig } from '../../src/application/types/use-case/agent.types.ts';
@@ -321,5 +322,20 @@ describe('ListAgentGroups', () => {
       'linux',
       'windows-servers',
     ]);
+  });
+});
+
+describe('ListAgents', () => {
+  it.each([admin, t1, t2])('lets every role read the list (%o)', async (actor) => {
+    manager.agents = [makeAgent()];
+    expect(await new ListAgentsUseCase(manager).execute({ actor })).toHaveLength(1);
+  });
+
+  it('answers 503 when Wazuh is down', async () => {
+    manager.down = true;
+    await rejectsWith(
+      new ListAgentsUseCase(manager).execute({ actor: t1 }),
+      AppErrorCode.AGENT_MANAGER_UNAVAILABLE,
+    );
   });
 });

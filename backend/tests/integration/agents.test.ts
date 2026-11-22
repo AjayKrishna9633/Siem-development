@@ -71,6 +71,14 @@ describe('agents API', () => {
     );
   });
 
+  it('lets an analyst list agents (agents.view)', async () => {
+    manager.agents = [makeAgent({ wazuhId: '003', name: 'fs-01' })];
+    const res = await request(app).get('/api/agents').set(as(t1)).expect(200);
+    expect(res.body.data).toEqual([
+      expect.objectContaining({ wazuhId: '003', name: 'fs-01', status: 'active' }),
+    ]);
+  });
+
   it('lists the Wazuh groups', async () => {
     const res = await request(app).get('/api/agents/groups').set(as(admin)).expect(200);
     expect(res.body.data).toEqual(['default', 'windows-servers']);

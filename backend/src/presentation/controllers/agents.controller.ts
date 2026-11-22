@@ -11,6 +11,7 @@ import {
   enrollmentCheckQuerySchema,
 } from '../validators/agents.schema.ts';
 import {
+  toAgentDto,
   toEnrollCommandDto,
   toEnrollmentCheckDto,
 } from '../../application/dtos/agent/response/agent-response.dto.ts';
@@ -18,17 +19,28 @@ import type {
   ICheckEnrollmentUseCase,
   IGenerateEnrollCommandUseCase,
   IListAgentGroupsUseCase,
+  IListAgentsUseCase,
 } from '../../application/interfaces/use-cases/agents.interface.ts';
 
 @injectable()
 export class AgentsController {
   constructor(
+    @inject(TYPES.ListAgentsUseCase) private readonly _agents: IListAgentsUseCase,
     @inject(TYPES.ListAgentGroupsUseCase) private readonly _groups: IListAgentGroupsUseCase,
     @inject(TYPES.GenerateEnrollCommandUseCase)
     private readonly _enrollCommand: IGenerateEnrollCommandUseCase,
     @inject(TYPES.CheckEnrollmentUseCase)
     private readonly _checkEnrollment: ICheckEnrollmentUseCase,
   ) {}
+
+  list = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const agents = await this._agents.execute({ actor: actorFrom(req) });
+    res
+      .status(HttpStatusCode.OK)
+      .json(
+        new ApiResponse(HttpStatusCode.OK, agents.map(toAgentDto), SuccessMessage.AGENTS_FETCHED),
+      );
+  });
 
   groups = catchAsync(async (req: Request, res: Response): Promise<void> => {
     const groups = await this._groups.execute({ actor: actorFrom(req) });

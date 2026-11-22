@@ -82,6 +82,7 @@ import { WazuhApiClient, createHttpTransport } from '../integrations/wazuh/wazuh
 import { WazuhAgentManager } from '../integrations/wazuh/wazuh-agent-manager.ts';
 import type { ICacheService } from '../../application/interfaces/services/cache.service.interface.ts';
 import type { IAgentEnrollmentConfig } from '../../application/types/use-case/agent.types.ts';
+import { ListAgentsUseCase } from '../../application/use-cases/agents/list-agents.usecase.ts';
 import { ListAgentGroupsUseCase } from '../../application/use-cases/agents/list-agent-groups.usecase.ts';
 import { GenerateEnrollCommandUseCase } from '../../application/use-cases/agents/generate-enroll-command.usecase.ts';
 import { CheckEnrollmentUseCase } from '../../application/use-cases/agents/check-enrollment.usecase.ts';
@@ -187,6 +188,7 @@ if (!container.isBound(TYPES.AgentEnrollmentConfig)) {
   });
 }
 container.bind(TYPES.AgentRepository).to(TypeOrmAgentRepository);
+container.bind(TYPES.ListAgentsUseCase).to(ListAgentsUseCase);
 container.bind(TYPES.ListAgentGroupsUseCase).to(ListAgentGroupsUseCase);
 container.bind(TYPES.GenerateEnrollCommandUseCase).to(GenerateEnrollCommandUseCase);
 container.bind(TYPES.CheckEnrollmentUseCase).to(CheckEnrollmentUseCase);
