@@ -110,7 +110,14 @@ const renderLinux = (
 ): string => {
   const url = wazuhPackageUrl(os, v.agentVersion, v.arch);
   const suffix = os === AgentOs.LINUX_DEB ? '.deb' : '.rpm';
-  const install = os === AgentOs.LINUX_DEB ? 'dpkg -i "$pkg"' : 'rpm -ihv "$pkg"';
+  // The package manager installs the downloaded file and pulls in its dependencies, which a
+  // bare dpkg -i / rpm -ihv would not.
+  const install =
+    os === AgentOs.LINUX_DEB
+      ? ['apt-get update -qq', 'DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"']
+      : [
+          'if command -v dnf >/dev/null 2>&1; then dnf install -y "$pkg"; else yum install -y "$pkg"; fi',
+        ];
   const name = v.agentName === undefined ? '"$(hostname)"' : quoteBash(v.agentName);
   const address = quoteBash(v.managerAddress);
   return [
@@ -123,7 +130,8 @@ const renderLinux = (
     `pkg="$(mktemp --suffix=${suffix})"`,
     `trap 'rm -f "$pkg"' EXIT`,
     `curl -fsSL -o "$pkg" ${quoteBash(url)}`,
-    `WAZUH_MANAGER=${address} WAZUH_REGISTRATION_SERVER=${address} WAZUH_REGISTRATION_PASSWORD=${password} WAZUH_AGENT_GROUP=${quoteBash(v.group)} WAZUH_AGENT_NAME=${name} ${install}`,
+    `export WAZUH_MANAGER=${address} WAZUH_REGISTRATION_SERVER=${address} WAZUH_REGISTRATION_PASSWORD=${password} WAZUH_AGENT_GROUP=${quoteBash(v.group)} WAZUH_AGENT_NAME=${name}`,
+    ...install,
     'systemctl daemon-reload',
     `systemctl enable --now ${WAZUH_LINUX_SERVICE}`,
     `echo ${quoteBash(INSTALLED_MESSAGE)}`,

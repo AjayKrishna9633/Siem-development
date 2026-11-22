@@ -48,7 +48,7 @@ const WINDOWS_EXPECTED = [
   '}',
 ].join('\n');
 
-const linuxExpected = (suffix: string, url: string, install: string, name: string) =>
+const linuxExpected = (suffix: string, url: string, install: string[], name: string) =>
   [
     "sudo bash -euo pipefail <<'WAZUH_ENROLL'",
     '{',
@@ -59,7 +59,8 @@ const linuxExpected = (suffix: string, url: string, install: string, name: strin
     `pkg="$(mktemp --suffix=${suffix})"`,
     `trap 'rm -f "$pkg"' EXIT`,
     `curl -fsSL -o "$pkg" '${url}'`,
-    `WAZUH_MANAGER='siem.example.com' WAZUH_REGISTRATION_SERVER='siem.example.com' WAZUH_REGISTRATION_PASSWORD='${PASSWORD}' WAZUH_AGENT_GROUP='linux' WAZUH_AGENT_NAME=${name} ${install}`,
+    `export WAZUH_MANAGER='siem.example.com' WAZUH_REGISTRATION_SERVER='siem.example.com' WAZUH_REGISTRATION_PASSWORD='${PASSWORD}' WAZUH_AGENT_GROUP='linux' WAZUH_AGENT_NAME=${name}`,
+    ...install,
     'systemctl daemon-reload',
     'systemctl enable --now wazuh-agent',
     "echo 'Wazuh agent installed and started'",
@@ -128,7 +129,7 @@ describe('Linux enroll commands', () => {
       linuxExpected(
         '.deb',
         'https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.14.10-1_amd64.deb',
-        'dpkg -i "$pkg"',
+        ['apt-get update -qq', 'DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"'],
         "'db-01'",
       ),
     );
@@ -143,7 +144,9 @@ describe('Linux enroll commands', () => {
       linuxExpected(
         '.rpm',
         'https://packages.wazuh.com/4.x/yum/wazuh-agent-4.14.10-1.aarch64.rpm',
-        'rpm -ihv "$pkg"',
+        [
+          'if command -v dnf >/dev/null 2>&1; then dnf install -y "$pkg"; else yum install -y "$pkg"; fi',
+        ],
         '"$(hostname)"',
       ),
     );
@@ -152,6 +155,11 @@ describe('Linux enroll commands', () => {
   it('uses the arm64 DEB and the x86_64 RPM for those architectures', () => {
     expect(buildDebEnrollCommand(input({ arch: AgentArch.ARM64 }))).toContain('_arm64.deb');
     expect(buildRpmEnrollCommand(input())).toContain('.x86_64.rpm');
+  });
+
+  it('installs with the package manager, so dependencies are pulled in', () => {
+    expect(buildDebEnrollCommand(input())).not.toContain('dpkg -i');
+    expect(buildRpmEnrollCommand(input())).not.toContain('rpm -ihv');
   });
 
   it('accepts an IPv6 manager address', () => {
