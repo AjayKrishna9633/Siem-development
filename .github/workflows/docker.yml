@@ -1,12 +1,3 @@
-# Builds, scans and publishes the SIEMple container images.
-#
-#   pull request -> check the install files, build the images, scan them (nothing is published)
-#   push to main -> also publish :main and :sha-<commit> (for testing; `latest` doesn't move)
-#   tag vX.Y.Z   -> also publish :X.Y.Z, :X.Y and :latest, and attach the install files to the
-#                   GitHub release that install.sh downloads from
-#
-# Third-party actions are pinned to a commit (tags can be moved); the comment names the release.
-
 name: Docker
 
 on:
@@ -22,24 +13,19 @@ on:
       - '.github/workflows/docker.yml'
   push:
     branches: [main]
-    # Semver tags only: the image tags and install.sh's version handling assume X.Y.Z.
     tags: ['v[0-9]+.[0-9]+.[0-9]+*']
 
-# A new push to the same PR cancels its older run; main and tag runs always finish.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Least privilege by default; jobs ask for more below.
 permissions:
   contents: read
 
 env:
-  # Must match the image names in docker-compose.yml. GHCR names are lowercase.
   IMAGE_PREFIX: ghcr.io/ajaykrishna9633/siemple
 
 jobs:
-  # The files people install from: catch a broken script or compose file before it's released.
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -51,8 +37,6 @@ jobs:
       - name: Lint shell scripts
         run: shellcheck install.sh frontend/nginx/40-siemple-real-ip.sh
 
-      # The compose file must accept the shipped .env.example once secrets are filled in, in both
-      # plain HTTP and HTTPS mode. Dummy values only: nothing is started.
       - name: Validate docker-compose.yml against .env.example
         run: |
           cp .env.example .env
@@ -64,7 +48,6 @@ jobs:
           COMPOSE_PROFILES=https DOMAIN=siem.example.com docker compose config --quiet
           docker compose -f docker-compose.dev.yml config --quiet
 
-      # The Alloy pipeline lives inline in docker-compose.yml; check it parses with the pinned Alloy.
       - name: Validate the Alloy config
         run: |
           image="$(docker compose config --format json | jq -r '.services.alloy.image')"
@@ -88,7 +71,6 @@ jobs:
           - name: web
             context: frontend
             title: SIEMple web
-          # Grafana with SIEMple's data source and dashboards built in.
           - name: grafana
             context: grafana
             title: SIEMple Grafana
@@ -99,7 +81,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Emulation for the arm64 image (Raspberry Pi, ARM servers). Only needed when publishing.
       - name: Set up QEMU
         if: env.PUBLISH == 'true'
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
@@ -115,9 +96,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Works out the tags from the event. Tag v1.2.0 gives 1.2.0, 1.2 and latest (install.sh
-      # writes the bare version into .env, so there's no `v`). A pre-release like v1.3.0-rc.1
-      # gets only its own tag and never moves `latest`.
       - name: Image tags and labels
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -133,8 +111,6 @@ jobs:
             org.opencontainers.image.title=${{ matrix.title }}
             org.opencontainers.image.description=${{ matrix.title }} for SIEMple, a self-hosted SIEM
 
-      # Built once for amd64 and loaded locally so it can be scanned before anything is pushed.
-      # The GitHub Actions cache makes the publish step below reuse these layers.
       - name: Build for scanning
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -146,9 +122,6 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
 
-      # Reports fixable HIGH and CRITICAL vulnerabilities (OS packages and npm dependencies) to
-      # the repository's Security > Code scanning page. It doesn't fail the build: a new CVE in
-      # a base image shouldn't block a release on its own; review the findings there.
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -160,7 +133,6 @@ jobs:
           ignore-unfixed: true
           exit-code: '0'
 
-      # PRs from forks get a read-only token that can't upload, so skip it there.
       - name: Upload scan results
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
@@ -168,8 +140,6 @@ jobs:
           sarif_file: trivy-${{ matrix.name }}.sarif
           category: trivy-${{ matrix.name }}
 
-      # Multi-arch build and push. Layers come from the cache above; only arm64 is new work.
-      # The provenance attestation and SBOM are stored next to the image in GHCR.
       - name: Build and publish
         if: env.PUBLISH == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -184,9 +154,6 @@ jobs:
           provenance: mode=max
           sbom: true
 
-  # Attaches the three files install.sh downloads to the GitHub release for the tag, creating
-  # the release (with generated notes) if it doesn't exist yet. Runs only after all images
-  # are published, so a release never points at images that aren't there.
   release:
     needs: images
     if: startsWith(github.ref, 'refs/tags/v')
@@ -198,8 +165,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # GitHub renames uploaded files that start with a dot, so .env.example ships as
-      # env.example (install.sh expects that name).
+      # GitHub renames dotfiles, so it ships as env.example.
       - name: Collect install files
         run: |
           mkdir release
@@ -214,5 +180,4 @@ jobs:
           overwrite_files: true
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
-          # Only a final release becomes "latest", which is what install.sh installs by default.
           make_latest: ${{ !contains(github.ref_name, '-') && 'true' || 'false' }}
