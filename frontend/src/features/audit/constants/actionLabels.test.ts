@@ -22,6 +22,7 @@ const BACKEND_ACTIONS = [
   'user.update',
   'system.settings.changed',
   'audit.export',
+  'agent.enroll_command.generated',
 ];
 
 describe('actionLabel', () => {
