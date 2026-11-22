@@ -117,6 +117,14 @@ random_secret() {
   fi
 }
 
+# Letters, digits and _ . : @ + = ! # , - only: no quote, $, backtick, backslash or space, so it is
+# safe in the agent commands. The Aa1- prefix meets the Wazuh API password policy.
+random_password() {
+  local pool
+  pool="$(head -c 2048 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9_.:@+=!#,-')"
+  printf 'Aa1-%s' "${pool:0:$(($1 - 4))}"
+}
+
 detect_ip() {
   local ip=''
   if command -v ip > /dev/null; then
@@ -185,6 +193,14 @@ add_missing_settings() {
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
     ok "Generated a Grafana admin password (GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
   fi
+  if [ -z "$(get_env WAZUH_API_PASSWORD)" ]; then
+    set_env WAZUH_API_PASSWORD "$(random_password 32)"
+    ok "Generated the Wazuh API password (WAZUH_API_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
+  if [ -z "$(get_env WAZUH_ENROLLMENT_PASSWORD)" ]; then
+    set_env WAZUH_ENROLLMENT_PASSWORD "$(random_password 32)"
+    ok "Generated the agent enrollment password (WAZUH_ENROLLMENT_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
   case "$(get_env COMPOSE_PROFILES)" in
     *https*) [ -n "$(get_env GRAFANA_COOKIE_SECURE)" ] || set_env GRAFANA_COOKIE_SECURE true ;;
   esac
@@ -194,6 +210,16 @@ show_grafana_login() {
   local user
   user="$(get_env GRAFANA_ADMIN_USER)"
   echo "Health (Grafana): $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
+}
+
+show_agent_address() {
+  local address
+  address="$(get_env WAZUH_PUBLIC_ADDRESS)"
+  if [ -n "$address" ]; then
+    echo "Agents: connect to $address on TCP 1514 and 1515 (WAZUH_PUBLIC_ADDRESS in $SIEMPLE_DIR/.env)"
+  else
+    warn "Set WAZUH_PUBLIC_ADDRESS in $SIEMPLE_DIR/.env to the address agents use to reach this server."
+  fi
 }
 
 with_data_volumes() {
@@ -240,6 +266,7 @@ cmd_install() {
     set_env REDIS_PASSWORD "$(random_secret 24)"
     set_env JWT_SECRET "$(random_secret 32)"
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
+    set_env WAZUH_PUBLIC_ADDRESS "$(detect_ip)"
     if [ -n "$domain" ]; then
       set_env COMPOSE_PROFILES https
       set_env GRAFANA_COOKIE_SECURE true
@@ -265,6 +292,7 @@ cmd_install() {
   start_stack
   ok "SIEMple ${tag} is running at $(get_env APP_URL)"
   show_grafana_login
+  show_agent_address
   show_setup_token
 }
 
