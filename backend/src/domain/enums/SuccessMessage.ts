@@ -25,4 +25,7 @@ export enum SuccessMessage {
   EMAIL_CHANGED = 'Email address changed successfully',
   AUDIT_LOGS_FETCHED = 'Audit log retrieved successfully',
   AUDIT_LOG_FETCHED = 'Audit log entry retrieved successfully',
+  AGENT_GROUPS_FETCHED = 'Agent groups retrieved successfully',
+  ENROLL_COMMAND_GENERATED = 'Enrollment command generated',
+  ENROLLMENT_CHECKED = 'Enrollment status checked',
 }

@@ -14,6 +14,7 @@ import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { auditLogsRoutes } from './presentation/routes/audit-logs.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { healthRoutes } from './presentation/routes/health.routes.ts';
+import { agentsRoutes } from './presentation/routes/agents.routes.ts';
 import { auditAccessDenied } from './presentation/middlewares/access-denied-audit.middleware.ts';
 import { requestContextMiddleware } from './presentation/middlewares/request-context.middleware.ts';
 import { errorHandler, notFoundHandler } from './presentation/middlewares/errorHandler.ts';
@@ -45,6 +46,7 @@ app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
 app.use('/api/auth', inviteRoutes(di.inviteController));
 app.use('/api/users', usersRoutes(di.usersController, di.authMiddleware));
 app.use('/api/audit-logs', auditLogsRoutes(di.auditLogsController, di.authMiddleware));
+app.use('/api/agents', agentsRoutes(di.agentsController, di.authMiddleware));
 
 app.use(notFoundHandler);
 app.use(auditAccessDenied(di.auditService));

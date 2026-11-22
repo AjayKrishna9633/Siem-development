@@ -18,6 +18,7 @@ export enum AuditAction {
   ACCESS_DENIED = 'access.denied',
   USER_UPDATED = 'user.update',
   AUDIT_EXPORTED = 'audit.export',
+  AGENT_ENROLL_COMMAND_GENERATED = 'agent.enroll_command.generated',
   // Reserved for a future settings feature.
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',
 }
@@ -25,4 +26,5 @@ export enum AuditAction {
 export enum AuditTargetType {
   USER = 'user',
   SYSTEM_SETTINGS = 'system_settings',
+  AGENT = 'agent',
 }

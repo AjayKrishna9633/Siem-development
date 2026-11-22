@@ -77,6 +77,15 @@ import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export
 import { HealthCheckService } from '../services/health-check.service.ts';
 import { HealthController } from '../../presentation/controllers/health.controller.ts';
 import { env } from '../../config/env.config.ts';
+import { TypeOrmAgentRepository } from '../database/repositories/agent.repository.ts';
+import { WazuhApiClient, createHttpTransport } from '../integrations/wazuh/wazuh-api.client.ts';
+import { WazuhAgentManager } from '../integrations/wazuh/wazuh-agent-manager.ts';
+import type { ICacheService } from '../../application/interfaces/services/cache.service.interface.ts';
+import type { IAgentEnrollmentConfig } from '../../application/types/use-case/agent.types.ts';
+import { ListAgentGroupsUseCase } from '../../application/use-cases/agents/list-agent-groups.usecase.ts';
+import { GenerateEnrollCommandUseCase } from '../../application/use-cases/agents/generate-enroll-command.usecase.ts';
+import { CheckEnrollmentUseCase } from '../../application/use-cases/agents/check-enrollment.usecase.ts';
+import { AgentsController } from '../../presentation/controllers/agents.controller.ts';
 
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
 container.bind(TYPES.Logger).toConstantValue(logger);
@@ -148,6 +157,40 @@ container.bind(TYPES.ListAuditLogsUseCase).to(ListAuditLogsUseCase);
 container.bind(TYPES.GetAuditLogUseCase).to(GetAuditLogUseCase);
 container.bind(TYPES.ExportAuditLogsUseCase).to(ExportAuditLogsUseCase);
 
+const wazuhApiConfig = {
+  baseUrl: env.WAZUH_API_URL,
+  username: env.WAZUH_API_USER,
+  password: env.WAZUH_API_PASSWORD,
+  caFile: env.WAZUH_API_CA_FILE,
+  tlsInsecure: env.WAZUH_API_TLS_INSECURE,
+};
+// Integration tests bind a fake manager and config before importing the app.
+if (!container.isBound(TYPES.AgentManager)) {
+  container
+    .bind(TYPES.AgentManager)
+    .toConstantValue(
+      new WazuhAgentManager(
+        new WazuhApiClient(
+          wazuhApiConfig,
+          container.get<ICacheService>(TYPES.CacheService),
+          logger,
+          createHttpTransport(wazuhApiConfig, logger),
+        ),
+      ),
+    );
+}
+if (!container.isBound(TYPES.AgentEnrollmentConfig)) {
+  container.bind<IAgentEnrollmentConfig>(TYPES.AgentEnrollmentConfig).toConstantValue({
+    publicAddress: env.WAZUH_PUBLIC_ADDRESS,
+    enrollmentPassword: env.WAZUH_ENROLLMENT_PASSWORD,
+    fallbackAgentVersion: env.WAZUH_AGENT_VERSION,
+  });
+}
+container.bind(TYPES.AgentRepository).to(TypeOrmAgentRepository);
+container.bind(TYPES.ListAgentGroupsUseCase).to(ListAgentGroupsUseCase);
+container.bind(TYPES.GenerateEnrollCommandUseCase).to(GenerateEnrollCommandUseCase);
+container.bind(TYPES.CheckEnrollmentUseCase).to(CheckEnrollmentUseCase);
+
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
 container.bind(TYPES.AccountController).to(AccountController);
@@ -156,6 +199,7 @@ container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 container.bind(TYPES.AuditLogsController).to(AuditLogsController);
 container.bind(TYPES.HealthController).to(HealthController);
+container.bind(TYPES.AgentsController).to(AgentsController);
 
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
 export const passwordResetController = container.get<PasswordResetController>(
@@ -166,6 +210,7 @@ export const inviteController = container.get<InviteController>(TYPES.InviteCont
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
 export const healthController = container.get<HealthController>(TYPES.HealthController);
+export const agentsController = container.get<AgentsController>(TYPES.AgentsController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const auditService = container.get<IAuditService>(TYPES.AuditService);
 export const requestContextProvider = container.get<IRequestContextProvider>(
@@ -196,6 +241,7 @@ export const di = {
   usersController,
   auditLogsController,
   healthController,
+  agentsController,
   setupController,
   authMiddleware,
   auditService,
