@@ -61,7 +61,6 @@ export class CompleteSetupUseCase implements ICompleteSetupUseCase {
       throw err;
     }
 
-    // The admin exists now but isn't authenticated on this request, so name them explicitly.
     const actor = auditActorOf(admin);
     await recordAcceptedSetupToken(this._audit, actor);
     await this._audit.record({

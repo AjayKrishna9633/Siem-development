@@ -11,8 +11,7 @@ export interface IUserRepository extends IBaseRepository<User> {
   countByStatus(): Promise<Record<UserStatus, number>>;
   findByIds(ids: string[]): Promise<User[]>;
   deleteInvited(id: string): Promise<boolean>;
-  // `audit` runs after the change, and the row it returns is written in the same transaction:
-  // the change and its audit row commit together or not at all. Return null for "no change".
+  // The row `audit` returns is written in the same transaction. Return null for no change.
   changeWithAdminLock(
     userId: string,
     change: (user: User, activeAdminCount: number) => void,

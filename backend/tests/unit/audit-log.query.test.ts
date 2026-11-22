@@ -59,7 +59,6 @@ describe('buildAuditWhere', () => {
     );
 
     expect(where.sql).toContain('(occurred_at, id) < ($3::timestamptz, $4::uuid)');
-    // Text, not a Date: a Date would round 123456 µs to 123 ms.
     expect(where.params.slice(2)).toEqual([
       '2026-11-05T10:00:00.123456Z',
       '0b2f4a52-1111-4222-8333-444455556666',

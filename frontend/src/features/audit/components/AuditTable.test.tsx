@@ -37,7 +37,6 @@ describe('AuditTable', () => {
     const time = screen.getByText(/ago$/);
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveTextContent('5 minutes ago');
-    // The stored timestamp, microseconds included, is part of the tooltip.
     expect(time.getAttribute('title')).toMatch(/\.\d{3}456Z$/);
   });
 
@@ -64,7 +63,6 @@ describe('AuditTable', () => {
     ]);
     expect(screen.getByText('System')).toBeInTheDocument();
     expect(screen.getByText('Anonymous')).toBeInTheDocument();
-    // Neither can be filtered on: there is no id to filter by.
     expect(screen.queryByRole('button', { name: 'System' })).not.toBeInTheDocument();
   });
 

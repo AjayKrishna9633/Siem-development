@@ -17,6 +17,5 @@ export interface IAcceptInviteInput {
   token: string;
   name: string;
   password: string;
-  // Only for the sign-in IP remembered on the new user.
   context: IRequestContext;
 }

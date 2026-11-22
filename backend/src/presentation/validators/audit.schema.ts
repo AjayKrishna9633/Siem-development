@@ -3,7 +3,6 @@ import { AUDIT_QUERY_LIMITS } from '../../domain/constants/audit.ts';
 import { AuditCategory } from '../../domain/enums/AuditCategory.ts';
 import { AuditOutcome } from '../../domain/enums/AuditOutcome.ts';
 
-// A filter the UI left empty arrives as `?category=`: treat it as not set rather than invalid.
 const optional = <T extends z.ZodType>(schema: T) =>
   z.preprocess(
     (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -14,7 +13,6 @@ const dateField = z.iso
   .datetime({ offset: true, error: 'Use an ISO 8601 date and time, e.g. 2026-11-14T10:00:00Z' })
   .transform((value) => new Date(value));
 
-// Shared by the list and the export: they accept exactly the same filters.
 const filterShape = {
   from: optional(dateField),
   to: optional(dateField),

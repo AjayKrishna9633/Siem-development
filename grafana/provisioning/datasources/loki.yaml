@@ -1,5 +1,4 @@
-# The Loki in the same stack. ${LOKI_URL} is filled from the container's environment
-# (http://loki:3100 unless compose overrides it). The fixed uid is what the dashboards refer to.
+# Fixed uid: the dashboards refer to it.
 apiVersion: 1
 
 datasources:
@@ -12,9 +11,7 @@ datasources:
     editable: false
     jsonData:
       maxLines: 1000
-      # Loki runs single-tenant (auth_enabled: false) and files everything under the tenant
-      # "fake". A few newer endpoints that Logs Drilldown calls still insist on being told the
-      # tenant, so name it; every other request lands in the same tenant either way.
+      # Logs Drilldown needs the tenant named; single-tenant Loki uses "fake".
       httpHeaderName1: X-Scope-OrgID
     secureJsonData:
       httpHeaderValue1: fake

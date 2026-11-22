@@ -132,8 +132,6 @@ describe('HTTP request logging', () => {
     expect(line).not.toHaveProperty('res');
   });
 
-  // The app mounts every feature as a router (app.use('/api/users', router)); inside one, Express
-  // shortens req.url to the part after the mount point and restores baseUrl when the request leaves.
   it('logs the route template, not the raw URL, also for errors handled outside the router', async () => {
     const { logger, lines } = captureLogger();
     const app = express();

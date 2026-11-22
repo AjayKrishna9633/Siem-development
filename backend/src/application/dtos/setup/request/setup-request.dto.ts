@@ -15,6 +15,5 @@ export interface ICompleteSetupInput {
   password: string;
   orgName: string;
   baseUrl: string;
-  // Only for the sign-in IP remembered on the new admin.
   context: IRequestContext;
 }

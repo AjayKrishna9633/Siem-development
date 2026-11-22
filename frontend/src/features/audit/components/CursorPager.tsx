@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button.tsx';
 
 interface ICursorPagerProps {
-  // 1 for the newest page. There is no total: the server pages by position, not by count.
   pageNumber: number;
   count: number;
   hasNewer: boolean;
@@ -13,8 +12,6 @@ interface ICursorPagerProps {
   onOlder: () => void;
 }
 
-// Paging for a log read by keyset: you can step to the next older page or back, but not jump to
-// "page 7", because page 7 has no stable start until you've walked through pages 1-6.
 export const CursorPager: React.FC<ICursorPagerProps> = ({
   pageNumber,
   count,

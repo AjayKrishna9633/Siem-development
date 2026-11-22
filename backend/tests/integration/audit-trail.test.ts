@@ -157,7 +157,6 @@ describe('audit rows carry the request context', () => {
             targetType: AuditTargetType.USER,
             targetId: secondAnalyst.id,
           }),
-          // Violates CHK_audit_logs_category, so the insert fails inside the transaction.
           category: 'not-a-category' as never,
         }),
       ),

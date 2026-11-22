@@ -45,7 +45,6 @@ type Tone = 'success' | 'danger' | 'high' | 'warning' | 'info' | 'neutral' | 'ac
 const toneClasses: Record<Tone, string> = {
   success: 'border-success/40 bg-success/10 text-success',
   danger: 'border-critical/50 bg-critical/10 text-critical',
-  // The High severity colour, for things that need attention but are not a Critical alert.
   high: 'border-high/50 bg-high/10 text-high',
   warning: 'border-medium/50 bg-medium/10 text-medium',
   info: 'border-low/50 bg-low/10 text-low',

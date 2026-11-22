@@ -9,7 +9,6 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface IDrawerProps {
-  // Names the dialog for screen readers; the visible heading is `title`.
   label: string;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -18,9 +17,6 @@ interface IDrawerProps {
   className?: string;
 }
 
-// A panel that slides in from the right over the page, for looking at one record without leaving
-// the list behind it. Esc, the backdrop and the close button dismiss it; Tab stays inside; focus
-// returns to whatever opened it.
 export const Drawer: React.FC<IDrawerProps> = ({
   label,
   title,

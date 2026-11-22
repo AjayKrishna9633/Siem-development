@@ -25,12 +25,8 @@ import {
 } from '../utils/filters.ts';
 import type { IAuditFilters, IAuditLog } from '../types/audit.types.ts';
 
-// Everything that can be shared lives in the URL: range, filters, search and the open entry. A
-// pasted link reproduces exactly what the sender was looking at.
 const OPEN_ENTRY_PARAM = 'log';
 
-// Loaded once so the Actor filter can offer everyone, including people who haven't acted lately.
-// People beyond the first 100 are still reachable by clicking their name in a row.
 const fetchUsers = () =>
   usersService.list({ page: 1, pageSize: 100, sortBy: 'name', sortDir: 'asc' });
 
@@ -40,7 +36,6 @@ export const AuditLogsPage: React.FC = () => {
   const rawLogId = searchParams.get(OPEN_ENTRY_PARAM);
   const logId = rawLogId && isUuid(rawLogId) ? rawLogId : null;
 
-  // Dates are checked on every render against the current time, which is why this isn't memoised.
   const blockedReason = rangeError(filters, new Date());
   const log = useAuditLog(filters, blockedReason);
   const opened = useAuditEntry(logId, log.entries);
@@ -50,7 +45,6 @@ export const AuditLogsPage: React.FC = () => {
   const actors = useMemo<IActorOption[]>(() => {
     const byId = new Map<string, string>();
     users?.items.forEach((u) => byId.set(u.id, u.username ?? u.email));
-    // Rows can name someone the user list doesn't (removed since, or past the first 100).
     log.entries.forEach((e) => {
       if (e.actor.id && e.actor.username && !byId.has(e.actor.id)) {
         byId.set(e.actor.id, e.actor.username);
@@ -69,7 +63,6 @@ export const AuditLogsPage: React.FC = () => {
 
   const updateFilters = (patch: Partial<IAuditFilters>) => {
     const next = { ...filters, ...patch };
-    // Choosing "custom" starts from the range that was on screen, rather than from empty fields.
     if (patch.range === 'custom' && filters.range !== 'custom' && !patch.from && !patch.to) {
       const { from, to } = toQuery(filters, new Date());
       next.from = from;

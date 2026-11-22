@@ -27,8 +27,6 @@ const validDate = (value: string | null): string | undefined => {
   return Number.isNaN(time) ? undefined : new Date(time).toISOString();
 };
 
-// The URL is typed by people and bookmarked for months, so nothing in it is trusted: an unknown
-// category, a malformed date or a made-up actor id is dropped, never sent to the API.
 export const filtersFromParams = (params: URLSearchParams): IAuditFilters => {
   const range = params.get('range');
   const category = params.get('category');
@@ -47,7 +45,6 @@ export const filtersFromParams = (params: URLSearchParams): IAuditFilters => {
   };
 };
 
-// Defaults are left out so the URL stays short and a link to "everything" has no query string.
 export const filtersToParams = (filters: IAuditFilters): URLSearchParams => {
   const params = new URLSearchParams();
   if (filters.range !== DEFAULT_RANGE) params.set('range', filters.range);
@@ -62,8 +59,6 @@ export const filtersToParams = (filters: IAuditFilters): URLSearchParams => {
   return params;
 };
 
-// A preset becomes concrete dates only at the moment of the request, so Refresh moves "last 24
-// hours" forward. Custom dates are used exactly as chosen.
 export const toQuery = (filters: IAuditFilters, now: Date): IAuditQuery => {
   const range =
     filters.range === 'custom'
@@ -82,8 +77,6 @@ export const toQuery = (filters: IAuditFilters, now: Date): IAuditQuery => {
   };
 };
 
-// Catches what the server would refuse, so the admin sees the reason next to the date fields
-// instead of an error after a round trip. The server still enforces the same rule.
 export const rangeError = (filters: IAuditFilters, now: Date): string | null => {
   if (filters.range !== 'custom') return null;
 
@@ -104,7 +97,6 @@ export const hasActiveFilters = (filters: IAuditFilters): boolean =>
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-// <input type="datetime-local"> speaks local wall-clock time without a zone: "2026-11-14T09:30".
 export const isoToLocalInput = (iso: string | undefined): string => {
   if (!iso) return '';
   const date = new Date(iso);

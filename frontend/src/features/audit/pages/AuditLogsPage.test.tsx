@@ -28,7 +28,6 @@ interface IRequestLog {
   params: URLSearchParams[];
 }
 
-// Registers the three endpoints the page talks to and records each audit list request.
 const mockApi = (
   pages: (params: URLSearchParams) => { items: IAuditLog[]; nextCursor: string | null },
 ): IRequestLog => {
@@ -155,7 +154,6 @@ describe('AuditLogsPage', () => {
 
     const actorSelect = screen.getAllByRole('combobox')[2]!;
     await waitFor(() => expect(within(actorSelect).getByText('First Admin')).toBeInTheDocument());
-    // A user with no username is offered by email.
     expect(within(actorSelect).getByText('tier1@example.com')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'First Admin' }));
@@ -230,7 +228,6 @@ describe('AuditLogsPage', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Database unavailable');
-    // The error is orange, never the red kept for Critical alerts.
     expect(within(alert).getByText('Database unavailable').className).toMatch(/text-high/);
     expect(alert.innerHTML).not.toMatch(/critical/);
 

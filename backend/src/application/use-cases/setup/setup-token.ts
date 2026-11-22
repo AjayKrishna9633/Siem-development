@@ -30,7 +30,6 @@ export const recordRejectedSetupToken = (audit: IAuditService) =>
     targetType: AuditTargetType.SYSTEM_SETTINGS,
   });
 
-// The token that opened setup was accepted and spent. Recorded for the admin it created.
 export const recordAcceptedSetupToken = (audit: IAuditService, admin: IAuditActor) =>
   audit.record({
     action: AuditAction.SETUP_TOKEN_USED,

@@ -17,8 +17,6 @@ import { AuditLogModel } from '../models/audit-log.model.ts';
 import { toAuditRow } from '../mappers/audit-record.mapper.ts';
 import { buildAuditWhere } from '../queries/audit-log.query.ts';
 
-// Takes the EntityManager so a caller already inside a transaction (changeWithAdminLock) writes
-// its audit row with that transaction rather than a separate connection.
 export const insertAuditRecord = async (
   manager: EntityManager,
   record: IAuditRecord,
@@ -27,8 +25,7 @@ export const insertAuditRecord = async (
   await repository.insert(repository.create(toAuditRow(record)));
 };
 
-// occurred_at is printed by the database, not read into a JS Date, which would round the
-// microseconds away. The cursor needs those digits to be exact.
+// Read as text: a JS Date would drop the microseconds.
 const SELECT_COLUMNS = `
   id,
   to_char(occurred_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS occurred_at,

@@ -33,14 +33,12 @@ export class ExportAuditLogsUseCase implements IExportAuditLogsUseCase {
     const { from, to } = resolveAuditRange(input.query, new Date());
     const filter: IAuditLogFilter = { ...input.query, from, to };
 
-    // Refuse up front: once the first byte of a CSV is sent the status code can't change, so an
-    // oversized export must be caught before streaming starts, not by cutting it short.
+    // Refuse before streaming: the status can't change after the first byte.
     const rowCount = await this._logs.countUpTo(filter, AUDIT_QUERY_LIMITS.EXPORT_MAX_ROWS + 1);
     if (rowCount > AUDIT_QUERY_LIMITS.EXPORT_MAX_ROWS) {
       throw new AppError(AppErrorCode.VALIDATION_ERROR, ErrorMessage.AUDIT_EXPORT_TOO_LARGE);
     }
 
-    // Written before any data leaves, so an export that is interrupted halfway is still on record.
     await this._audit.record({
       action: AuditAction.AUDIT_EXPORTED,
       metadata: exportMetadata(filter, rowCount),
@@ -49,8 +47,6 @@ export class ExportAuditLogsUseCase implements IExportAuditLogsUseCase {
     return { rowCount, rows: this.stream(filter) };
   }
 
-  // Walks the same keyset the paged API uses, a batch at a time, so memory stays flat however
-  // large the export is.
   private async *stream(filter: IAuditLogFilter): AsyncGenerator<IAuditLogEntry> {
     let cursor: IAuditCursor | null = null;
     let sent = 0;
@@ -69,8 +65,6 @@ export class ExportAuditLogsUseCase implements IExportAuditLogsUseCase {
   }
 }
 
-// What was exported, so a reviewer can tell an export of one day's logins from the whole log.
-// Only the filters that were actually set appear (metadata can't hold undefined).
 const exportMetadata = (filter: IAuditLogFilter, rowCount: number): AuditMetadata => ({
   format: 'csv',
   rowCount,

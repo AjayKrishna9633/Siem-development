@@ -48,8 +48,6 @@ export function authenticate(
         userId: payload.userId,
         tokenVersion: payload.tokenVersion,
       });
-      // From here on, anything this request audits is attributed to this user, with the name
-      // and role as they are right now (the role comes from the database, not the token).
       requestContext.setActor({
         userId: req.user.userId,
         username: req.user.displayName,

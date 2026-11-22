@@ -4,25 +4,19 @@ import type {
 } from '../../../application/types/use-case/audit.types.ts';
 
 export interface IAuditWhere {
-  // Starts with `WHERE`. Always has at least the date range, so it is never empty.
   sql: string;
-  // Positional values for the $1, $2, ... in `sql`. Nothing from the caller is ever concatenated
-  // into the SQL text itself.
+  // Values for $1, $2, ...; caller input is never concatenated into the SQL.
   params: unknown[];
 }
 
-// Escape the LIKE wildcards so a search for "100%" or "a_b" matches those characters literally.
 const escapeLike = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
 
-// Pure (no database), so the filter-to-SQL mapping is unit-tested without one. Used by the page
-// query, the export and the count, so all three always agree on what "matches" means.
 export const buildAuditWhere = (
   filter: IAuditLogFilter,
   cursor: IAuditCursor | null = null,
 ): IAuditWhere => {
   const clauses: string[] = [];
   const params: unknown[] = [];
-  // Registers a value and returns its placeholder.
   const param = (value: unknown): string => {
     params.push(value);
     return `$${params.length}`;
@@ -41,8 +35,7 @@ export const buildAuditWhere = (
     );
   }
   if (cursor) {
-    // The timestamp is bound as text and cast in SQL, so it keeps its microseconds. Row
-    // comparison matches the index order (occurred_at DESC, id DESC).
+    // Bound as text to keep microseconds; matches the index order.
     clauses.push(
       `(occurred_at, id) < (${param(cursor.occurredAt)}::timestamptz, ${param(cursor.id)}::uuid)`,
     );

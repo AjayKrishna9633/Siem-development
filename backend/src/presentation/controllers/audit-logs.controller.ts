@@ -22,7 +22,7 @@ import type {
   IListAuditLogsUseCase,
 } from '../../application/interfaces/use-cases/audit-logs.interface.ts';
 
-// So a spreadsheet opens the file as UTF-8 instead of guessing a legacy code page.
+// BOM, so spreadsheets read UTF-8.
 const UTF8_BOM = '﻿';
 
 const exportFilename = (now: Date): string =>
@@ -65,9 +65,6 @@ export class AuditLogsController {
   });
 
   export = catchAsync(async (req: Request, res: Response): Promise<void> => {
-    // Everything that can be refused (permission, bad filters, too many rows) happens in execute(),
-    // before a byte is written, so those still come back as ordinary JSON errors.
-    // `format` is validated (only csv exists) but isn't a filter, so it isn't passed on.
     const { from, to, actorId, category, outcome, action, q } = exportAuditLogsQuerySchema.parse(
       req.query,
     );
@@ -84,7 +81,6 @@ export class AuditLogsController {
 
     try {
       for await (const entry of rows) {
-        // The admin closed the tab: stop reading, and let the generator release its work.
         if (res.destroyed) return;
         if (!res.write(auditCsvRow(entry))) {
           await Promise.race([once(res, 'drain'), once(res, 'close')]);
@@ -92,8 +88,7 @@ export class AuditLogsController {
       }
       res.end();
     } catch (err: unknown) {
-      // Headers are gone, so there is no clean error response left to send. Cutting the
-      // connection makes the download fail visibly rather than look like a complete file.
+      // Headers already sent: drop the connection so the download fails visibly.
       req.log.error({ err }, 'Audit export failed part-way');
       res.destroy();
     }

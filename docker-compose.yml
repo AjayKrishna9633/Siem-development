@@ -1,24 +1,5 @@
-# SIEMple: self-hosted stack.
-#
-#   browser ──► web (nginx: React app + /api proxy) ──► api (Node) ──► postgres, redis
-#                   └─ /grafana/ ──► grafana ──► loki ◄── alloy ◄── this stack's container logs
-#
-# Loki, Alloy and Grafana answer one question: is SIEMple itself healthy? They hold only the
-# logs of this stack's own containers, never security events (those will come from Wazuh agents
-# through their own pipeline).
-#
-# Only `web` publishes a port. With HTTPS enabled (COMPOSE_PROFILES=https in .env), Caddy takes
-# ports 80/443 in front of web and gets certificates automatically.
-#
-# Settings come from .env next to this file (see .env.example); the installer creates it.
-#   docker compose up -d        start, pulling the published images
-#   docker compose up -d --build   (in a source checkout) build the images from ./backend and ./frontend
-
 name: siemple
 
-# Docker keeps container logs forever by default; cap them at 3 x 10 MB per container.
-# `labels` makes Docker write the compose project and service names into every log line, which
-# is how Alloy tells this stack's lines from any other container's without the Docker socket.
 x-logging: &logging
   driver: json-file
   options:
@@ -26,21 +7,14 @@ x-logging: &logging
     max-file: '3'
     labels: com.docker.compose.project,com.docker.compose.service
 
-# Shared by the API and the one-shot migrate job. Values with :? stop compose with that message
-# when missing, instead of starting a half-configured stack.
 x-api-env: &api-env
   NODE_ENV: production
   PORT: '4000'
-  # The password goes into a URL, so it must be URL-safe (letters and digits; the installer
-  # generates one like that).
+  # Must be URL-safe.
   DATABASE_URL: postgres://${POSTGRES_USER:-siemple}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-siemple}
   REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 characters)}
-  # The address people open SIEMple at. Decides whether cookies are Secure (https) and the URL
-  # printed with the setup token. The app itself works at any address.
   APP_URL: ${APP_URL:-http://localhost}
-  # Exactly one proxy (nginx in the web container) sits in front of the API, so the client IP
-  # comes from the header nginx sets, which nginx itself overwrites.
   TRUST_PROXY: '1'
   LOG_LEVEL: ${LOG_LEVEL:-}
   SMTP_HOST: ${SMTP_HOST:-}
@@ -61,7 +35,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # $$ passes a literal $ to the container, so the variables are read inside it.
+      # $$ is a literal $, read inside the container.
       test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 5s
@@ -73,20 +47,16 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-    # Through sh so the password is read from the environment rather than written into this file.
     command: ['sh', '-c', 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     volumes:
       - redisdata:/data
     healthcheck:
-      # REDISCLI_AUTH keeps the password off redis-cli's command line (and its warning quiet).
       test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
       interval: 5s
       timeout: 5s
       retries: 10
     logging: *logging
 
-  # Applies database migrations, then exits. The api starts only if this exits 0, so a failed
-  # migration never leaves the app running against a half-migrated schema.
   migrate:
     image: ${SIEMPLE_API_IMAGE:-ghcr.io/ajaykrishna9633/siemple-api}:${SIEMPLE_VERSION:-latest}
     build: ./backend
@@ -112,12 +82,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # A tiny init process as PID 1 forwards signals and reaps zombie processes.
     init: true
-    # The API writes nothing to disk (logs go to stdout).
     read_only: true
     security_opt: ['no-new-privileges:true']
-    # The API's own shutdown gives up after 10s; leave Docker a little longer before SIGKILL.
     stop_grace_period: 15s
     logging: *logging
 
@@ -126,32 +93,22 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      # Plain HTTP mode: SIEMple is at http://<this host>:WEB_PORT. In HTTPS mode the installer
-      # sets WEB_BIND=127.0.0.1 and WEB_PORT=8080 so Caddy can have ports 80 and 443.
       - '${WEB_BIND:-0.0.0.0}:${WEB_PORT:-80}:80'
     environment:
       API_UPSTREAM: api:4000
-      # Empty: nginx is the first hop and ignores any X-Forwarded-For. HTTPS mode sets it to
-      # `caddy`, so the real client IP is taken from Caddy, and only from Caddy.
       TRUSTED_PROXY: ${TRUSTED_PROXY:-}
     depends_on:
       api:
         condition: service_healthy
-      # Started first when HTTPS is on, so nginx can resolve its name. `required: false` makes
-      # this a no-op when the https profile is off and there is no caddy service.
       caddy:
         condition: service_started
         required: false
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Log storage for this stack's own container logs. Only reachable inside the stack: nothing
-  # publishes its port. Lines are indexed by three labels (service, level, env) and kept for
-  # LOKI_RETENTION (14 days by default), then deleted.
   loki:
     image: grafana/loki:3.7.10
     restart: unless-stopped
-    # expand-env fills ${LOKI_RETENTION} in the config from the environment.
     command: ['-config.file=/etc/loki/config.yaml', '-config.expand-env=true']
     environment:
       LOKI_RETENTION: ${LOKI_RETENTION:-336h}
@@ -160,50 +117,33 @@ services:
         target: /etc/loki/config.yaml
     volumes:
       - loki-data:/loki
-    # The image has no shell or HTTP client, so there is no Docker healthcheck; Alloy and Grafana
-    # wait for it to start and retry until it is ready (~20s).
-    # Not read_only: compose writes the inline config into the container, which a read-only
-    # filesystem refuses. The image runs as a non-root user and has no shell.
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Collects the logs of this compose project's containers and sends them to Loki. No ports, no
-  # listeners: it only reads files.
-  #
-  # Why log files and not the Docker socket: the socket is full control of Docker, which is root
-  # on the host, so anything that can read it can take over the machine. The JSON log files are
-  # mounted read-only instead. Alloy can read every container's file there, but it drops each
-  # line whose com.docker.compose.project (written into the line by the x-logging labels option)
-  # isn't this project, before anything is sent.
+  # Ships this project's container logs to Loki. Reads the JSON log files read-only instead of
+  # docker.sock (root on the host); other projects' lines are dropped.
   alloy:
     image: grafana/alloy:v1.21.3
     restart: unless-stopped
     command:
       - run
       - /etc/alloy/config.alloy
-      # The status page is only for the healthcheck below; it isn't published.
       - --server.http.listen-addr=127.0.0.1:12345
       - --storage.path=/alloy-data
       - --disable-reporting
     environment:
-      # Lines from containers of any other compose project are dropped.
       SIEMPLE_PROJECT: ${COMPOSE_PROJECT_NAME:-siemple}
-      # The `env` label, to tell installs apart if their logs are ever viewed together.
       SIEMPLE_ENV: ${SIEMPLE_ENV:-production}
     configs:
       - source: alloy-config
         target: /etc/alloy/config.alloy
     volumes:
-      # Where Docker keeps container logs. Different with snap Docker
-      # (/var/snap/docker/common/var-lib-docker/containers) or a custom data-root.
       - ${DOCKER_CONTAINERS_DIR:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
-      # How far each file has been read, so a restart neither re-sends nor skips lines.
       - alloy-data:/alloy-data
     depends_on:
       loki:
         condition: service_started
     healthcheck:
-      # The image has bash but no HTTP client; /dev/tcp is bash's own TCP connection.
       test:
         - CMD
         - bash
@@ -213,29 +153,21 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
-    # Runs as root only so it can read the root-owned log files; it needs no capabilities for that.
-    # Not read_only: compose writes the inline config into the container.
+    # Root only to read the root-owned log files; no capabilities.
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Health view, at <APP_URL>/grafana/ through nginx (its port isn't published). Comes with the
-  # Loki data source and the SIEMple Health dashboard built in. Its own sign-in: GRAFANA_ADMIN_USER /
-  # GRAFANA_ADMIN_PASSWORD, which only take effect on the very first start (after that the
-  # password lives in Grafana's database; change it in Grafana).
   grafana:
     image: ${SIEMPLE_GRAFANA_IMAGE:-ghcr.io/ajaykrishna9633/siemple-grafana}:${SIEMPLE_VERSION:-latest}
     build: ./grafana
     restart: unless-stopped
     environment:
-      # Grafana builds its links and redirects from this, so it must be the address people open.
       GF_SERVER_ROOT_URL: ${APP_URL:-http://localhost}/grafana/
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
-      # true in HTTPS mode, so the sign-in cookie is only ever sent over HTTPS.
       GF_SECURITY_COOKIE_SECURE: ${GRAFANA_COOKIE_SECURE:-false}
     volumes:
-      # Grafana's own database: users, saved copies of dashboards, preferences.
       - grafana-data:/var/lib/grafana
     depends_on:
       loki:
@@ -243,10 +175,6 @@ services:
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Optional HTTPS: COMPOSE_PROFILES=https and DOMAIN=siem.example.com in .env. The domain's DNS
-  # must point at this host and ports 80/443 must be reachable for Let's Encrypt. For an IP or a
-  # name only resolvable on the LAN, Caddy uses its own local CA instead (browsers will warn
-  # until that CA is trusted).
   caddy:
     image: caddy:2-alpine
     profiles: [https]
@@ -261,28 +189,21 @@ services:
       - source: caddyfile
         target: /etc/caddy/Caddyfile
     volumes:
-      # Certificates and the ACME account. Losing this means re-issuing (and rate limits).
       - caddy_data:/data
       - caddy_config:/config
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
 configs:
-  # Kept inline so an install needs only this file and .env. {$$DOMAIN} reaches Caddy as
-  # {$DOMAIN}, which Caddy fills from its environment; an empty DOMAIN fails loudly at start.
+  # Inline so an install needs only this file and .env. {$$DOMAIN} reaches Caddy as {$DOMAIN}.
   caddyfile:
     content: |
       {$$DOMAIN} {
-        # Browsers remember to use HTTPS for a year. No includeSubDomains: other hosts under
-        # the same domain may not have HTTPS.
         header Strict-Transport-Security "max-age=31536000"
-        # Caddy replaces any client-sent X-Forwarded-For with the address it sees; nginx trusts
-        # that header only from this container.
         reverse_proxy web:80
       }
 
-  # Single-process Loki keeping everything on the loki-data volume. $${…} reaches Loki as ${…},
-  # which -config.expand-env fills from its environment.
+  # Single-process Loki on the loki-data volume. $${…} is filled by -config.expand-env.
   loki-config:
     content: |
       auth_enabled: false # one tenant; only Alloy and Grafana can reach Loki
@@ -311,27 +232,19 @@ configs:
               period: 24h
       limits_config:
         retention_period: $${LOKI_RETENTION:-336h}
-        # Keep exactly the labels Alloy sets (service, level, env): Loki would otherwise add a
-        # service_name label and a detected level of its own.
         discover_service_name: []
         discover_log_levels: false
-        # Lets Grafana draw the log-volume histogram.
         volume_enabled: true
       compactor:
         working_directory: /loki/compactor
-        # The compactor is what actually deletes logs older than retention_period.
         retention_enabled: true
         delete_request_store: filesystem
       analytics:
-        # Don't send usage statistics to Grafana Labs.
         reporting_enabled: false
 
-  # Alloy's pipeline: this project's container log files ──► filter and parse ──► Loki.
-  # $$ reaches Alloy as $; sys.env reads Alloy's own environment (set on the service above).
+  # $$ reaches Alloy as $.
   alloy-config:
     content: |
-      // Every container's JSON log file. Docker writes one line per log line:
-      // {"log":"...","stream":"stdout","attrs":{...},"time":"..."}
       local.file_match "containers" {
         path_targets = [{"__path__" = "/var/lib/docker/containers/*/*-json.log"}]
         sync_period  = "10s"
@@ -343,7 +256,6 @@ configs:
       }
 
       loki.process "siemple" {
-        // Unwrap Docker's envelope. attrs holds the compose labels (see x-logging).
         stage.json {
           expressions = {
             line    = "log",
@@ -353,8 +265,6 @@ configs:
           }
         }
 
-        // Only this compose project. Lines from any other container (no attrs, or another
-        // project) are dropped here and never leave Alloy.
         stage.labels {
           values = { project = "", service = "" }
         }
@@ -372,13 +282,11 @@ configs:
           source = "line"
         }
 
-        // The setup token is printed once at start for the administrator; it is a secret and
-        // never goes to Loki.
+        // The setup token is a secret: never send it.
         stage.drop {
           expression          = ".*SIEMple setup token.*"
           drop_counter_reason = "secret"
         }
-        // Health-check noise: nginx access lines and API lines for a successful health check.
         stage.drop {
           expression          = ".*\"GET /(api/)?health(z)?[^ \"]* HTTP/[0-9.]+\" 200 .*"
           drop_counter_reason = "healthcheck"
@@ -388,8 +296,6 @@ configs:
           drop_counter_reason = "healthcheck"
         }
 
-        // Level: the API writes JSON with "level"; Grafana and Loki write level=...; Postgres
-        // ERROR: / FATAL: / WARNING:; nginx [error] / [warn]. Anything else counts as info.
         stage.json {
           expressions = { json_level = "level" }
         }
@@ -410,8 +316,6 @@ configs:
         stage.static_labels {
           values = { env = sys.env("SIEMPLE_ENV") }
         }
-        // Exactly three labels. User ids, IPs, request ids and paths stay in the line, never
-        // labels: each distinct label value makes a new stream, and these would make millions.
         stage.label_keep {
           values = ["service", "level", "env"]
         }

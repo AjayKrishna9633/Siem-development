@@ -1,4 +1,3 @@
-# Loads every dashboard JSON in /etc/grafana/dashboards (SIEMple Health) into a "SIEMple" folder.
 apiVersion: 1
 
 providers:

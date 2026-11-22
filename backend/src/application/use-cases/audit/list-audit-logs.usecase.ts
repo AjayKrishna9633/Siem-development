@@ -19,7 +19,6 @@ export class ListAuditLogsUseCase implements IListAuditLogsUseCase {
     const { from, to } = resolveAuditRange(input.query, new Date());
     const cursor = input.cursor ? decodeAuditCursor(input.cursor) : null;
 
-    // One extra row tells us whether there is a next page without a count query.
     const rows = await this._logs.findPage({ ...input.query, from, to }, cursor, input.limit + 1);
     const items = rows.slice(0, input.limit);
     const last = items.at(-1);

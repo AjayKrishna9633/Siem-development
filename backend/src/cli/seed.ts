@@ -8,7 +8,7 @@ import { AuditAction, AuditTargetType } from '../domain/enums/AuditAction.ts';
 import { AuditOutcome } from '../domain/enums/AuditOutcome.ts';
 import { AUDIT_CATEGORY_BY_ACTION } from '../domain/constants/audit.ts';
 
-// Development-only demo data. Every account that can sign in shares this password.
+// Development-only demo data; every account shares this password.
 const DEMO_PASSWORD = 'SiempleDemo#2026';
 const ORG_NAME = 'SIEMple Demo';
 const BASE_URL = 'http://localhost:5173';
@@ -152,9 +152,6 @@ const seedAuditLogs = async (runner: QueryRunner, ids: Map<string, string>) => {
     ],
   ];
 
-  // Raw SQL on purpose: the demo rows are backdated, which the application never does. INSERT is
-  // allowed by the append-only trigger. The actor and target names are copied from `users` the
-  // same way the application copies them at write time.
   for (const [actor, action, targetType, targetId, age] of entries) {
     await runner.query(
       `INSERT INTO "audit_logs"
@@ -203,7 +200,6 @@ try {
 
     await runner.startTransaction();
     try {
-      // audit_logs is append-only (a trigger rejects UPDATE, DELETE and TRUNCATE), so history stays.
       if (reset) await runner.query(`TRUNCATE "auth_tokens", "users"`);
       await seedSettings(runner);
       const ids = await seedUsers(runner, passwordHash);

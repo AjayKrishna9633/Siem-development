@@ -14,8 +14,6 @@ import type {
 import type { ILogger } from '../../application/interfaces/services/logger.interface.ts';
 import type { IRequestContextProvider } from '../../application/interfaces/services/request-context.provider.interface.ts';
 
-// Match the column widths in audit-log.model.ts. A value that is too long would make the whole
-// insert fail, and an audit row with a clipped label beats no audit row.
 const LIMITS = {
   username: 255,
   role: 32,
@@ -45,8 +43,7 @@ export class AuditService implements IAuditService {
     try {
       await this._repository.insert(this.prepare(event));
     } catch (error: unknown) {
-      // Deliberately not rethrown. The log line carries what the row would have said, minus the
-      // metadata, which may hold personal data and is already lost with the row.
+      // Not rethrown; metadata is left out of the log line.
       this._logger.error('audit write failed', {
         err: error,
         action: event.action,

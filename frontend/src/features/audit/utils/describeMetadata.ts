@@ -9,16 +9,12 @@ export interface IChange {
 
 export interface IMetadataView {
   changes: IChange[];
-  // Everything in metadata that isn't part of a before/after pair.
   details: { key: string; value: AuditJson }[];
 }
 
 const isRecord = (value: AuditJson | undefined): value is { [key: string]: AuditJson } =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// Metadata records a change in one of two shapes: { before: {...}, after: {...} } for edits to
-// several fields, or { from, to } for a single value (a role change). Both become rows of
-// "field: before -> after"; whatever is left is shown as plain details.
 export const describeMetadata = (action: string, metadata: AuditMetadata): IMetadataView => {
   const changes: IChange[] = [];
   const consumed = new Set<string>();
@@ -49,7 +45,6 @@ export const describeMetadata = (action: string, metadata: AuditMetadata): IMeta
   };
 };
 
-// How a metadata value reads in a cell: text as-is, empty as an em dash, structures as JSON.
 export const formatValue = (value: AuditJson | undefined): string => {
   if (value === null || value === undefined) return '—';
   if (typeof value === 'string') return value === '' ? '(empty)' : value;

@@ -1,4 +1,4 @@
-// First, before any module that uses zod (see the file for why).
+// Must load before zod.
 import './zod-config.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

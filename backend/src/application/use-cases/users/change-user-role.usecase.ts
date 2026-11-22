@@ -27,8 +27,6 @@ export class ChangeUserRoleUseCase implements IChangeUserRoleUseCase {
     assertNotSelf(input.actor, input.userId);
 
     let previousRole: UserRole | null = null;
-    // The audit row is written inside the same transaction as the role change (see
-    // changeWithAdminLock), so a permission change can never exist without its audit row.
     const user = await this._users.changeWithAdminLock(
       input.userId,
       (target, activeAdmins) => {

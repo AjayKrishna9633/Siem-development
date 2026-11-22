@@ -13,7 +13,6 @@ const COLUMNS = 6;
 
 interface IAuditTableProps {
   entries: IAuditLog[];
-  // True only before the first page has arrived; later loads keep the old rows on screen, dimmed.
   loading: boolean;
   refreshing: boolean;
   emptyText: string;

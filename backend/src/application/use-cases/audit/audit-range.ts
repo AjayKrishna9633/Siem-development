@@ -5,12 +5,6 @@ import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 
 const DAY_MS = 86_400_000;
 
-// Turns whatever dates the caller gave into a concrete range no longer than the limit.
-//   neither given -> the last DEFAULT_RANGE_DAYS up to now
-//   only `from`   -> from..now
-//   only `to`     -> DEFAULT_RANGE_DAYS before it..to
-// The cap applies to the result, so `from` alone, far in the past, is refused rather than
-// silently clipped.
 export const resolveAuditRange = (
   query: { from?: Date; to?: Date },
   now: Date,

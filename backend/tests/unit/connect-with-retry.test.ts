@@ -4,7 +4,6 @@ import type { ILogger } from '../../src/application/interfaces/services/logger.i
 
 const fakeLogger = () => ({ warn: vi.fn() }) as unknown as ILogger;
 
-// Fails the first `failures` calls, then succeeds.
 const flaky = (failures: number) => {
   let calls = 0;
   return vi.fn(async () => {

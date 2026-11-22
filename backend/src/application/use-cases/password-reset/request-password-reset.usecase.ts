@@ -49,7 +49,6 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
 
     await this._audit.record({
       action: AuditAction.PASSWORD_RESET_REQUESTED,
-      // Anonymous: anyone can ask for a reset link for an address they know.
       actor: null,
       targetType: AuditTargetType.USER,
       targetId: user.id,

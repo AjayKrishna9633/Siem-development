@@ -2,8 +2,6 @@ import { pino, stdSerializers, type Logger, type LoggerOptions } from 'pino';
 import { env } from '../../config/env.config.ts';
 import type { ILogger, LogFields } from '../../application/interfaces/services/logger.interface.ts';
 
-// Request bodies, headers and cookies are never logged on purpose; these paths catch them anyway
-// if one is ever passed as a field, along with every secret-carrying field name.
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -36,8 +34,6 @@ const REDACT_PATHS = [
 
 export const baseLoggerOptions: LoggerOptions = {
   base: { service: 'siemple-backend' },
-  // One JSON object per line on stdout. Alloy collects it from the container log and reads
-  // `level` as a word ("warn"), so it can become a label; pino would otherwise write 40.
   timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
   formatters: { level: (label) => ({ level: label }) },
   redact: { paths: REDACT_PATHS, censor: '[REDACTED]' },

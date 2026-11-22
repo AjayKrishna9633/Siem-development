@@ -163,7 +163,6 @@ describe('ExportAuditLogsUseCase', () => {
       action: 'audit.export',
       metadata: { format: 'csv', rowCount: 1, category: 'auth', q: 'ann' },
     });
-    // Unset filters are left out entirely, not stored as undefined.
     expect(vi.mocked(audit.record).mock.calls[0]?.[0].metadata).not.toHaveProperty('actorId');
 
     for await (const entry of rows) void entry;

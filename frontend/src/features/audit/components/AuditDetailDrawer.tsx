@@ -11,7 +11,6 @@ import { OutcomeBadge } from './OutcomeBadge.tsx';
 import { actorName } from '../utils/actor.ts';
 
 interface IAuditDetailDrawerProps {
-  // null while the entry is being fetched (opened from a link) or if it could not be.
   entry: IAuditLog | null;
   loading: boolean;
   error: string | null;

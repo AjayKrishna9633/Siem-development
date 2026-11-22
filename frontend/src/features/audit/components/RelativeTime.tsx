@@ -2,8 +2,6 @@ import React from 'react';
 import { formatDistanceStrict } from 'date-fns';
 import { useNow } from '../hooks/useNow.ts';
 
-// "5 minutes ago" in the cell; the exact local time and the stored UTC timestamp (microseconds
-// included, handy for matching against a log file) on hover.
 export const RelativeTime: React.FC<{ value: string; className?: string }> = ({
   value,
   className,
