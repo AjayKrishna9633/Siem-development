@@ -39,11 +39,9 @@ export const AuditFilters: React.FC<IAuditFiltersProps> = ({
   const [text, setText] = useState(filters.q ?? '');
   const debounced = useDebounced(text.trim());
 
-  // Typing waits for a pause before it reaches the URL (and so the API).
   useEffect(() => {
     if (debounced !== (filters.q ?? '')) onChange({ q: debounced || undefined });
-    // `filters.q` is deliberately not a dependency: the URL following the input must not loop
-    // back into it, and an external change (Clear) is handled by clear() below.
+    // `filters.q` is left out to avoid a loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
 

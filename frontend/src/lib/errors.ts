@@ -6,11 +6,6 @@ interface IApiErrorBody {
   data?: { field?: string; message?: string }[] | null;
 }
 
-/**
- * Decides whether a failed request gets the global error toast. Only failures no form can
- * explain qualify: server unreachable, 5xx, rate limited, or missing permission.
- * 400/409/422 belong to the form that sent them; 401 is handled by the token refresh.
- */
 export const shouldToast = (err: unknown): boolean => {
   if (axios.isCancel(err) || !axios.isAxiosError<IApiErrorBody>(err)) return false;
   if (err.config?.skipGlobalError) return false;

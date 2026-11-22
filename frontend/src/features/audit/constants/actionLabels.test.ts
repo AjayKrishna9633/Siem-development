@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACTION_LABELS, actionLabel, humanize } from './actionLabels.ts';
 
-// Every action AuditAction (backend/src/domain/enums/AuditAction.ts) can write. If the backend
-// gains an action, add it here and give it a label, or this list is the reminder that it's missing.
 const BACKEND_ACTIONS = [
   'auth.setup_token.used',
   'system.setup.completed',

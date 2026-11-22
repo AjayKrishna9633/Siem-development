@@ -6,11 +6,6 @@ import type { IAuditFilters } from '../types/audit.types.ts';
 
 export const PAGE_SIZE = 50;
 
-// One page of the log at a time, newest first, walked with the server's cursors.
-//
-// `cursors` is the trail of cursors taken to get here: [] is the newest page, [c1] the page after
-// it, and so on. "Older" pushes the cursor the server just handed back; "Newer" pops one. Changing
-// any filter starts a new trail, so you never carry page 3's cursor into a different search.
 export const useAuditLog = (filters: IAuditFilters, blockedReason: string | null) => {
   const filtersKey = filtersToParams(filters).toString();
   const [paging, setPaging] = useState<{ key: string; cursors: string[] }>({
@@ -22,8 +17,6 @@ export const useAuditLog = (filters: IAuditFilters, blockedReason: string | null
 
   const fetchPage = useCallback(() => {
     if (blockedReason) return Promise.reject(new Error(blockedReason));
-    // `now` is read here, per request, so a relative range ("last 24 hours") moves forward on
-    // Refresh instead of being frozen at the moment the page opened.
     return auditService.list({ ...toQuery(filters, new Date()), limit: PAGE_SIZE, cursor });
   }, [filters, blockedReason, cursor]);
 
@@ -36,7 +29,6 @@ export const useAuditLog = (filters: IAuditFilters, blockedReason: string | null
 
   return {
     entries: data?.items ?? [],
-    // True only until the first response; after that old rows stay visible while the next load runs.
     firstLoad: loading && !data,
     refreshing: loading && !!data,
     error,

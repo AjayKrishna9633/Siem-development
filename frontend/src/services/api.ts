@@ -14,7 +14,6 @@ export const api = axios.create({
   },
 });
 
-/** Request option for calls whose page shows the error itself: no global toast. */
 export const INLINE_ERRORS = { skipGlobalError: true } as const;
 
 let accessToken: string | null = null;
@@ -82,14 +81,12 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${session.accessToken}`;
         return api(original);
       }
-      // The session listener has already logged the user out; ProtectedRoute redirects.
       toast.error(SESSION_EXPIRED, { id: SESSION_EXPIRED });
       return Promise.reject(error);
     }
 
     if (shouldToast(error)) {
       const message = apiErrorMessage(error, 'Something went wrong. Try again.');
-      // The message doubles as the id, so a burst of identical failures shows one toast.
       toast.error(message, { id: message });
     }
     return Promise.reject(error);

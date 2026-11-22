@@ -1,7 +1,5 @@
 import type { AuditCategory, AuditOutcome, AuditRange } from '../types/audit.types.ts';
 
-// Human wording for every action the backend can write. The key is the stored action string, so
-// the table reads "Failed sign-in", not `auth.login.failure`.
 export const ACTION_LABELS: Readonly<Record<string, string>> = {
   'auth.login.success': 'Signed in',
   'auth.login.failure': 'Failed sign-in',
@@ -27,14 +25,11 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
 
 const sentenceCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-// "agent.enroll_failed" -> "Agent enroll failed". Used for any action added to the backend before
-// it gets a proper label here, so a new event is readable on day one instead of blank.
 export const humanize = (value: string): string =>
   sentenceCase(value.replace(/[._]+/g, ' ').trim());
 
 export const actionLabel = (action: string): string => ACTION_LABELS[action] ?? humanize(action);
 
-// Where a before/after pair in metadata is a single value named by the action itself.
 export const CHANGED_FIELD_BY_ACTION: Readonly<Record<string, string>> = {
   'user.role.change': 'Role',
 };
