@@ -43,7 +43,9 @@ jobs:
           sed -i -e 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/' \
                  -e 's/^REDIS_PASSWORD=$/REDIS_PASSWORD=ci/' \
                  -e 's/^JWT_SECRET=$/JWT_SECRET=ci-secret-that-is-at-least-32-characters/' \
-                 -e 's/^GRAFANA_ADMIN_PASSWORD=$/GRAFANA_ADMIN_PASSWORD=ci/' .env
+                 -e 's/^GRAFANA_ADMIN_PASSWORD=$/GRAFANA_ADMIN_PASSWORD=ci/' \
+                 -e 's/^WAZUH_API_PASSWORD=$/WAZUH_API_PASSWORD=Ci-api-pass.1/' \
+                 -e 's/^WAZUH_ENROLLMENT_PASSWORD=$/WAZUH_ENROLLMENT_PASSWORD=ci-enrollment-password-20/' .env
           docker compose config --quiet
           COMPOSE_PROFILES=https DOMAIN=siem.example.com docker compose config --quiet
           docker compose -f docker-compose.dev.yml config --quiet
