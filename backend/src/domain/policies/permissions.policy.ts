@@ -5,6 +5,7 @@ const TIER_1: readonly Permission[] = [
   Permission.ALERTS_VIEW,
   Permission.ALERTS_TRIAGE,
   Permission.ALERTS_CLOSE_FALSE_POSITIVE,
+  Permission.AGENTS_VIEW,
 ];
 
 const TIER_2: readonly Permission[] = [
