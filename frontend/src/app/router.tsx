@@ -11,6 +11,7 @@ import {
   ResetPassword,
 } from '@/features/auth';
 import { AuditLogsPage } from '@/features/audit';
+import { AddAgentPage, AgentsPage } from '@/features/agents';
 import { AppShell } from './layout/AppShell.tsx';
 import { Unauthorized } from '@/pages/Unauthorized.tsx';
 import { UserManagement } from '@/pages/settings/UserManagement.tsx';
@@ -64,6 +65,22 @@ export const AppRoutes: React.FC = () => (
         element={
           <ProtectedRoute permission="audit.view">
             <AuditLogsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/agents"
+        element={
+          <ProtectedRoute permission="agents.view">
+            <AgentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/agents/new"
+        element={
+          <ProtectedRoute permission="agents.manage">
+            <AddAgentPage />
           </ProtectedRoute>
         }
       />
