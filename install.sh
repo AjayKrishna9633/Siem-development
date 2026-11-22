@@ -1,24 +1,14 @@
 #!/usr/bin/env bash
-# SIEMple installer and maintenance tool.
-#
-# Install (Linux host with Docker):
+# SIEMple installer and maintenance tool. Run with `help` for every command.
 #   curl -fsSL https://github.com/AjayKrishna9633/Siem-development/releases/latest/download/install.sh | sudo bash
-#
-# The install keeps a copy of this script, so later:
-#   sudo /opt/siemple/install.sh status | update | backup | restore <file> | token | uninstall
-#
-# Run with `help` for every command and option.
 
 set -euo pipefail
 
 # ── Settings ────────────────────────────────────────────────────────────────
-# The one place the GitHub repository is named; every download URL is built from it.
 REPO="AjayKrishna9633/Siem-development"
 SIEMPLE_DIR="${SIEMPLE_DIR:-/opt/siemple}"
-# Overrides where release files are downloaded from (a mirror, or a local folder as file:///...
-# for testing). Default: the GitHub release for the chosen version.
 SIEMPLE_ASSETS_URL="${SIEMPLE_ASSETS_URL:-}"
-# Compose 2.23.1 added inline `configs: content:`, which holds the Caddy config.
+# Inline `configs: content:` needs Compose 2.23.1.
 MIN_COMPOSE_VERSION="2.23.1"
 
 # ── Output helpers ──────────────────────────────────────────────────────────
@@ -65,10 +55,8 @@ Environment:
 EOF
 }
 
-# Reads an answer from the terminal even when the script itself arrives on stdin (curl | bash).
 confirm() {
   local prompt="$1" expected="$2" answer=''
-  # /dev/tty can exist without a terminal behind it (cron, CI), so test by opening it.
   { exec 3<> /dev/tty; } 2> /dev/null || die "No terminal to confirm on; re-run with --yes."
   printf '%s' "$prompt" >&3
   read -r answer <&3 || true
@@ -77,7 +65,6 @@ confirm() {
 }
 
 # ── Checks ──────────────────────────────────────────────────────────────────
-# Succeeds when version $1 >= $2 (dotted numbers).
 version_ge() {
   [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
 }
@@ -96,7 +83,6 @@ check_prerequisites() {
     || die "Docker Compose $MIN_COMPOSE_VERSION or newer is required (found $v)."
 }
 
-# Every command except install runs against an existing install.
 require_install() {
   { [ -f "$SIEMPLE_DIR/docker-compose.yml" ] && [ -f "$SIEMPLE_DIR/.env" ]; } \
     || die "No SIEMple install found in $SIEMPLE_DIR (set SIEMPLE_DIR if it's elsewhere)."
@@ -106,8 +92,6 @@ require_install() {
 compose() { docker compose "$@"; }
 
 # ── .env helpers ────────────────────────────────────────────────────────────
-# Sets KEY=VALUE in .env, replacing the existing line or appending one. awk, not sed, so values
-# with / or & need no escaping.
 set_env() {
   local key="$1" value="$2" file="${3:-.env}"
   awk -v k="$key" -v v="$value" '
@@ -124,7 +108,7 @@ get_env() {
   sed -n "s/^$1=//p" "${2:-.env}" | tail -n1
 }
 
-# Hex only: the passwords are placed inside connection URLs.
+# Hex only: passwords go inside connection URLs.
 random_secret() {
   if command -v openssl > /dev/null; then
     openssl rand -hex "$1"
@@ -133,7 +117,6 @@ random_secret() {
   fi
 }
 
-# The address other machines on the network most likely use to reach this one.
 detect_ip() {
   local ip=''
   if command -v ip > /dev/null; then
@@ -144,8 +127,6 @@ detect_ip() {
 }
 
 # ── Releases ────────────────────────────────────────────────────────────────
-# Prints the tag (e.g. v1.2.0) for a version, or of the latest release. GitHub redirects
-# /releases/latest to /releases/tag/<tag>, which avoids the rate-limited API.
 resolve_tag() {
   local version="$1" url
   if [ -n "$version" ]; then
@@ -160,15 +141,12 @@ resolve_tag() {
   esac
 }
 
-# Downloads release file $1 (for tag $2) to path $3.
 download() {
   local name="$1" tag="$2" dest="$3" base
   base="${SIEMPLE_ASSETS_URL:-https://github.com/$REPO/releases/download/$tag}"
   curl -fsSL "$base/$name" -o "$dest" || die "Download failed: $base/$name"
 }
 
-# Fetches the release's compose file, settings template and this script into the current folder.
-# GitHub renames uploads that start with a dot, so the template is published as env.example.
 fetch_release_files() {
   local tag="$1" tmp
   tmp="$(mktemp -d)"
@@ -180,7 +158,6 @@ fetch_release_files() {
   rmdir "$tmp"
 }
 
-# Waits for every service to be healthy. On failure, shows the likely culprit's logs.
 start_stack() {
   info "Starting SIEMple (the first start can take a minute)..."
   if ! compose up -d --wait --remove-orphans; then
@@ -191,9 +168,6 @@ start_stack() {
   fi
 }
 
-# Asks the app itself rather than searching the logs: a container that wasn't recreated still
-# has the token from before setup in its log. The command issues a fresh token (replacing the one
-# printed at start) or says setup is already complete.
 show_setup_token() {
   local line
   line="$(compose exec -T api node dist/cli/setup-token.js 2>/dev/null | grep -o '==== SIEMple setup token.*' || true)"
@@ -206,8 +180,6 @@ show_setup_token() {
   fi
 }
 
-# Settings added by later releases that compose requires. An .env from an older install gets
-# them filled in on update; existing values are never changed.
 add_missing_settings() {
   if [ -z "$(get_env GRAFANA_ADMIN_PASSWORD)" ]; then
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
@@ -224,10 +196,6 @@ show_grafana_login() {
   echo "Health (Grafana): $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
 }
 
-# Runs a shell command in a throwaway container that has Loki's and Grafana's data mounted at
-# /loki and /var/lib/grafana, and $SIEMPLE_DIR/backups at /backup. It uses the Grafana image
-# (already on this host, and it has tar), as root because Loki's files belong to another user.
-# Containers are found by service, so this works whatever the compose project is called.
 with_data_volumes() {
   local loki grafana image
   loki="$(compose ps -aq loki)"
@@ -263,11 +231,10 @@ cmd_install() {
   fetch_release_files "$tag"
 
   if [ -f .env ]; then
-    # Re-running install must never replace existing secrets: the database was created with them.
+    # Never replace existing secrets: the database was created with them.
     ok "Keeping the existing .env (secrets and settings unchanged)"
     [ -z "$port$url$domain" ] || warn "--port, --url and --domain only apply to a new install; edit $SIEMPLE_DIR/.env to change them."
   else
-    # Settings hold secrets: readable by the owner only.
     (umask 077 && cp .env.example .env)
     set_env POSTGRES_PASSWORD "$(random_secret 24)"
     set_env REDIS_PASSWORD "$(random_secret 24)"
@@ -291,7 +258,6 @@ cmd_install() {
     ok "Created .env with newly generated secrets"
   fi
   set_env SIEMPLE_VERSION "${tag#v}"
-  # An .env kept from an older install may lack settings this release requires.
   add_missing_settings
 
   info "Downloading images..."
@@ -318,21 +284,16 @@ cmd_update() {
   current="$(get_env SIEMPLE_VERSION)"
   info "Updating SIEMple ${current:-?} -> ${tag#v}"
 
-  # Database only: an update doesn't touch the stored logs, and copying them can take a while.
   [ "$backup" = 0 ] || cmd_backup --no-logs
 
-  # The previous compose file is kept, so a failed update can be rolled back by hand.
   cp docker-compose.yml docker-compose.yml.previous
   fetch_release_files "$tag"
   set_env SIEMPLE_VERSION "${tag#v}"
-  # A release may add settings: required ones are generated here, the rest have safe defaults.
-  # Existing values are never touched.
   add_missing_settings
   compose config --quiet || die "The new docker-compose.yml doesn't accept this .env (see above)."
 
   info "Downloading images..."
   compose pull --quiet
-  # Migrations for the new version run first; the api starts only if they succeed.
   start_stack
   ok "SIEMple is now on ${tag#v}"
   docker image prune -f > /dev/null 2>&1 || true
@@ -355,8 +316,6 @@ cmd_backup() {
   stamp="$(date +%Y%m%d-%H%M%S)"
   file="backups/siemple-$stamp.dump"
   info "Backing up the database to $SIEMPLE_DIR/$file"
-  # Custom format: compressed, and restorable with pg_restore --clean into an existing database.
-  # Written owner-only, since it holds every account and audit record.
   if ! (umask 077 && compose exec -T postgres pg_dump -U "$user" -d "$db" --format=custom > "$file"); then
     rm -f "$file"
     die "Backup failed. Is the postgres container running? (install.sh status)"
@@ -366,8 +325,6 @@ cmd_backup() {
   if [ "$logs" = 1 ]; then
     local volumes="siemple-$stamp-volumes.tar.gz"
     info "Backing up the stored logs and Grafana to $SIEMPLE_DIR/backups/$volumes"
-    # Stopped for the copy so their files are consistent. Meanwhile the API keeps its own log
-    # lines until Loki is back, and ingest clients get 503 and retry.
     compose stop loki grafana > /dev/null
     if ! with_data_volumes "umask 077 && tar czf '/backup/$volumes' -C / loki var/lib/grafana"; then
       rm -f "backups/$volumes"
@@ -390,11 +347,9 @@ cmd_restore() {
     esac
   done
   [ -n "$file" ] || die "Usage: install.sh restore <backup file>"
-  # Resolve the path before changing into the install folder.
   [ -f "$file" ] || die "Backup file not found: $file"
   file="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
   require_install
-  # Logs and Grafana come from the archive taken with the same backup, when it's there.
   local volumes="${file%.dump}-volumes.tar.gz"
   [ -f "$volumes" ] || volumes=''
 
@@ -408,8 +363,6 @@ cmd_restore() {
     confirm "Type 'restore' to continue: " restore || die "Cancelled."
   fi
 
-  # A safety net in case the wrong file was chosen; it includes the logs only when they are
-  # about to be replaced.
   if [ -n "$volumes" ]; then cmd_backup; else cmd_backup --no-logs; fi
   local user db
   user="$(get_env POSTGRES_USER)"; user="${user:-siemple}"
@@ -418,8 +371,6 @@ cmd_restore() {
   info "Stopping the app so nothing writes during the restore..."
   compose stop web api
   info "Restoring $file"
-  # --clean drops each object before recreating it; one transaction, so a failed restore leaves
-  # the current data untouched.
   if ! compose exec -T postgres pg_restore -U "$user" -d "$db" --clean --if-exists --no-owner \
       --single-transaction --exit-on-error < "$file"; then
     warn "Restore failed; the database was left as it was. Restarting the app..."
@@ -429,7 +380,6 @@ cmd_restore() {
   if [ -n "$volumes" ]; then
     info "Restoring the stored logs and Grafana from $volumes"
     compose stop loki grafana > /dev/null
-    # The helper sees only the backups folder, so an archive from elsewhere is copied in first.
     local name
     name="$(basename "$volumes")"
     if [ "$(dirname "$volumes")" != "$SIEMPLE_DIR/backups" ]; then
@@ -440,7 +390,6 @@ cmd_restore() {
       || warn "Restoring the logs failed; the database was restored. See the error above."
     rm -f "backups/restore-volumes.tar.gz"
   fi
-  # Starting the stack runs migrations, so a backup from an older version is brought up to date.
   start_stack
   ok "Restore complete."
 }
@@ -459,7 +408,6 @@ cmd_status() {
 
 cmd_token() {
   require_install
-  # Runs inside the running api container, with the same settings. It replaces any earlier token.
   compose exec -T api node dist/cli/setup-token.js
 }
 
@@ -486,12 +434,9 @@ cmd_uninstall() {
     [ -d backups ] && warn "Backups in $SIEMPLE_DIR/backups are kept."
     confirm "Type 'delete' to continue: " delete || die "Cancelled."
   fi
-  # -v removes the named volumes (database, Redis, logs, Grafana, certificates); --rmi all
-  # removes the images.
   compose --profile https down --volumes --rmi all --remove-orphans
   rm -f docker-compose.yml docker-compose.yml.previous .env .env.example install.sh
   cd /
-  # Removes the folder only if nothing (like backups/) is left in it.
   rmdir "$SIEMPLE_DIR" 2>/dev/null || true
   ok "SIEMple has been removed."
 }
