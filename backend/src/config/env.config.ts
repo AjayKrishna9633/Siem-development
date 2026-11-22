@@ -1,5 +1,11 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import {
+  isEnrollmentPassword,
+  isHostAddress,
+  normalizeVersion,
+} from '../domain/policies/agent-identifier.policy.ts';
+import { DEFAULT_WAZUH_AGENT_VERSION } from '../domain/constants/wazuh-packages.ts';
 
 const optionalText = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
@@ -35,6 +41,27 @@ const envSchema = z.object({
   SMTP_FROM: optionalText,
   OTP_EMAIL: optionalText,
   OTP_PASSWORD: optionalText,
+
+  WAZUH_API_URL: z.string().url().default('https://wazuh-manager:55000'),
+  WAZUH_API_USER: optionalText,
+  WAZUH_API_PASSWORD: optionalText,
+  WAZUH_API_CA_FILE: optionalText,
+  WAZUH_API_TLS_INSECURE: z.preprocess((v) => v === 'true', z.boolean()),
+  WAZUH_PUBLIC_ADDRESS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().refine(isHostAddress, 'must be an IPv4/IPv6 address or a hostname').optional(),
+  ),
+  WAZUH_ENROLLMENT_PASSWORD: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .refine(isEnrollmentPassword, '20-128 characters: letters, digits and - _ . : @ + = ! # ,')
+      .optional(),
+  ),
+  WAZUH_AGENT_VERSION: z.preprocess(
+    (v) => (v === '' || v === undefined ? DEFAULT_WAZUH_AGENT_VERSION : v),
+    z.string().refine((v) => normalizeVersion(v) !== null, 'must look like 4.14.10'),
+  ),
 });
 
 const parsed = envSchema.safeParse(process.env);
