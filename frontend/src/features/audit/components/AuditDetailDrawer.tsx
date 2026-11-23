@@ -47,7 +47,7 @@ export const AuditDetailDrawer: React.FC<IAuditDetailDrawerProps> = ({
 }) => (
   <Drawer
     label="Audit log entry"
-    title={entry ? actionLabel(entry.action) : 'Audit log entry'}
+    title={entry ? actionLabel(entry.action, entry.metadata) : 'Audit log entry'}
     description={entry ? exactTime(entry.occurredAt) : undefined}
     onClose={onClose}
   >
@@ -85,7 +85,7 @@ const EntryDetails: React.FC<{ entry: IAuditLog }> = ({ entry }) => {
           {entry.actor.id && <Mono>{entry.actor.id}</Mono>}
         </Row>
         <Row label="Action">
-          <p>{actionLabel(entry.action)}</p>
+          <p>{actionLabel(entry.action, entry.metadata)}</p>
           <CodeChip className="mt-1">{entry.action}</CodeChip>
         </Row>
         <Row label="Target">

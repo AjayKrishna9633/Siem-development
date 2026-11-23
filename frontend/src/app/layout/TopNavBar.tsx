@@ -28,6 +28,7 @@ export const TopNavBar: React.FC = () => {
   const links = [
     ...(can(user, 'users.manage') ? [{ label: 'Users', to: '/users' }] : []),
     ...(can(user, 'audit.view') ? [{ label: 'Audit Log', to: '/audit' }] : []),
+    ...(can(user, 'settings.manage') ? [{ label: 'Settings', to: '/settings/email' }] : []),
     { label: 'Profile', to: '/profile' },
   ];
 
