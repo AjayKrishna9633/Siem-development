@@ -5,7 +5,6 @@ x-logging: &logging
   options:
     max-size: 10m
     max-file: '3'
-    labels: com.docker.compose.project,com.docker.compose.service
 
 x-api-env: &api-env
   NODE_ENV: production
@@ -121,16 +120,17 @@ services:
     security_opt: ['no-new-privileges:true']
     logging: *logging
 
-  # Ships this project's container logs to Loki. Reads the JSON log files read-only instead of
-  # docker.sock (root on the host); other projects' lines are dropped.
+  # Ships this project's container logs to Loki through the Docker API (via the read-only proxy
+  # below), so it works wherever Docker keeps its files, Docker Desktop included.
   alloy:
     image: grafana/alloy:v1.21.3
     restart: unless-stopped
+    user: alloy
     command:
       - run
       - /etc/alloy/config.alloy
       - --server.http.listen-addr=127.0.0.1:12345
-      - --storage.path=/alloy-data
+      - --storage.path=/var/lib/alloy/data
       - --disable-reporting
     environment:
       SIEMPLE_PROJECT: ${COMPOSE_PROJECT_NAME:-siemple}
@@ -139,10 +139,12 @@ services:
       - source: alloy-config
         target: /etc/alloy/config.alloy
     volumes:
-      - ${DOCKER_CONTAINERS_DIR:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
-      - alloy-data:/alloy-data
+      - alloy-state:/var/lib/alloy/data
+    networks: [default, docker-api]
     depends_on:
       loki:
+        condition: service_started
+      docker-socket-proxy:
         condition: service_started
     healthcheck:
       test:
@@ -154,7 +156,24 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
-    # Root only to read the root-owned log files; no capabilities.
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    logging: *logging
+
+  # The Docker API for Alloy, read-only: GET on /containers (list, inspect, logs) and /networks
+  # (discovery labels targets with them), no POST, so no exec, create or start. It alone mounts
+  # the socket; only Alloy can reach it.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: '1'
+      NETWORKS: '1'
+      EVENTS: '0'
+      POST: '0'
+    volumes:
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
+    networks: [docker-api]
     cap_drop: [ALL]
     security_opt: ['no-new-privileges:true']
     logging: *logging
@@ -246,46 +265,39 @@ configs:
   # $$ reaches Alloy as $.
   alloy-config:
     content: |
-      local.file_match "containers" {
-        path_targets = [{"__path__" = "/var/lib/docker/containers/*/*-json.log"}]
-        sync_period  = "10s"
+      // Only this compose project's containers, through the read-only Docker API proxy.
+      discovery.docker "siemple" {
+        host             = "tcp://docker-socket-proxy:2375"
+        refresh_interval = "15s"
+        filter {
+          name   = "label"
+          values = ["com.docker.compose.project=" + sys.env("SIEMPLE_PROJECT")]
+        }
       }
 
-      loki.source.file "containers" {
-        targets    = local.file_match.containers.targets
-        forward_to = [loki.process.siemple.receiver]
+      discovery.relabel "siemple" {
+        targets = []
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+          target_label  = "project"
+        }
+        rule {
+          source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+          target_label  = "service"
+        }
+      }
+
+      loki.source.docker "siemple" {
+        host          = "tcp://docker-socket-proxy:2375"
+        targets       = discovery.docker.siemple.targets
+        relabel_rules = discovery.relabel.siemple.rules
+        forward_to    = [loki.process.siemple.receiver]
       }
 
       loki.process "siemple" {
-        stage.json {
-          expressions = {
-            line    = "log",
-            time    = "time",
-            project = "attrs.\"com.docker.compose.project\"",
-            service = "attrs.\"com.docker.compose.service\"",
-          }
-        }
-
-        stage.labels {
-          values = { project = "", service = "" }
-        }
-        stage.match {
-          selector = "{project!=\"" + sys.env("SIEMPLE_PROJECT") + "\"}"
-          action   = "drop"
-          drop_counter_reason = "other_project"
-        }
-
-        stage.timestamp {
-          source = "time"
-          format = "RFC3339Nano"
-        }
-        stage.output {
-          source = "line"
-        }
-
-        // The setup token is a secret: never send it.
+        // The setup token is a secret: never send it, nor the line that goes with its banner.
         stage.drop {
-          expression          = ".*SIEMple setup token.*"
+          expression          = ".*(SIEMple setup token|earlier setup token no longer works).*"
           drop_counter_reason = "secret"
         }
         stage.drop {
@@ -318,7 +330,7 @@ configs:
           values = { env = sys.env("SIEMPLE_ENV") }
         }
         stage.label_keep {
-          values = ["service", "level", "env"]
+          values = ["project", "service", "level", "env"]
         }
 
         forward_to = [loki.write.local.receiver]
@@ -330,11 +342,16 @@ configs:
         }
       }
 
+networks:
+  # Alloy and the Docker API proxy only; no route out.
+  docker-api:
+    internal: true
+
 volumes:
   pgdata:
   redisdata:
   loki-data:
-  alloy-data:
+  alloy-state:
   grafana-data:
   caddy_data:
   caddy_config:
