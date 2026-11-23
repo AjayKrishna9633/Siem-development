@@ -34,14 +34,20 @@ Commands:
       --port N         HTTP port (default: 80)
       --url URL        Address people will open, e.g. http://siem.lan (default: http://<this host's IP>)
       --domain NAME    Serve HTTPS at NAME with an automatic Let's Encrypt certificate
-  update             Back up the database, then upgrade to the latest (or --version X) release
+      --smtp-host H    Send email through H (optional; email can also be set up in Settings → Email)
+      --smtp-port N    SMTP port (default: 587)
+      --smtp-user U    SMTP username; the password is asked for, or read from SIEMPLE_SMTP_PASSWORD
+      --smtp-from A    Sender, e.g. "SIEMple <siem@example.com>" (default: the username)
+  update            Back up the database, then upgrade to the latest (or --version X) release
       --version X      Release to move to
       --no-backup      Skip the backup taken before updating
-  backup             Save a backup to $SIEMPLE_DIR/backups: the database, plus the stored logs
-                     and Grafana's data (Loki and Grafana pause for the copy)
+  backup             Save a backup to $SIEMPLE_DIR/backups: the database and the settings
+                     encryption key (a separate .key file), plus the stored logs and Grafana's
+                     data (Loki and Grafana pause for the copy)
       --no-logs        Database only (quick; this is what update takes)
-  restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). Logs
-                     and Grafana are restored too when the matching -volumes.tar.gz is next to it
+  restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). The
+                     encryption key, logs and Grafana are restored too when the matching
+                     -settings.key and -volumes.tar.gz files are next to it
       --yes            Don't ask for confirmation
   status             Show the containers, their health and the running version
   token              Issue a new setup token (only before setup is completed)
@@ -92,16 +98,29 @@ require_install() {
 compose() { docker compose "$@"; }
 
 # ── .env helpers ────────────────────────────────────────────────────────────
+# The value goes through ENVIRON, not awk -v, which would turn backslashes into escapes.
 set_env() {
-  local key="$1" value="$2" file="${3:-.env}"
-  awk -v k="$key" -v v="$value" '
-    BEGIN { done = 0 }
+  local key="$1" file="${3:-.env}"
+  SET_ENV_VALUE="$2" awk -v k="$key" '
+    BEGIN { done = 0; v = ENVIRON["SET_ENV_VALUE"] }
     $0 ~ "^" k "=" { print k "=" v; done = 1; next }
     { print }
     END { if (!done) print k "=" v }
   ' "$file" > "$file.tmp"
   cat "$file.tmp" > "$file" # keeps the file's permissions (600)
   rm -f "$file.tmp"
+}
+
+# Single-quoted, so compose reads $, # and spaces literally. A quote or line break can't be kept.
+assert_quotable() {
+  case "$2" in
+    *"'"* | *$'\n'*) die "$1 can't contain a single quote or a line break. Set it up in Settings → Email instead." ;;
+  esac
+}
+
+set_env_quoted() {
+  assert_quotable "$1" "$2"
+  set_env "$1" "'$2'"
 }
 
 get_env() {
@@ -115,6 +134,50 @@ random_secret() {
   else
     head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'
   fi
+}
+
+# 32 random bytes in base64, as SETTINGS_ENCRYPTION_KEY expects.
+random_key() {
+  if command -v openssl > /dev/null; then
+    openssl rand -base64 32
+  else
+    head -c 32 /dev/urandom | base64 | tr -d '\n'
+  fi
+}
+
+# Reads a secret from the terminal without echoing it, even under curl | bash.
+read_secret() {
+  local prompt="$1" answer=''
+  { exec 3<> /dev/tty; } 2> /dev/null || return 1
+  printf '%s' "$prompt" >&3
+  IFS= read -rs answer <&3 || true
+  printf '\n' >&3
+  exec 3>&-
+  printf '%s' "$answer"
+}
+
+# --smtp-* flags become the read-only "env" email source. The password never goes in argv.
+apply_smtp_flags() {
+  local host="$1" port="$2" user="$3" from="$4" password=''
+  [ -n "$host" ] || return 0
+  [ -z "$port" ] || [[ "$port" =~ ^[0-9]+$ ]] || die "--smtp-port must be a number."
+  if [ -n "$user" ]; then
+    password="${SIEMPLE_SMTP_PASSWORD:-}"
+    if [ -z "$password" ]; then
+      password="$(read_secret "SMTP password for $user: ")" \
+        || die "No terminal to ask for the SMTP password; set SIEMPLE_SMTP_PASSWORD instead."
+    fi
+    [ -n "$password" ] || die "The SMTP password is empty."
+  fi
+  # Checked before anything is written, so a refusal leaves .env as it was.
+  assert_quotable SMTP_PASSWORD "$password"
+  assert_quotable SMTP_FROM "$from"
+  set_env SMTP_HOST "$host"
+  set_env SMTP_PORT "${port:-587}"
+  set_env SMTP_USER "$user"
+  set_env_quoted SMTP_PASSWORD "$password"
+  set_env_quoted SMTP_FROM "$from"
+  ok "Email set to $host (SMTP_* in $SIEMPLE_DIR/.env; shown read-only in Settings → Email)"
 }
 
 detect_ip() {
@@ -181,6 +244,11 @@ show_setup_token() {
 }
 
 add_missing_settings() {
+  # Never replaced once set: it decrypts the SMTP password saved in Settings → Email.
+  if [ -z "$(get_env SETTINGS_ENCRYPTION_KEY)" ]; then
+    set_env SETTINGS_ENCRYPTION_KEY "$(random_key)"
+    ok "Generated the settings encryption key (SETTINGS_ENCRYPTION_KEY in $SIEMPLE_DIR/.env)"
+  fi
   if [ -z "$(get_env GRAFANA_ADMIN_PASSWORD)" ]; then
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
     ok "Generated a Grafana admin password (GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
@@ -208,16 +276,22 @@ with_data_volumes() {
 
 # ── Commands ────────────────────────────────────────────────────────────────
 cmd_install() {
-  local version='' port='' url='' domain=''
+  local version='' port='' url='' domain='' smtp_host='' smtp_port='' smtp_user='' smtp_from=''
   while [ $# -gt 0 ]; do
     case "$1" in
       --version) version="${2:?--version needs a value}"; shift 2 ;;
       --port)    port="${2:?--port needs a value}"; shift 2 ;;
       --url)     url="${2:?--url needs a value}"; shift 2 ;;
       --domain)  domain="${2:?--domain needs a value}"; shift 2 ;;
+      --smtp-host) smtp_host="${2:?--smtp-host needs a value}"; shift 2 ;;
+      --smtp-port) smtp_port="${2:?--smtp-port needs a value}"; shift 2 ;;
+      --smtp-user) smtp_user="${2:?--smtp-user needs a value}"; shift 2 ;;
+      --smtp-from) smtp_from="${2:?--smtp-from needs a value}"; shift 2 ;;
+      --smtp-password*) die "Don't pass the SMTP password as an option (it would show in ps and shell history). You'll be asked for it, or set SIEMPLE_SMTP_PASSWORD." ;;
       *) die "Unknown option for install: $1" ;;
     esac
   done
+  [ -n "$smtp_host" ] || [ -z "$smtp_port$smtp_user$smtp_from" ] || die "--smtp-port, --smtp-user and --smtp-from need --smtp-host."
   [ -z "$port" ] || [[ "$port" =~ ^[0-9]+$ ]] || die "--port must be a number."
   [ -z "$domain" ] || [ -z "$port" ] || die "--port can't be combined with --domain (HTTPS uses ports 80 and 443)."
 
@@ -259,6 +333,7 @@ cmd_install() {
   fi
   set_env SIEMPLE_VERSION "${tag#v}"
   add_missing_settings
+  apply_smtp_flags "$smtp_host" "$smtp_port" "$smtp_user" "$smtp_from"
 
   info "Downloading images..."
   compose pull --quiet
@@ -322,6 +397,14 @@ cmd_backup() {
   fi
   ok "Database saved ($(du -h "$file" | cut -f1))"
 
+  # Separate from the dump, so the dump alone can't decrypt the SMTP password. Store it apart.
+  local key
+  key="$(get_env SETTINGS_ENCRYPTION_KEY)"
+  if [ -n "$key" ]; then
+    (umask 077 && printf '%s\n' "$key" > "backups/siemple-$stamp-settings.key")
+    ok "Settings encryption key saved to backups/siemple-$stamp-settings.key (keep it apart from the dump)"
+  fi
+
   if [ "$logs" = 1 ]; then
     local volumes="siemple-$stamp-volumes.tar.gz"
     info "Backing up the stored logs and Grafana to $SIEMPLE_DIR/backups/$volumes"
@@ -352,6 +435,8 @@ cmd_restore() {
   require_install
   local volumes="${file%.dump}-volumes.tar.gz"
   [ -f "$volumes" ] || volumes=''
+  local key_file="${file%.dump}-settings.key"
+  [ -f "$key_file" ] || key_file=''
 
   if [ "$yes" = 0 ]; then
     warn "This replaces ALL current SIEMple data with the contents of $file."
@@ -389,6 +474,16 @@ cmd_restore() {
     with_data_volumes "rm -rf /loki/* /var/lib/grafana/* && tar xzf '/backup/$name' -C /" \
       || warn "Restoring the logs failed; the database was restored. See the error above."
     rm -f "backups/restore-volumes.tar.gz"
+  fi
+  if [ -n "$key_file" ]; then
+    local backup_key
+    backup_key="$(head -n1 "$key_file")"
+    if [ -n "$backup_key" ] && [ "$backup_key" != "$(get_env SETTINGS_ENCRYPTION_KEY)" ]; then
+      set_env SETTINGS_ENCRYPTION_KEY "$backup_key"
+      ok "Restored SETTINGS_ENCRYPTION_KEY from $key_file, so the saved SMTP password still works"
+    fi
+  else
+    warn "No matching -settings.key: if this backup came from another server, enter the SMTP password again in Settings → Email."
   fi
   start_stack
   ok "Restore complete."

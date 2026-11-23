@@ -8,6 +8,7 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 - [Install](#install)
 - [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux)
 - [First-time setup](#first-time-setup)
+- [Email](#email)
 - [SIEMple health (Grafana)](#siemple-health-grafana)
 - [HTTPS](#https)
 - [Everyday tasks](#everyday-tasks)
@@ -49,7 +50,7 @@ The installer:
 
 1. checks that Docker and Compose are present and recent enough;
 2. downloads the release's `docker-compose.yml` and settings template into `/opt/siemple`;
-3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only);
+3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only), including `SETTINGS_ENCRYPTION_KEY`, which protects the email password you save in SIEMple;
 4. downloads the images and starts the containers, waiting until every one reports healthy;
 5. prints the address to open, where to find the SIEMple Health dashboard (Grafana) and a **setup token**.
 
@@ -65,6 +66,10 @@ curl -fsSL .../install.sh | sudo bash -s -- --port 8080
 | `--url URL`     | The address people will use, if it isn't `http://<server IP>` (for example `http://siem.lan`) |
 | `--domain NAME` | Serve HTTPS at NAME with a free Let's Encrypt certificate (see [HTTPS](#https))               |
 | `--version X`   | Install release X (for example `1.2.0`) instead of the latest                                 |
+| `--smtp-host H` | Send email through mail server H (optional: email can also be set up later in the web UI)     |
+| `--smtp-port N` | The mail server's port (587 by default)                                                       |
+| `--smtp-user U` | The mail account; you're asked for its password (see [Email](#email))                         |
+| `--smtp-from A` | The sender, for example `"SIEMple <siem@example.com>"` (the account address by default)       |
 
 To install somewhere other than `/opt/siemple`, set `SIEMPLE_DIR`, for example `curl ... | SIEMPLE_DIR=$HOME/siemple bash` (without `sudo`, your user must be in the `docker` group).
 
@@ -81,6 +86,65 @@ The token is valid for 24 hours. Until setup is complete, a new token is issued 
 ```bash
 sudo /opt/siemple/install.sh token
 ```
+
+## Email
+
+SIEMple emails invitations, password-reset links and security notices. Without email it still works: administrators get each link on screen to copy and send themselves.
+
+### Set it up in SIEMple (recommended)
+
+1. Sign in as an administrator and open **Settings → Email**.
+2. Pick a provider (**Gmail**, **Microsoft 365** or **Custom**). The preset fills in the server, port and security; for Custom, enter your mail server's details.
+3. Enter the account's username and password, and the sender name and address, then **Save**. It takes effect straight away; there's nothing to restart.
+4. **Send test email**, to yourself or another address. A failure names the likely cause (see the table below).
+
+The password is stored encrypted with `SETTINGS_ENCRYPTION_KEY` from `.env` and is never shown again: the page only says that one is saved, and **Change** replaces it. Every change is recorded in the audit log (which fields changed, never their values), and so is every test email. **Disable email** turns it off and deletes the saved password.
+
+If the page says **Encryption key not configured**, `.env` has no `SETTINGS_ENCRYPTION_KEY` (an install from before email settings existed that hasn't been updated yet). `sudo /opt/siemple/install.sh update` adds one, or add `SETTINGS_ENCRYPTION_KEY=` with the output of `openssl rand -base64 32` and run `cd /opt/siemple && sudo docker compose up -d`.
+
+### Set it up in .env (automated installs)
+
+Pass the mail server to the installer:
+
+```bash
+curl -fsSL .../install.sh | sudo bash -s -- --smtp-host smtp.example.com --smtp-user siem@example.com --smtp-from "SIEMple <siem@example.com>"
+```
+
+It asks for the password without showing it. There is deliberately no option for the password itself, because options are visible to anyone on the server (`ps`) and stay in your shell history. For a script without a terminal, put the password in `SIEMPLE_SMTP_PASSWORD` and keep it in the environment rather than on the command line, for example `sudo --preserve-env=SIEMPLE_SMTP_PASSWORD bash install.sh --smtp-host ...` with the variable exported from a file only root can read.
+
+The installer writes `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_FROM` to `.env`; you can also edit them there yourself and run `sudo docker compose up -d`. While `SMTP_HOST` is set, **Settings → Email** shows these settings read-only ("Managed by the server's .env") and can still send a test email. Remove `SMTP_HOST` to manage email in the web UI instead.
+
+### Gmail
+
+Gmail doesn't accept your normal password here; it needs an **App Password**:
+
+1. Turn on 2-Step Verification for the Google account.
+2. Open [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), create an App Password named "SIEMple", and copy the 16 characters it shows.
+3. In **Settings → Email**, choose **Gmail**, enter the full Gmail address as the username, paste the App Password, and use the same address as the sender.
+
+Google Workspace accounts may need an administrator to allow App Passwords.
+
+### Ports
+
+| Port | Security | Used by                                                                |
+| ---- | -------- | ---------------------------------------------------------------------- |
+| 587  | STARTTLS | Most providers, including Gmail and Microsoft 365                      |
+| 465  | TLS      | Providers that use implicit TLS                                        |
+| 25   | None     | Only a relay on your own trusted network; often blocked by cloud hosts |
+
+The server must be allowed to make outgoing connections to that port.
+
+### When the test email fails
+
+| What you see                                 | Likely cause                                                           | What to do                                                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Rejected the username or password (SMTP 535) | Wrong password; Gmail without an App Password; SMTP login turned off   | Re-enter the password. For Gmail use an App Password; for Microsoft 365 an administrator must allow "Authenticated SMTP"         |
+| Didn't answer in time                        | The port is blocked, or the host is wrong                              | Check the host, and that the firewall and the hosting provider allow outgoing connections on that port                           |
+| Refused the connection                       | Wrong port, or the server doesn't take mail there                      | Check the port: 587 for STARTTLS, 465 for TLS                                                                                    |
+| The encrypted connection failed              | Security setting and port don't match                                  | TLS goes with 465, STARTTLS with 587                                                                                             |
+| Refused the From address (SMTP 550 or 553)   | The account may not send as that address                               | Use the account's own address, or an alias the provider has verified                                                             |
+| Host name could not be found                 | A typo in the host, or DNS                                             | Check the spelling                                                                                                               |
+| Email stopped after moving to a new server   | `SETTINGS_ENCRYPTION_KEY` changed, so the saved password can't be read | Enter the password again in Settings → Email, or restore with the backup's `-settings.key` (see [Backups](#backups-and-restore)) |
 
 ## SIEMple health (Grafana)
 
@@ -204,9 +268,10 @@ sudo ./install.sh restore backups/siemple-<date of the update>.dump
 sudo /opt/siemple/install.sh backup
 ```
 
-This writes two files to `/opt/siemple/backups/`, both readable by root only:
+This writes these files to `/opt/siemple/backups/`, all readable by root only:
 
 - `siemple-<date>-<time>.dump`: the whole database, compressed: every account, password hash, setting and audit record.
+- `siemple-<date>-<time>-settings.key`: `SETTINGS_ENCRYPTION_KEY`, which decrypts the email password saved in Settings → Email. It's a separate file so that the dump on its own can't reveal that password: **store it apart from the dumps**. Losing it only means entering the email password again; nothing else depends on it.
 - `siemple-<date>-<time>-volumes.tar.gz`: the stored logs and Grafana's own data (its users and any dashboards you saved). Loki and Grafana pause for the few seconds the copy takes; Alloy sends the lines from that pause once Loki is back.
 
 `backup --no-logs` saves only the database, which is quicker when there are many logs; updates take that kind of backup. Copy backups to another machine regularly: a backup on the same disk doesn't survive that disk failing.
@@ -227,7 +292,7 @@ sudo /opt/siemple/install.sh restore /opt/siemple/backups/siemple-20261117-02000
 
 This **replaces all current data** with the backup, after you confirm by typing `restore` (add `--yes` to skip the question in scripts). It takes a safety backup of the current data first, stops the application during the restore, and restores the database in a single transaction: if anything fails, the current data is left as it was. A backup from an older version is migrated forward when the application starts.
 
-When the matching `-volumes.tar.gz` sits next to the `.dump`, the stored logs and Grafana's data are replaced from it too; without it they stay as they are.
+When the matching `-volumes.tar.gz` sits next to the `.dump`, the stored logs and Grafana's data are replaced from it too; without it they stay as they are. Likewise a matching `-settings.key` puts that key back in `.env`, so a restored email password keeps working; without it, enter the email password again in Settings → Email.
 
 **Moving to a new server:** install SIEMple there, copy both backup files across, and restore. The new install's own passwords and secrets are fine; everyone just signs in again. Grafana's sign-in comes from the backup, so it's the old server's Grafana password.
 
@@ -241,17 +306,18 @@ cd /opt/siemple && sudo docker compose up -d
 
 Settings you're most likely to change:
 
-| Setting                                                             | What it does                                                                                                     |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `APP_URL`                                                           | The address people open. Starting with `https://` makes sign-in cookies Secure.                                  |
-| `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email for invitations and password resets. Without `SMTP_HOST`, administrators get the links to pass on by hand. |
-| `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                         |
-| `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                      |
-| `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                            |
-| `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                       |
-| `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.       |
-| `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                           |
+| Setting                                                             | What it does                                                                                                                                          |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_URL`                                                           | The address people open. Starting with `https://` makes sign-in cookies Secure.                                                                       |
+| `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                                                     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email from `.env`, shown read-only in Settings → Email. Leave empty to set email up in the web UI (see [Email](#email)).                              |
+| `SETTINGS_ENCRYPTION_KEY`                                           | Encrypts the email password saved in Settings → Email. Created by the installer; don't change it (the email password would have to be entered again). |
+| `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                                                              |
+| `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                                                           |
+| `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                                                                 |
+| `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                                                            |
+| `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.                                            |
+| `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                                                                |
 
 Don't change `POSTGRES_PASSWORD`, `POSTGRES_USER` or `POSTGRES_DB` after the first start: the database was created with them. Changing `JWT_SECRET` signs everyone out.
 
@@ -307,6 +373,7 @@ POSTGRES_PASSWORD=<random letters and digits>
 REDIS_PASSWORD=<random letters and digits>
 JWT_SECRET=<random letters and digits, at least 32>
 GRAFANA_ADMIN_PASSWORD=<random letters and digits>
+SETTINGS_ENCRYPTION_KEY=<see below>
 APP_URL=http://192.168.1.20
 ```
 
@@ -314,6 +381,11 @@ Generate each secret with:
 
 - **Windows (PowerShell):** `-join ((1..32) | % { '{0:x2}' -f (Get-Random -Max 256) })`
 - **Linux or Mac:** `openssl rand -hex 32`
+
+`SETTINGS_ENCRYPTION_KEY` is base64 instead:
+
+- **Windows (PowerShell):** `[Convert]::ToBase64String((1..32 | % { [byte](Get-Random -Max 256) }))`
+- **Linux or Mac:** `openssl rand -base64 32`
 
 If port 80 is already taken on this PC (by IIS or another web server, for example), also set `WEB_PORT=8080` and add `:8080` to `APP_URL`.
 
@@ -404,6 +476,8 @@ sudo /opt/siemple/install.sh uninstall --purge   # also delete the database, log
 
 **`port is already allocated` while starting.** Something else uses port 80 (often another web server). Pick another port: set `WEB_PORT=8080` in `.env` and run `docker compose up -d`, or reinstall with `--port 8080`.
 
+**Emails aren't sent.** Open Settings → Email and send a test email; the result names the cause. See [When the test email fails](#when-the-test-email-fails).
+
 **The installer says SIEMple didn't become healthy.** It shows the recent logs of the services that failed. The application log usually names the problem:
 
 ```bash
@@ -428,6 +502,7 @@ cd /opt/siemple && sudo docker compose ps -a && sudo docker compose logs --tail 
 - Nothing outside SIEMple can send logs in: there is no ingest API or syslog port. Alloy reads Docker's log files read-only and has no access to the Docker socket.
 - Grafana's image ships with known vulnerabilities in Grafana's own components that only a new Grafana release can fix; SIEMple moves to new Grafana versions as they're published. Keep it behind the sign-in and up to date.
 - `.env` holds every secret and is readable by root only. Don't copy it anywhere it could be read by others.
+- The email password saved in Settings → Email is encrypted (AES-256-GCM) with `SETTINGS_ENCRYPTION_KEY`, decrypted only in memory while sending, and never returned by the API or written to logs or the audit log.
 - Backups contain everything SIEMple stores. Keep them as protected as the server.
 - The containers run with reduced privileges: the API runs as an unprivileged user on a read-only filesystem.
 - Install updates when they're released: `sudo /opt/siemple/install.sh update`.

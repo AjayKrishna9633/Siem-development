@@ -118,7 +118,6 @@ app.ts                    Express app: trust proxy, helmet, CORS, setupGuard, ro
 cli/                      Terminal commands: setup-token, reset-admin, the setup banner
 config/
   env.config.ts           Reads and validates .env with Zod; exits if something is wrong
-  mailer.ts               Builds the SMTP transport, or null when email isn't configured
 domain/                   ── pure business rules ──
   entities/               User, SystemSettings
   enums/                  UserRole, UserStatus, Permission, AuthTokenType, AuditAction,
@@ -244,7 +243,7 @@ export class AcceptInviteUseCase implements IAcceptInviteUseCase {
 | Bindings                  | [di/index.ts](../backend/src/infrastructure/di/index.ts)      | `bind(TYPES.UserRepository).to(TypeOrmUserRepository)`                                 |
 | Container                 | [container.ts](../backend/src/infrastructure/di/container.ts) | `defaultScope: 'Singleton'`: one instance of each class                                |
 
-Two bindings worth noticing: `TYPES.MailTransport` is bound to **`null` when email isn't configured**, which the email service turns into `{ delivered: false }`; and the CLI commands resolve use cases (`di.issueSetupToken`, `di.createRecoveryLink`) from the same container as the HTTP server.
+Two bindings worth noticing: `TYPES.MailTransportProvider` ([mail-transport.provider.ts](../backend/src/infrastructure/services/mail-transport.provider.ts)) decides where email comes from (`SMTP_HOST` in `.env`, then enabled Settings → Email, then none), caches the SMTP client and rebuilds it when the settings are saved; with no source the email service returns `{ delivered: false }` and the copy-link fallback takes over. And the CLI commands resolve use cases (`di.issueSetupToken`, `di.createRecoveryLink`) from the same container as the HTTP server.
 
 ---
 
@@ -289,6 +288,7 @@ The schema changes **only through migrations** ([migrations/](../backend/src/inf
 | [ExtendAuditLogs](../backend/src/infrastructure/database/migrations/1793923200000-ExtendAuditLogs.ts)           | Audit v2: actor snapshot, category, outcome, target label, request id; new indexes          |
 | [CreateIngestKeys](../backend/src/infrastructure/database/migrations/1794009600000-CreateIngestKeys.ts)         | Keys for an HTTP ingest API that was later removed                                          |
 | [DropIngestKeys](../backend/src/infrastructure/database/migrations/1794096000000-DropIngestKeys.ts)             | Drops `ingest_keys` again: logs only arrive through the two flows in section 18             |
+| [CreateEmailSettings](../backend/src/infrastructure/database/migrations/1794268800000-CreateEmailSettings.ts)   | Single-row `email_settings`: SMTP server, sender and the AES-256-GCM encrypted password     |
 
 Every migration has a working `down`. `RemoveTenancy.down` is lossy by nature (deleted companies can't come back).
 
@@ -375,7 +375,7 @@ If Redis is unreachable, the cache silently uses memory and the terminal says so
 | Access token              | 15 minutes, HS256                   | [jwt-token.service.ts](../backend/src/infrastructure/services/jwt-token.service.ts)             |
 | Refresh token             | 7 days, rotated on every use        | [refresh-session.service.ts](../backend/src/infrastructure/services/refresh-session.service.ts) |
 
-Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `APP_URL` (the address people open; decides the CORS origin and, when it starts with `https://`, Secure cookies; falls back to the older `FRONTEND_URL`), `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`. A Docker install sets these from the root [.env.example](../.env.example) instead, through [docker-compose.yml](../docker-compose.yml) (section 18). The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` still work when `SMTP_HOST` isn't set.
+Environment variables are documented in [backend/.env.example](../backend/.env.example) and validated by [env.config.ts](../backend/src/config/env.config.ts). Required: `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars), `REDIS_URL`. Optional: `PORT`, `NODE_ENV`, `APP_URL` (the address people open; decides the CORS origin and, when it starts with `https://`, Secure cookies; falls back to the older `FRONTEND_URL`), `LOG_LEVEL`, `TRUST_PROXY`, `SMTP_*`, `SETTINGS_ENCRYPTION_KEY` (32 bytes of base64; encrypts the SMTP password saved in Settings → Email, and a malformed one stops startup). A Docker install sets these from the root [.env.example](../.env.example) instead, through [docker-compose.yml](../docker-compose.yml) (section 18). The old Gmail variables `OTP_EMAIL` / `OTP_PASSWORD` are gone; use `SMTP_*` with `smtp.gmail.com`.
 
 ---
 
@@ -548,37 +548,41 @@ Retention (a purge job: the trigger forbids `DELETE`, so it would need a deliber
 
 Base URL `/api`. 🔒 = access token required. Permission = what `authorize` checks.
 
-| Method | Path                            | Auth   | Permission     | Use case                              |
-| ------ | ------------------------------- | ------ | -------------- | ------------------------------------- |
-| POST   | `/setup/verify-token`           | —      | setup pending  | VerifySetupToken                      |
-| POST   | `/setup/complete`               | —      | setup pending  | CompleteSetup                         |
-| POST   | `/auth/login`                   | —      | —              | Login                                 |
-| POST   | `/auth/refresh`                 | cookie | —              | RefreshSession                        |
-| POST   | `/auth/logout`                  | cookie | —              | Logout                                |
-| GET    | `/auth/me`                      | 🔒     | —              | GetCurrentUser                        |
-| PUT    | `/auth/profile`                 | 🔒     | —              | UpdateProfile                         |
-| POST   | `/auth/password`                | 🔒     | —              | ChangePassword                        |
-| POST   | `/auth/email/code`              | 🔒     | `users.manage` | RequestEmailChange                    |
-| POST   | `/auth/email`                   | 🔒     | `users.manage` | ChangeEmail                           |
-| GET    | `/auth/invite?token=`           | —      | —              | GetInvite                             |
-| POST   | `/auth/invite/accept`           | —      | —              | AcceptInvite                          |
-| POST   | `/auth/password-reset/request`  | —      | —              | RequestPasswordReset                  |
-| GET    | `/auth/password-reset?token=`   | —      | —              | GetPasswordReset                      |
-| POST   | `/auth/password-reset`          | —      | —              | ResetPassword                         |
-| GET    | `/users`                        | 🔒     | `users.manage` | ListUsers                             |
-| GET    | `/users/invites`                | 🔒     | `users.manage` | ListPendingInvites                    |
-| POST   | `/users/invites`                | 🔒     | `users.manage` | InviteUser                            |
-| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage` | ResendInvite                          |
-| DELETE | `/users/:id/invite`             | 🔒     | `users.manage` | RevokeInvite                          |
-| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage` | IssueResetLink                        |
-| PATCH  | `/users/:id/role`               | 🔒     | `users.manage` | ChangeUserRole                        |
-| POST   | `/users/:id/disable`            | 🔒     | `users.manage` | SetUserStatus                         |
-| POST   | `/users/:id/enable`             | 🔒     | `users.manage` | SetUserStatus                         |
-| GET    | `/audit-logs`                   | 🔒     | `audit.view`   | ListAuditLogs                         |
-| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`   | ExportAuditLogs                       |
-| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`   | GetAuditLog                           |
-| GET    | `/health`                       | —      | —              | Database ping; never blocked by setup |
-| GET    | `/api/health`                   | —      | —              | Container healthcheck (see below)     |
+| Method | Path                            | Auth   | Permission        | Use case                                            |
+| ------ | ------------------------------- | ------ | ----------------- | --------------------------------------------------- |
+| POST   | `/setup/verify-token`           | —      | setup pending     | VerifySetupToken                                    |
+| POST   | `/setup/complete`               | —      | setup pending     | CompleteSetup                                       |
+| POST   | `/auth/login`                   | —      | —                 | Login                                               |
+| POST   | `/auth/refresh`                 | cookie | —                 | RefreshSession                                      |
+| POST   | `/auth/logout`                  | cookie | —                 | Logout                                              |
+| GET    | `/auth/me`                      | 🔒     | —                 | GetCurrentUser                                      |
+| PUT    | `/auth/profile`                 | 🔒     | —                 | UpdateProfile                                       |
+| POST   | `/auth/password`                | 🔒     | —                 | ChangePassword                                      |
+| POST   | `/auth/email/code`              | 🔒     | `users.manage`    | RequestEmailChange                                  |
+| POST   | `/auth/email`                   | 🔒     | `users.manage`    | ChangeEmail                                         |
+| GET    | `/auth/invite?token=`           | —      | —                 | GetInvite                                           |
+| POST   | `/auth/invite/accept`           | —      | —                 | AcceptInvite                                        |
+| POST   | `/auth/password-reset/request`  | —      | —                 | RequestPasswordReset                                |
+| GET    | `/auth/password-reset?token=`   | —      | —                 | GetPasswordReset                                    |
+| POST   | `/auth/password-reset`          | —      | —                 | ResetPassword                                       |
+| GET    | `/users`                        | 🔒     | `users.manage`    | ListUsers                                           |
+| GET    | `/users/invites`                | 🔒     | `users.manage`    | ListPendingInvites                                  |
+| POST   | `/users/invites`                | 🔒     | `users.manage`    | InviteUser                                          |
+| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage`    | ResendInvite                                        |
+| DELETE | `/users/:id/invite`             | 🔒     | `users.manage`    | RevokeInvite                                        |
+| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage`    | IssueResetLink                                      |
+| PATCH  | `/users/:id/role`               | 🔒     | `users.manage`    | ChangeUserRole                                      |
+| POST   | `/users/:id/disable`            | 🔒     | `users.manage`    | SetUserStatus                                       |
+| POST   | `/users/:id/enable`             | 🔒     | `users.manage`    | SetUserStatus                                       |
+| GET    | `/audit-logs`                   | 🔒     | `audit.view`      | ListAuditLogs                                       |
+| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`      | ExportAuditLogs                                     |
+| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`      | GetAuditLog                                         |
+| GET    | `/settings/email`               | 🔒     | `settings.manage` | GetEmailSettings (never the password)               |
+| PUT    | `/settings/email`               | 🔒     | `settings.manage` | UpdateEmailSettings (409 when `.env` manages email) |
+| POST   | `/settings/email/test`          | 🔒     | `settings.manage` | TestEmailSettings (5 a minute per admin)            |
+| DELETE | `/settings/email`               | 🔒     | `settings.manage` | DisableEmailSettings                                |
+| GET    | `/health`                       | —      | —                 | Database ping; never blocked by setup               |
+| GET    | `/api/health`                   | —      | —                 | Container healthcheck (see below)                   |
 
 `/health` has no `/api` prefix. `/api/health` is what Docker and the installer poll: it pings Postgres, and Redis too when `NODE_ENV=production` (in development the in-memory cache stands in), each with a 2-second timeout. It answers only `200 {"status":"ok"}` or `503 {"status":"unavailable"}`, never which part failed, because it's public ([health-check.service.ts](../backend/src/infrastructure/services/health-check.service.ts)).
 
@@ -743,7 +747,7 @@ The audit log is something else: a permanent, database-backed record of security
 | Same database role migrates and runs      | Needed to lift the trigger in a migration; a limited runtime role would make the log truly append-only                                 |
 | No brute-force detection                  | Failed logins are recorded with IP and target; nothing reads them yet                                                                  |
 | Audit export is held in browser memory    | Bounded by the 100,000-row cap; true streaming to disk would need a different download path                                            |
-| Settings can't be edited after setup      | `settings.manage` exists; org name, base URL, time zone and SMTP in the UI would use it                                                |
+| Only email settings are editable          | `settings.manage` covers Settings → Email; org name, base URL and time zone in the UI would use it too                                 |
 | Rate limits are per process               | `express-rate-limit` keeps counts in memory; fine for one server, needs a shared store for several                                     |
 | Redis fallback loses sessions on restart  | Production should require Redis                                                                                                        |
 | Accepting an invite isn't one transaction | The link is spent, then the user saved; a crash in between burns the link (resend fixes it)                                            |
