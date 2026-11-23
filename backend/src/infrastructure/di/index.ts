@@ -15,7 +15,10 @@ import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
 import { logger } from '../logging/logger.ts';
 import { RedisCacheService } from '../redis/redis-cache.service.ts';
-import { createMailTransport } from '../../config/mailer.ts';
+import { MailTransportProvider } from '../services/mail-transport.provider.ts';
+import type { IMailTransportProvider } from '../../application/interfaces/services/mail-transport.provider.interface.ts';
+import type { IEmailSettingsRepository } from '../../application/interfaces/repositories/email-settings.repository.interface.ts';
+import type { ISecretCipher } from '../../application/interfaces/services/secret-cipher.service.interface.ts';
 import { EmailService } from '../services/email.service.ts';
 import { JwtTokenService } from '../services/jwt-token.service.ts';
 import { RefreshSessionService } from '../services/refresh-session.service.ts';
@@ -95,10 +98,6 @@ container.bind(TYPES.HealthCheckService).toConstantValue(
   }),
 );
 
-const mailTransport = createMailTransport();
-container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
-export const emailConfigured = mailTransport !== null;
-
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
@@ -109,6 +108,22 @@ container.bind(TYPES.EmailSettingsRepository).to(TypeOrmEmailSettingsRepository)
 container
   .bind(TYPES.SecretCipher)
   .toConstantValue(new AesGcmSecretCipher(env.SETTINGS_ENCRYPTION_KEY));
+export const mailTransports: IMailTransportProvider = new MailTransportProvider(
+  env.SMTP_HOST
+    ? {
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE,
+        user: env.SMTP_USER,
+        password: env.SMTP_PASSWORD,
+        from: env.SMTP_FROM,
+      }
+    : null,
+  container.get<IEmailSettingsRepository>(TYPES.EmailSettingsRepository),
+  container.get<ISecretCipher>(TYPES.SecretCipher),
+  logger,
+);
+container.bind(TYPES.MailTransportProvider).toConstantValue(mailTransports);
 
 container.bind(TYPES.HashService).to(BcryptHashService);
 container.bind(TYPES.CacheService).to(RedisCacheService);

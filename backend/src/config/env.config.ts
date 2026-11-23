@@ -34,8 +34,6 @@ const envSchema = z.object({
   SMTP_USER: optionalText,
   SMTP_PASSWORD: optionalText,
   SMTP_FROM: optionalText,
-  OTP_EMAIL: optionalText,
-  OTP_PASSWORD: optionalText,
 
   // Optional: without it the email settings page can't store a password, but nothing crashes.
   SETTINGS_ENCRYPTION_KEY: z.preprocess(

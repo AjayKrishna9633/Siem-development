@@ -5,30 +5,30 @@ import type {
   IEmailMessage,
   IEmailService,
 } from '../../application/interfaces/services/email.service.interface.ts';
+import type { IMailTransportProvider } from '../../application/interfaces/services/mail-transport.provider.interface.ts';
 import type { ILogger } from '../../application/interfaces/services/logger.interface.ts';
-import type { IMailTransport } from '../../config/mailer.ts';
 
 @injectable()
 export class EmailService implements IEmailService {
   private readonly _logger: ILogger;
 
   constructor(
-    @inject(TYPES.MailTransport) private readonly _transport: IMailTransport | null,
+    @inject(TYPES.MailTransportProvider) private readonly _transports: IMailTransportProvider,
     @inject(TYPES.Logger) logger: ILogger,
   ) {
     this._logger = logger.child({ module: 'email' });
   }
 
-  get isConfigured(): boolean {
-    return this._transport !== null;
+  async isConfigured(): Promise<boolean> {
+    return (await this._transports.current()) !== null;
   }
 
   async send(message: IEmailMessage): Promise<IEmailDelivery> {
-    if (!this._transport) return { delivered: false };
-
     try {
-      await this._transport.transporter.sendMail({
-        from: this._transport.from,
+      const transport = await this._transports.current();
+      if (!transport) return { delivered: false };
+      await transport.sender.sendMail({
+        from: transport.from,
         to: message.to,
         subject: message.subject,
         text: message.text,
