@@ -79,6 +79,13 @@ import { AuditLogsController } from '../../presentation/controllers/audit-logs.c
 import { ListAuditLogsUseCase } from '../../application/use-cases/audit/list-audit-logs.usecase.ts';
 import { GetAuditLogUseCase } from '../../application/use-cases/audit/get-audit-log.usecase.ts';
 import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export-audit-logs.usecase.ts';
+import { SmtpEmailTester } from '../services/smtp-email-tester.service.ts';
+import { GetEmailSettingsUseCase } from '../../application/use-cases/email-settings/get-email-settings.usecase.ts';
+import { UpdateEmailSettingsUseCase } from '../../application/use-cases/email-settings/update-email-settings.usecase.ts';
+import { TestEmailSettingsUseCase } from '../../application/use-cases/email-settings/test-email-settings.usecase.ts';
+import { DisableEmailSettingsUseCase } from '../../application/use-cases/email-settings/disable-email-settings.usecase.ts';
+import { EmailSettingsController } from '../../presentation/controllers/email-settings.controller.ts';
+import type { IEnvSmtpConfig } from '../../application/types/use-case/email-settings.types.ts';
 import { HealthCheckService } from '../services/health-check.service.ts';
 import { HealthController } from '../../presentation/controllers/health.controller.ts';
 import { env } from '../../config/env.config.ts';
@@ -108,17 +115,19 @@ container.bind(TYPES.EmailSettingsRepository).to(TypeOrmEmailSettingsRepository)
 container
   .bind(TYPES.SecretCipher)
   .toConstantValue(new AesGcmSecretCipher(env.SETTINGS_ENCRYPTION_KEY));
+const envSmtp: IEnvSmtpConfig | null = env.SMTP_HOST
+  ? {
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE,
+      user: env.SMTP_USER,
+      password: env.SMTP_PASSWORD,
+      from: env.SMTP_FROM,
+    }
+  : null;
+container.bind(TYPES.EnvSmtpConfig).toConstantValue(envSmtp);
 export const mailTransports: IMailTransportProvider = new MailTransportProvider(
-  env.SMTP_HOST
-    ? {
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_SECURE,
-        user: env.SMTP_USER,
-        password: env.SMTP_PASSWORD,
-        from: env.SMTP_FROM,
-      }
-    : null,
+  envSmtp,
   container.get<IEmailSettingsRepository>(TYPES.EmailSettingsRepository),
   container.get<ISecretCipher>(TYPES.SecretCipher),
   logger,
@@ -168,6 +177,11 @@ container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 container.bind(TYPES.ListAuditLogsUseCase).to(ListAuditLogsUseCase);
 container.bind(TYPES.GetAuditLogUseCase).to(GetAuditLogUseCase);
 container.bind(TYPES.ExportAuditLogsUseCase).to(ExportAuditLogsUseCase);
+container.bind(TYPES.EmailTester).to(SmtpEmailTester);
+container.bind(TYPES.GetEmailSettingsUseCase).to(GetEmailSettingsUseCase);
+container.bind(TYPES.UpdateEmailSettingsUseCase).to(UpdateEmailSettingsUseCase);
+container.bind(TYPES.TestEmailSettingsUseCase).to(TestEmailSettingsUseCase);
+container.bind(TYPES.DisableEmailSettingsUseCase).to(DisableEmailSettingsUseCase);
 
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
@@ -176,6 +190,7 @@ container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 container.bind(TYPES.AuditLogsController).to(AuditLogsController);
+container.bind(TYPES.EmailSettingsController).to(EmailSettingsController);
 container.bind(TYPES.HealthController).to(HealthController);
 
 export const sessionController = container.get<SessionController>(TYPES.SessionController);
@@ -186,6 +201,9 @@ export const accountController = container.get<AccountController>(TYPES.AccountC
 export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
+export const emailSettingsController = container.get<EmailSettingsController>(
+  TYPES.EmailSettingsController,
+);
 export const healthController = container.get<HealthController>(TYPES.HealthController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const auditService = container.get<IAuditService>(TYPES.AuditService);
@@ -216,6 +234,7 @@ export const di = {
   inviteController,
   usersController,
   auditLogsController,
+  emailSettingsController,
   healthController,
   setupController,
   authMiddleware,

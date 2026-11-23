@@ -11,15 +11,9 @@ import type { ILogger } from '../../application/interfaces/services/logger.inter
 import type { IEmailSettings } from '../../domain/types/email-settings.types.ts';
 import { SmtpSecurity } from '../../domain/enums/SmtpSecurity.ts';
 import { SMTP_PASSWORD_AAD } from '../../domain/constants/email.ts';
+import type { IEnvSmtpConfig } from '../../application/types/use-case/email-settings.types.ts';
 
-export interface IEnvSmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean | undefined;
-  user: string | undefined;
-  password: string | undefined;
-  from: string | undefined;
-}
+export type { IEnvSmtpConfig };
 
 export type CreateMailSender = (options: SMTPTransportOptions) => IMailSender;
 
