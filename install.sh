@@ -37,11 +37,13 @@ Commands:
   update             Back up the database, then upgrade to the latest (or --version X) release
       --version X      Release to move to
       --no-backup      Skip the backup taken before updating
-  backup             Save a backup to $SIEMPLE_DIR/backups: the database, plus the stored logs
-                     and Grafana's data (Loki and Grafana pause for the copy)
-      --no-logs        Database only (quick; this is what update takes)
-  restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). Logs
-                     and Grafana are restored too when the matching -volumes.tar.gz is next to it
+  backup             Save a backup to $SIEMPLE_DIR/backups: the database and the Wazuh manager's
+                     agents and keys, plus the stored logs and Grafana's data (each service
+                     pauses for its copy)
+      --no-logs        Skip the logs and Grafana (quick; this is what update takes)
+  restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). Wazuh
+                     agents, logs and Grafana are restored too when their matching
+                     -wazuh.tar.gz and -volumes.tar.gz files are next to it
       --yes            Don't ask for confirmation
   status             Show the containers, their health and the running version
   token              Issue a new setup token (only before setup is completed)
@@ -327,6 +329,18 @@ cmd_update() {
   docker image prune -f > /dev/null 2>&1 || true
 }
 
+# Agent registrations and keys (etc, queue), the API users and certificates, and agent groups.
+WAZUH_STATE="var/ossec/etc var/ossec/queue var/ossec/api/configuration var/ossec/var/multigroups"
+
+with_wazuh_volumes() {
+  local manager image
+  manager="$(compose ps -aq wazuh-manager)"
+  [ -n "$manager" ] || die "The Wazuh manager isn't installed; start SIEMple first."
+  image="$(docker inspect -f '{{.Config.Image}}' "$manager")"
+  docker run --rm --user 0 --entrypoint sh --volumes-from "$manager" \
+    -v "$SIEMPLE_DIR/backups:/backup" "$image" -c "$1"
+}
+
 cmd_backup() {
   local logs=1
   while [ $# -gt 0 ]; do
@@ -349,6 +363,18 @@ cmd_backup() {
     die "Backup failed. Is the postgres container running? (install.sh status)"
   fi
   ok "Database saved ($(du -h "$file" | cut -f1))"
+
+  # Always: without it every agent has to enroll again. Agents reconnect after the short stop.
+  local wazuh="siemple-$stamp-wazuh.tar.gz"
+  info "Backing up the Wazuh manager's agents and keys to $SIEMPLE_DIR/backups/$wazuh"
+  compose stop wazuh-manager > /dev/null
+  if ! with_wazuh_volumes "umask 077 && tar czf '/backup/$wazuh' --numeric-owner --exclude='var/ossec/queue/sockets/*' -C / $WAZUH_STATE"; then
+    rm -f "backups/$wazuh"
+    compose start wazuh-manager > /dev/null
+    die "Copying the Wazuh data failed (the database backup above is fine)."
+  fi
+  compose start wazuh-manager > /dev/null
+  ok "Wazuh agents and keys saved ($(du -h "backups/$wazuh" | cut -f1))"
 
   if [ "$logs" = 1 ]; then
     local volumes="siemple-$stamp-volumes.tar.gz"
@@ -380,9 +406,16 @@ cmd_restore() {
   require_install
   local volumes="${file%.dump}-volumes.tar.gz"
   [ -f "$volumes" ] || volumes=''
+  local wazuh="${file%.dump}-wazuh.tar.gz"
+  [ -f "$wazuh" ] || wazuh=''
 
   if [ "$yes" = 0 ]; then
     warn "This replaces ALL current SIEMple data with the contents of $file."
+    if [ -n "$wazuh" ]; then
+      warn "Wazuh agent registrations and keys are replaced from $wazuh."
+    else
+      warn "No matching -wazuh.tar.gz: the Wazuh manager keeps its current agents."
+    fi
     if [ -n "$volumes" ]; then
       warn "Stored logs and Grafana's data are replaced from $volumes."
     else
@@ -404,6 +437,20 @@ cmd_restore() {
     warn "Restore failed; the database was left as it was. Restarting the app..."
     start_stack
     die "Restore failed (see the error above)."
+  fi
+  if [ -n "$wazuh" ]; then
+    info "Restoring the Wazuh manager's agents and keys from $wazuh"
+    compose stop wazuh-manager > /dev/null
+    local wazuh_name dir wipe=''
+    wazuh_name="$(basename "$wazuh")"
+    if [ "$(dirname "$wazuh")" != "$SIEMPLE_DIR/backups" ]; then
+      wazuh_name="restore-wazuh.tar.gz"
+      cp "$wazuh" "backups/$wazuh_name"
+    fi
+    for dir in $WAZUH_STATE; do wipe="$wipe /$dir/*"; done
+    with_wazuh_volumes "rm -rf $wipe && tar xzf '/backup/$wazuh_name' --numeric-owner -C /" \
+      || warn "Restoring the Wazuh data failed; the database was restored. See the error above."
+    rm -f "backups/restore-wazuh.tar.gz"
   fi
   if [ -n "$volumes" ]; then
     info "Restoring the stored logs and Grafana from $volumes"
