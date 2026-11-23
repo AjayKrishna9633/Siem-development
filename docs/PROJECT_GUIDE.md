@@ -262,6 +262,8 @@ Code never compares role names. It checks **named permissions**, and one map say
 | Manage users          | `users.manage`          |  ✅   | ❌  | ❌  |
 | Manage settings       | `settings.manage`       |  ✅   | ❌  | ❌  |
 | View audit log        | `audit.view`            |  ✅   | ❌  | ❌  |
+| View agents           | `agents.view`           |  ✅   | ✅  | ✅  |
+| Add agents            | `agents.manage`         |  ✅   | ❌  | ❌  |
 
 - The map: [permissions.policy.ts](../backend/src/domain/policies/permissions.policy.ts) (`ROLE_PERMISSIONS`, `hasPermission`). The unit test [permissions.policy.test.ts](../backend/tests/unit/permissions.policy.test.ts) checks it row by row against this table.
 - Routes: `authorize(...permissions)` in [auth.middleware.ts](../backend/src/presentation/middlewares/auth.middleware.ts). Use cases: `assertPermission` in [access.ts](../backend/src/application/use-cases/shared/access.ts).
@@ -279,16 +281,17 @@ Code never compares role names. It checks **named permissions**, and one map say
 
 The schema changes **only through migrations** ([migrations/](../backend/src/infrastructure/database/migrations)); `synchronize` is off. Pending migrations run before the app serves anything: in Docker a one-shot `migrate` container ([cli/migrate.ts](../backend/src/cli/migrate.ts)) applies them and the API starts only if it succeeds; `npm run dev` applies them on start. Upgrading an install is pulling the new images and restarting. `npm run migration:check` confirms the models and the migrated database match exactly.
 
-| Migration                                                                                                       | What it does                                                                                |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [Baseline](../backend/src/infrastructure/database/migrations/1793404800000-Baseline.ts)                         | The multi-tenant schema as it was (users, companies), so history starts from a known point  |
-| [RemoveTenancy](../backend/src/infrastructure/database/migrations/1793491200000-RemoveTenancy.ts)               | Deletes old accounts, drops `companies` and `users.organization_id`, replaces the role enum |
-| [CreateAuditLogs](../backend/src/infrastructure/database/migrations/1793577600000-CreateAuditLogs.ts)           | The audit table and the trigger that makes it append-only                                   |
-| [CreateSystemSettings](../backend/src/infrastructure/database/migrations/1793664000000-CreateSystemSettings.ts) | The single settings row                                                                     |
-| [CreateAuthTokens](../backend/src/infrastructure/database/migrations/1793750400000-CreateAuthTokens.ts)         | Single-use links; makes `users.username` nullable                                           |
-| [ExtendAuditLogs](../backend/src/infrastructure/database/migrations/1793923200000-ExtendAuditLogs.ts)           | Audit v2: actor snapshot, category, outcome, target label, request id; new indexes          |
-| [CreateIngestKeys](../backend/src/infrastructure/database/migrations/1794009600000-CreateIngestKeys.ts)         | Keys for an HTTP ingest API that was later removed                                          |
-| [DropIngestKeys](../backend/src/infrastructure/database/migrations/1794096000000-DropIngestKeys.ts)             | Drops `ingest_keys` again: logs only arrive through the two flows in section 18             |
+| Migration                                                                                                       | What it does                                                                                  |
+| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [Baseline](../backend/src/infrastructure/database/migrations/1793404800000-Baseline.ts)                         | The multi-tenant schema as it was (users, companies), so history starts from a known point    |
+| [RemoveTenancy](../backend/src/infrastructure/database/migrations/1793491200000-RemoveTenancy.ts)               | Deletes old accounts, drops `companies` and `users.organization_id`, replaces the role enum   |
+| [CreateAuditLogs](../backend/src/infrastructure/database/migrations/1793577600000-CreateAuditLogs.ts)           | The audit table and the trigger that makes it append-only                                     |
+| [CreateSystemSettings](../backend/src/infrastructure/database/migrations/1793664000000-CreateSystemSettings.ts) | The single settings row                                                                       |
+| [CreateAuthTokens](../backend/src/infrastructure/database/migrations/1793750400000-CreateAuthTokens.ts)         | Single-use links; makes `users.username` nullable                                             |
+| [ExtendAuditLogs](../backend/src/infrastructure/database/migrations/1793923200000-ExtendAuditLogs.ts)           | Audit v2: actor snapshot, category, outcome, target label, request id; new indexes            |
+| [CreateIngestKeys](../backend/src/infrastructure/database/migrations/1794009600000-CreateIngestKeys.ts)         | Keys for an HTTP ingest API that was later removed                                            |
+| [DropIngestKeys](../backend/src/infrastructure/database/migrations/1794096000000-DropIngestKeys.ts)             | Drops `ingest_keys` again: logs only arrive through the two flows in section 18               |
+| [CreateAgents](../backend/src/infrastructure/database/migrations/1794182400000-CreateAgents.ts)                 | Agents as last seen in Wazuh (`groups text[]`, nullable `removed_at`), upserted by `wazuh_id` |
 
 Every migration has a working `down`. `RemoveTenancy.down` is lossy by nature (deleted companies can't come back).
 
@@ -356,6 +359,7 @@ Short-lived session data stays in Redis ([cache.service.interface.ts](../backend
 | `refresh-used:<sha256(token)>` | 7 days   | Marks a token as spent; claimed atomically                 |
 | `refresh-family:<familyId>`    | 7 days   | One login's chain of tokens; deleting it ends that session |
 | `verify:email-change:<userId>` | 10 min   | Code that confirms a new email address                     |
+| `wazuh:api-token`              | 14 min   | The Wazuh API token (Wazuh issues them for 15 minutes)     |
 
 If Redis is unreachable, the cache silently uses memory and the terminal says so; sessions are then lost on restart.
 
@@ -548,37 +552,41 @@ Retention (a purge job: the trigger forbids `DELETE`, so it would need a deliber
 
 Base URL `/api`. 🔒 = access token required. Permission = what `authorize` checks.
 
-| Method | Path                            | Auth   | Permission     | Use case                              |
-| ------ | ------------------------------- | ------ | -------------- | ------------------------------------- |
-| POST   | `/setup/verify-token`           | —      | setup pending  | VerifySetupToken                      |
-| POST   | `/setup/complete`               | —      | setup pending  | CompleteSetup                         |
-| POST   | `/auth/login`                   | —      | —              | Login                                 |
-| POST   | `/auth/refresh`                 | cookie | —              | RefreshSession                        |
-| POST   | `/auth/logout`                  | cookie | —              | Logout                                |
-| GET    | `/auth/me`                      | 🔒     | —              | GetCurrentUser                        |
-| PUT    | `/auth/profile`                 | 🔒     | —              | UpdateProfile                         |
-| POST   | `/auth/password`                | 🔒     | —              | ChangePassword                        |
-| POST   | `/auth/email/code`              | 🔒     | `users.manage` | RequestEmailChange                    |
-| POST   | `/auth/email`                   | 🔒     | `users.manage` | ChangeEmail                           |
-| GET    | `/auth/invite?token=`           | —      | —              | GetInvite                             |
-| POST   | `/auth/invite/accept`           | —      | —              | AcceptInvite                          |
-| POST   | `/auth/password-reset/request`  | —      | —              | RequestPasswordReset                  |
-| GET    | `/auth/password-reset?token=`   | —      | —              | GetPasswordReset                      |
-| POST   | `/auth/password-reset`          | —      | —              | ResetPassword                         |
-| GET    | `/users`                        | 🔒     | `users.manage` | ListUsers                             |
-| GET    | `/users/invites`                | 🔒     | `users.manage` | ListPendingInvites                    |
-| POST   | `/users/invites`                | 🔒     | `users.manage` | InviteUser                            |
-| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage` | ResendInvite                          |
-| DELETE | `/users/:id/invite`             | 🔒     | `users.manage` | RevokeInvite                          |
-| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage` | IssueResetLink                        |
-| PATCH  | `/users/:id/role`               | 🔒     | `users.manage` | ChangeUserRole                        |
-| POST   | `/users/:id/disable`            | 🔒     | `users.manage` | SetUserStatus                         |
-| POST   | `/users/:id/enable`             | 🔒     | `users.manage` | SetUserStatus                         |
-| GET    | `/audit-logs`                   | 🔒     | `audit.view`   | ListAuditLogs                         |
-| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`   | ExportAuditLogs                       |
-| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`   | GetAuditLog                           |
-| GET    | `/health`                       | —      | —              | Database ping; never blocked by setup |
-| GET    | `/api/health`                   | —      | —              | Container healthcheck (see below)     |
+| Method | Path                            | Auth   | Permission      | Use case                              |
+| ------ | ------------------------------- | ------ | --------------- | ------------------------------------- |
+| POST   | `/setup/verify-token`           | —      | setup pending   | VerifySetupToken                      |
+| POST   | `/setup/complete`               | —      | setup pending   | CompleteSetup                         |
+| POST   | `/auth/login`                   | —      | —               | Login                                 |
+| POST   | `/auth/refresh`                 | cookie | —               | RefreshSession                        |
+| POST   | `/auth/logout`                  | cookie | —               | Logout                                |
+| GET    | `/auth/me`                      | 🔒     | —               | GetCurrentUser                        |
+| PUT    | `/auth/profile`                 | 🔒     | —               | UpdateProfile                         |
+| POST   | `/auth/password`                | 🔒     | —               | ChangePassword                        |
+| POST   | `/auth/email/code`              | 🔒     | `users.manage`  | RequestEmailChange                    |
+| POST   | `/auth/email`                   | 🔒     | `users.manage`  | ChangeEmail                           |
+| GET    | `/auth/invite?token=`           | —      | —               | GetInvite                             |
+| POST   | `/auth/invite/accept`           | —      | —               | AcceptInvite                          |
+| POST   | `/auth/password-reset/request`  | —      | —               | RequestPasswordReset                  |
+| GET    | `/auth/password-reset?token=`   | —      | —               | GetPasswordReset                      |
+| POST   | `/auth/password-reset`          | —      | —               | ResetPassword                         |
+| GET    | `/users`                        | 🔒     | `users.manage`  | ListUsers                             |
+| GET    | `/users/invites`                | 🔒     | `users.manage`  | ListPendingInvites                    |
+| POST   | `/users/invites`                | 🔒     | `users.manage`  | InviteUser                            |
+| POST   | `/users/:id/invite/resend`      | 🔒     | `users.manage`  | ResendInvite                          |
+| DELETE | `/users/:id/invite`             | 🔒     | `users.manage`  | RevokeInvite                          |
+| POST   | `/users/:id/password-reset`     | 🔒     | `users.manage`  | IssueResetLink                        |
+| PATCH  | `/users/:id/role`               | 🔒     | `users.manage`  | ChangeUserRole                        |
+| POST   | `/users/:id/disable`            | 🔒     | `users.manage`  | SetUserStatus                         |
+| POST   | `/users/:id/enable`             | 🔒     | `users.manage`  | SetUserStatus                         |
+| GET    | `/audit-logs`                   | 🔒     | `audit.view`    | ListAuditLogs                         |
+| GET    | `/audit-logs/export?format=csv` | 🔒     | `audit.view`    | ExportAuditLogs                       |
+| GET    | `/audit-logs/:id`               | 🔒     | `audit.view`    | GetAuditLog                           |
+| GET    | `/agents`                       | 🔒     | `agents.view`   | ListAgents (live from Wazuh for now)  |
+| GET    | `/agents/groups`                | 🔒     | `agents.manage` | ListAgentGroups                       |
+| POST   | `/agents/enroll-command`        | 🔒     | `agents.manage` | GenerateEnrollCommand (`no-store`)    |
+| GET    | `/agents/enrollment-check`      | 🔒     | `agents.manage` | CheckEnrollment (1 per user per 3 s)  |
+| GET    | `/health`                       | —      | —               | Database ping; never blocked by setup |
+| GET    | `/api/health`                   | —      | —               | Container healthcheck (see below)     |
 
 `/health` has no `/api` prefix. `/api/health` is what Docker and the installer poll: it pings Postgres, and Redis too when `NODE_ENV=production` (in development the in-memory cache stands in), each with a 2-second timeout. It answers only `200 {"status":"ok"}` or `503 {"status":"unavailable"}`, never which part failed, because it's public ([health-check.service.ts](../backend/src/infrastructure/services/health-check.service.ts)).
 
@@ -626,18 +634,26 @@ browser ──► web (nginx) ──► api (Node) ──► postgres, redis
             serves the React build,       migrate: one-shot job that applies
             proxies /api and /grafana/    migrations before api starts
                  └──► grafana ──► loki ◄── alloy ◄── this stack's container log files
+
+agents ──► wazuh-manager (1514 events, 1515 enrollment) ◄── api (Wazuh API on 55000, internal)
 ```
 
-| Piece                                               | What it does                                                                                                                                                                                                                   |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [backend/Dockerfile](../backend/Dockerfile)         | Multi-stage `node:24-alpine`: compiles TypeScript, installs production dependencies only, runs as the `node` user. The same image runs the API and `node dist/cli/migrate.js`.                                                 |
-| [frontend/Dockerfile](../frontend/Dockerfile)       | Builds the Vite bundle, serves it from `nginx:1.30-alpine`                                                                                                                                                                     |
-| [frontend/nginx/](../frontend/nginx)                | SPA fallback, caching (hashed assets forever, `index.html` never), CSP and other security headers, gzip, the `/api` and `/grafana/` proxies (Grafana keeps its own CSP)                                                        |
-| [grafana/](../grafana)                              | The `siemple-grafana` image: Grafana 13 with the Loki data source, the SIEMple Health dashboard and Logs Drilldown built in; sign-up, anonymous access and calls home are off                                                  |
-| [docker-compose.yml](../docker-compose.yml)         | The install: postgres, redis, migrate, api, web, loki, alloy, grafana, and Caddy for HTTPS under the `https` profile. Only web (or Caddy) publishes a port. Settings come from `.env` ([.env.example](../.env.example)).       |
-| [install.sh](../install.sh)                         | `install`, `update`, `backup`, `restore`, `status`, `token`, `uninstall [--purge]`; downloads a GitHub release's files into `/opt/siemple`. Backups add the Loki and Grafana volumes (`backup --no-logs` skips them)           |
-| [docker.yml](../.github/workflows/docker.yml)       | Builds the api, web and grafana images and scans them with Trivy on every PR, and checks the inline Alloy config; publishes amd64 + arm64 images to GHCR on `main` and on `v*` tags; attaches the install files to the release |
-| [docker-compose.dev.yml](../docker-compose.dev.yml) | Development only: Postgres (`localhost:5433`, with `siemple_test`) and Redis for `npm run dev` (`npm run db:up` / `db:down`)                                                                                                   |
+| Piece                                               | What it does                                                                                                                                                                                                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [backend/Dockerfile](../backend/Dockerfile)         | Multi-stage `node:24-alpine`: compiles TypeScript, installs production dependencies only, runs as the `node` user. The same image runs the API and `node dist/cli/migrate.js`.                                                                                            |
+| [frontend/Dockerfile](../frontend/Dockerfile)       | Builds the Vite bundle, serves it from `nginx:1.30-alpine`                                                                                                                                                                                                                |
+| [frontend/nginx/](../frontend/nginx)                | SPA fallback, caching (hashed assets forever, `index.html` never), CSP and other security headers, gzip, the `/api` and `/grafana/` proxies (Grafana keeps its own CSP)                                                                                                   |
+| [grafana/](../grafana)                              | The `siemple-grafana` image: Grafana 13 with the Loki data source, the SIEMple Health dashboard and Logs Drilldown built in; sign-up, anonymous access and calls home are off                                                                                             |
+| [docker-compose.yml](../docker-compose.yml)         | The install: postgres, redis, migrate, api, web, wazuh-manager, loki, alloy, grafana, and Caddy for HTTPS under the `https` profile. Only web (or Caddy) and the agent ports 1514/1515 are published. Settings come from `.env` ([.env.example](../.env.example)).        |
+| [install.sh](../install.sh)                         | `install`, `update`, `backup`, `restore`, `status`, `token`, `uninstall [--purge]`; downloads a GitHub release's files into `/opt/siemple`. Backups always add the Wazuh manager's agents and keys (`-wazuh.tar.gz`), and the Loki and Grafana volumes unless `--no-logs` |
+| [docker.yml](../.github/workflows/docker.yml)       | Builds the api, web and grafana images and scans them with Trivy on every PR, and checks the inline Alloy config; publishes amd64 + arm64 images to GHCR on `main` and on `v*` tags; attaches the install files to the release                                            |
+| [docker-compose.dev.yml](../docker-compose.dev.yml) | Development only: Postgres (`localhost:5433`, with `siemple_test`) and Redis for `npm run dev` (`npm run db:up` / `db:down`)                                                                                                                                              |
+
+**Adding agents.** Agents → Add agent generates an install command (Windows PowerShell, DEB, RPM) from pure builders in [enroll-command.policy.ts](../backend/src/domain/policies/enroll-command.policy.ts); the package URLs live only in [wazuh-packages.ts](../backend/src/domain/constants/wazuh-packages.ts). The API reaches the manager through the `IAgentManager` port ([wazuh-agent-manager.ts](../backend/src/infrastructure/integrations/wazuh/wazuh-agent-manager.ts), [wazuh-api.client.ts](../backend/src/infrastructure/integrations/wazuh/wazuh-api.client.ts)); tests bind a fake, so CI never needs Wazuh.
+
+- **The manager** is `wazuh/wazuh-manager:4.14.10`, manager only. A script the image runs before Wazuh starts (`wazuh-siemple-init` in the compose file) turns on the enrollment password (`authd.pass` from `WAZUH_ENROLLMENT_PASSWORD`), turns off the indexer and filebeat (SIEMple runs neither), and replaces the API's default certificate (`CN=wazuh.com`, `localhost` only) with one for `wazuh-manager` signed by a private CA. The CA key is discarded; only `ca.crt` reaches the api, read-only, as `WAZUH_API_CA_FILE`.
+- **Commands carry the secret.** Names and groups must match `^[A-Za-z0-9._-]{1,64}$` and are rejected, never cleaned; every value is single-quoted for its shell. The response is `no-store`, the UI masks it until revealed, and the audit row `agent.enroll_command.generated` holds OS, arch, group and name, never the password. The agent version is the manager's, so an agent is never newer.
+- **Linux installs** use `apt-get install` / `dnf install` on the downloaded package, so dependencies come along (`dpkg -i` left minimal systems half-installed).
 
 **Two log flows, and only two.** Security events will come from Wazuh agents into SIEMple's own pipeline (database, rules, alerts); that flow is separate and never touches Loki. The second flow is SIEMple's health: Alloy reads the Docker JSON log files of this compose project's containers and sends them to Loki, and Grafana shows the SIEMple Health dashboard (request rate, 5xx rate, p95 latency by route, log volume by service, recent errors). Nothing else moves logs: there is no ingest API, syslog receiver or remote agent.
 
@@ -753,4 +769,7 @@ The audit log is something else: a permanent, database-backed record of security
 | Grafana has its own sign-in               | One admin account from `.env`; signing in to Grafana with a SIEMple account (OAuth) would remove the second login                      |
 | Grafana image carries upstream CVEs       | All in Grafana's own Go binaries and bundled plugins; fixed only by new Grafana releases (Trivy reports them without blocking)         |
 | Loki has no Docker healthcheck            | Its image has no shell or HTTP client; it shows as running, and Alloy and Grafana retry until it is ready                              |
-| Wazuh pipeline not built yet              | Flow 1 (agents → pipeline → database → rules → alerts) is the next module; it must never send events to Loki                           |
+| Wazuh pipeline not built yet              | Agents enroll and connect; events going agents → pipeline → database → rules → alerts is the next module, and must never go to Loki    |
+| Agents list reads Wazuh live              | No sync job yet: `GET /api/agents` asks the manager each time, and the `agents` table is only filled by enrollment checks              |
+| No agent detail page or removal           | "View the agent" highlights its row; removing an agent is done in Wazuh for now                                                        |
+| Adapter tests wait for real fixtures      | The Wazuh adapter was verified against a live 4.14.10 manager; fixture-based unit tests come with the recorded API responses           |

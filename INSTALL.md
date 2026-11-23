@@ -8,6 +8,7 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 - [Install](#install)
 - [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux)
 - [First-time setup](#first-time-setup)
+- [Adding agents](#adding-agents)
 - [SIEMple health (Grafana)](#siemple-health-grafana)
 - [HTTPS](#https)
 - [Everyday tasks](#everyday-tasks)
@@ -24,10 +25,10 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 | What    | Minimum                                                                                                                         |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                  |
-| Memory  | 2 GB RAM                                                                                                                        |
+| Memory  | 2 GB RAM; 4 GB recommended (the Wazuh manager uses about 300 MB idle, more as agents report)                                    |
 | Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                         |
 | Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`) |
-| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS                                                 |
+| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS; TCP 1514 and 1515 for agents                   |
 
 Docker isn't installed for you. On most distributions `curl -fsSL https://get.docker.com | sh` installs both Docker and the Compose plugin.
 
@@ -49,9 +50,9 @@ The installer:
 
 1. checks that Docker and Compose are present and recent enough;
 2. downloads the release's `docker-compose.yml` and settings template into `/opt/siemple`;
-3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only);
+3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only), including the agent enrollment password, and sets `WAZUH_PUBLIC_ADDRESS` to this server's IP;
 4. downloads the images and starts the containers, waiting until every one reports healthy;
-5. prints the address to open, where to find the SIEMple Health dashboard (Grafana) and a **setup token**.
+5. prints the address to open, where to find the SIEMple Health dashboard (Grafana), the address agents connect to, and a **setup token**.
 
 Options go after `bash -s --` when piping, or after `install.sh` when running a downloaded copy:
 
@@ -81,6 +82,49 @@ The token is valid for 24 hours. Until setup is complete, a new token is issued 
 ```bash
 sudo /opt/siemple/install.sh token
 ```
+
+## Adding agents
+
+An agent is the Wazuh agent installed on a machine you want to protect. SIEMple generates a ready-to-run command for it; run that on the machine and SIEMple shows the agent as soon as it connects. Only administrators can add agents; everyone can see the list under **Agents**.
+
+### Before you start
+
+- **The address agents use.** `WAZUH_PUBLIC_ADDRESS` in `/opt/siemple/.env` is the IP or name the agent machines use to reach this server. The installer sets it to the server's IP; change it if agents reach the server another way (a DNS name, a NAT address), then run `cd /opt/siemple && sudo docker compose up -d`. Until it's set, Add agent says so.
+- **Ports 1514 and 1515 (TCP) open on the server.** Agents send events on 1514 and enroll on 1515. With `ufw`: `sudo ufw allow 1514/tcp && sudo ufw allow 1515/tcp`. In the cloud, allow them in the security group too.
+- **The agent machine can reach them.** Guest and office Wi-Fi often isolates clients from each other, which blocks this even when the firewall is open. The page shows a check to run first: `Test-NetConnection <address> -Port 1515` on Windows, `nc -zv <address> 1515` on Linux.
+- **On the agent machine:** administrator rights (Windows) or `sudo` (Linux), internet access to `packages.wazuh.com`, and **no Wazuh agent installed already** (see below). Linux needs `curl` and systemd. Supported: 64-bit Windows; Debian/Ubuntu (DEB) and RHEL, Rocky, Alma or Fedora (RPM), on x86_64 or arm64.
+
+### Steps
+
+1. Open **Agents** and choose **Add agent**.
+2. Pick the operating system, and for Linux the architecture (`uname -m` prints `x86_64` or `aarch64`).
+3. Pick a group (the agent gets that group's configuration in Wazuh) and, optionally, a name. Without a name the agent uses the machine's name. Names use letters, digits, dots, hyphens and underscores, up to 64 characters.
+4. Choose **Generate command**. The command is masked; **Copy** copies the real one, and **Reveal** shows it.
+5. Run it on the machine: in **Windows PowerShell opened as Administrator**, or in a Linux terminal (it asks for your `sudo` password).
+6. Choose **I ran it, wait for the agent**. The page shows **Connected** with the agent's name, OS, IP and version once it's up, usually within a minute.
+
+The command downloads the agent package from `packages.wazuh.com`, installs it with this server's address, the group, the name and the enrollment password, starts the agent service and deletes the downloaded file. It installs the same Wazuh version as SIEMple's manager, never a newer one. It stops without changing anything if a Wazuh agent is already installed.
+
+**The command contains the enrollment password.** Anyone who has it can add agents to this SIEMple, so don't paste it into chats, tickets or shared documents. SIEMple records each generated command in the audit log (who, when, OS, group and name; never the password). To change the password, set a new `WAZUH_ENROLLMENT_PASSWORD` in `.env` (20 or more letters, digits and `- _ . : @ + = ! # ,`) and run `sudo docker compose up -d`; agents that already enrolled keep working, and older commands stop working.
+
+### Removing an old agent first
+
+A machine that already has a Wazuh agent (for example one that reported to another server) keeps its old settings even when you install over it, so the command refuses to run. Remove it first:
+
+- **Windows:** Settings → Apps → **Wazuh Agent** → Uninstall. If `C:\Program Files (x86)\ossec-agent` is still there afterwards, delete it.
+- **Debian or Ubuntu:** `sudo apt-get purge wazuh-agent`, then `sudo rm -rf /var/ossec` if the folder is still there.
+- **RHEL, Rocky, Alma or Fedora:** `sudo dnf remove wazuh-agent` (or `yum`), then `sudo rm -rf /var/ossec` if the folder is still there.
+
+### If the agent doesn't connect
+
+After two minutes the page lists the usual causes, and keeps waiting:
+
+- **Ports blocked:** run the connectivity check from the agent machine. Both ports must answer. If they don't, check the server's firewall, the cloud security group, and Wi-Fi client isolation.
+- **Not run as administrator:** on Windows the command must run in PowerShell opened with _Run as administrator_; on Linux with `sudo`.
+- **An old agent is installed:** the command printed "A Wazuh agent is already installed". Remove it (above) and run the command again.
+- **Wrong address:** the command connects to `WAZUH_PUBLIC_ADDRESS`. If the machine reaches the server by another IP or name, fix the setting and generate a new command.
+- **"An agent with this name is already registered":** another agent uses that name and is connected, or enrolled less than an hour ago. Pick another name, or remove the old agent in Wazuh.
+- **"SIEMple can't reach the Wazuh manager":** check `sudo docker compose ps wazuh-manager` and `sudo docker compose logs --tail 50 wazuh-manager api`. The manager takes about 20 seconds to start.
 
 ## SIEMple health (Grafana)
 
@@ -204,12 +248,13 @@ sudo ./install.sh restore backups/siemple-<date of the update>.dump
 sudo /opt/siemple/install.sh backup
 ```
 
-This writes two files to `/opt/siemple/backups/`, both readable by root only:
+This writes these files to `/opt/siemple/backups/`, all readable by root only:
 
 - `siemple-<date>-<time>.dump`: the whole database, compressed: every account, password hash, setting and audit record.
+- `siemple-<date>-<time>-wazuh.tar.gz`: the Wazuh manager's agent registrations and keys, its API users and its configuration. Without it every agent would have to enroll again. The manager stops for the few seconds the copy takes; agents reconnect by themselves.
 - `siemple-<date>-<time>-volumes.tar.gz`: the stored logs and Grafana's own data (its users and any dashboards you saved). Loki and Grafana pause for the few seconds the copy takes; Alloy sends the lines from that pause once Loki is back.
 
-`backup --no-logs` saves only the database, which is quicker when there are many logs; updates take that kind of backup. Copy backups to another machine regularly: a backup on the same disk doesn't survive that disk failing.
+`backup --no-logs` skips the logs and Grafana (the database and the Wazuh data are always saved), which is quicker when there are many logs; updates take that kind of backup. Copy backups to another machine regularly: a backup on the same disk doesn't survive that disk failing.
 
 To run a backup every night at 02:00, add a line to root's crontab (`sudo crontab -e`):
 
@@ -227,9 +272,9 @@ sudo /opt/siemple/install.sh restore /opt/siemple/backups/siemple-20261117-02000
 
 This **replaces all current data** with the backup, after you confirm by typing `restore` (add `--yes` to skip the question in scripts). It takes a safety backup of the current data first, stops the application during the restore, and restores the database in a single transaction: if anything fails, the current data is left as it was. A backup from an older version is migrated forward when the application starts.
 
-When the matching `-volumes.tar.gz` sits next to the `.dump`, the stored logs and Grafana's data are replaced from it too; without it they stay as they are.
+When the matching `-wazuh.tar.gz` sits next to the `.dump`, the Wazuh agents and keys are replaced from it too, and likewise the stored logs and Grafana's data from `-volumes.tar.gz`. Without them, those stay as they are.
 
-**Moving to a new server:** install SIEMple there, copy both backup files across, and restore. The new install's own passwords and secrets are fine; everyone just signs in again. Grafana's sign-in comes from the backup, so it's the old server's Grafana password.
+**Moving to a new server:** install SIEMple there, copy all the backup files across, and restore. Point `WAZUH_PUBLIC_ADDRESS` at the new server; agents keep their keys, but they connect to the address they were installed with, so give the new server the old one's IP or DNS name. The new install's own passwords and secrets are fine; everyone just signs in again. Grafana's sign-in comes from the backup, so it's the old server's Grafana password.
 
 ## Settings
 
@@ -246,6 +291,10 @@ Settings you're most likely to change:
 | `APP_URL`                                                           | The address people open. Starting with `https://` makes sign-in cookies Secure.                                  |
 | `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email for invitations and password resets. Without `SMTP_HOST`, administrators get the links to pass on by hand. |
+| `WAZUH_PUBLIC_ADDRESS`                                              | The IP or name agents use to reach this server; it goes into every generated agent command                       |
+| `WAZUH_ENROLLMENT_PASSWORD`                                         | The password agents present when they enroll. Changing it makes older commands stop working.                     |
+| `WAZUH_API_PASSWORD`                                                | SIEMple's password on the Wazuh manager's API (internal only). Applied each time the manager starts.             |
+| `WAZUH_AGENT_VERSION`                                               | Agent version to install only if the manager doesn't report its own: `4.14.10` by default                        |
 | `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                         |
 | `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                      |
 | `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                            |
@@ -307,6 +356,9 @@ POSTGRES_PASSWORD=<random letters and digits>
 REDIS_PASSWORD=<random letters and digits>
 JWT_SECRET=<random letters and digits, at least 32>
 GRAFANA_ADMIN_PASSWORD=<random letters and digits>
+WAZUH_API_PASSWORD=<see below>
+WAZUH_ENROLLMENT_PASSWORD=<see below>
+WAZUH_PUBLIC_ADDRESS=192.168.1.20
 APP_URL=http://192.168.1.20
 ```
 
@@ -314,6 +366,11 @@ Generate each secret with:
 
 - **Windows (PowerShell):** `-join ((1..32) | % { '{0:x2}' -f (Get-Random -Max 256) })`
 - **Linux or Mac:** `openssl rand -hex 32`
+
+The two Wazuh passwords need an uppercase letter, a lowercase letter, a digit and a symbol, and must stay inside shell quotes, so generate them with:
+
+- **Windows (PowerShell):** `'Aa1-' + -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 28 | % { [char]$_ })`
+- **Linux or Mac:** `printf 'Aa1-%s\n' "$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 28)"`
 
 If port 80 is already taken on this PC (by IIS or another web server, for example), also set `WEB_PORT=8080` and add `:8080` to `APP_URL`.
 
@@ -349,6 +406,8 @@ Allow the web port through the server's firewall:
 - **Linux:** `sudo ufw allow 80/tcp` (if `ufw` is active).
 
 Then open `http://192.168.1.20` from any computer on the same network.
+
+For agents, also allow TCP 1514 and 1515 the same way (on Windows, a second rule with `-LocalPort 1514,1515`), then see [Adding agents](#adding-agents).
 
 ### 6. Day-to-day commands
 
@@ -420,11 +479,14 @@ cd /opt/siemple && sudo docker compose ps -a && sudo docker compose logs --tail 
 
 **Grafana says the password is wrong after I changed `GRAFANA_ADMIN_PASSWORD`.** That setting is only read on Grafana's first start. Reset the password with the command under [SIEMple health](#siemple-health-grafana).
 
+**An agent doesn't show up.** See [If the agent doesn't connect](#if-the-agent-doesnt-connect).
+
 **Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy` (it should be healthy) and `sudo docker compose logs alloy`. If Docker keeps its data outside `/var/lib/docker` (snap Docker, a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env` and run `sudo docker compose up -d`.
 
 ## Security notes
 
-- Only the web port (or ports 80 and 443 with HTTPS) is published. The database, Redis, Loki, Alloy and the API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
+- Only the web port (or ports 80 and 443 with HTTPS) and the agent ports 1514 and 1515 are published. The database, Redis, Loki, Alloy, the API and the Wazuh manager's API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
+- Agents can only enroll with the enrollment password, which is part of every generated command: treat those commands as secrets. SIEMple checks the Wazuh API's certificate against a private certificate authority the manager creates on its first start.
 - Nothing outside SIEMple can send logs in: there is no ingest API or syslog port. Alloy reads Docker's log files read-only and has no access to the Docker socket.
 - Grafana's image ships with known vulnerabilities in Grafana's own components that only a new Grafana release can fix; SIEMple moves to new Grafana versions as they're published. Keep it behind the sign-in and up to date.
 - `.env` holds every secret and is readable by root only. Don't copy it anywhere it could be read by others.
