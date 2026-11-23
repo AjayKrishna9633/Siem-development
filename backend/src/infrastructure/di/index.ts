@@ -7,6 +7,8 @@ import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.re
 import { TypeOrmSystemSettingsRepository } from '../database/repositories/system-settings.repository.ts';
 import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper.ts';
 import { TypeOrmAuthTokenRepository } from '../database/repositories/auth-token.repository.ts';
+import { TypeOrmEmailSettingsRepository } from '../database/repositories/email-settings.repository.ts';
+import { AesGcmSecretCipher } from '../services/aes-gcm-secret-cipher.service.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
@@ -103,6 +105,10 @@ container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
 container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
 container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
 container.bind(TYPES.AuthTokenRepository).to(TypeOrmAuthTokenRepository);
+container.bind(TYPES.EmailSettingsRepository).to(TypeOrmEmailSettingsRepository);
+container
+  .bind(TYPES.SecretCipher)
+  .toConstantValue(new AesGcmSecretCipher(env.SETTINGS_ENCRYPTION_KEY));
 
 container.bind(TYPES.HashService).to(BcryptHashService);
 container.bind(TYPES.CacheService).to(RedisCacheService);

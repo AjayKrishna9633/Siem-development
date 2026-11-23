@@ -35,6 +35,8 @@ const TYPES = {
   SystemSettingsRepository: Symbol.for('SystemSettingsRepository'),
   SystemSettingsMapper: Symbol.for('SystemSettingsMapper'),
   AuthTokenRepository: Symbol.for('AuthTokenRepository'),
+  EmailSettingsRepository: Symbol.for('EmailSettingsRepository'),
+  SecretCipher: Symbol.for('SecretCipher'),
 
   CacheService: Symbol.for('CacheService'),
   EmailService: Symbol.for('EmailService'),

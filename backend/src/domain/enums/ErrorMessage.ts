@@ -41,4 +41,6 @@ export enum ErrorMessage {
   USER_ALREADY_DISABLED = 'This user is already disabled',
   EMAIL_NOT_DELIVERED = "The email couldn't be sent. Ask an administrator to check this server's email settings",
   USER_NOT_DISABLED = 'This user is not disabled',
+  ENCRYPTION_KEY_NOT_CONFIGURED = 'SETTINGS_ENCRYPTION_KEY is not set on the server, so secrets cannot be stored. Add it to .env and restart SIEMple',
+  STORED_SECRET_UNREADABLE = 'The stored SMTP password cannot be decrypted with the current SETTINGS_ENCRYPTION_KEY. Enter the password again',
 }
