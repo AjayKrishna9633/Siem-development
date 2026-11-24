@@ -221,14 +221,56 @@ fetch_release_files() {
   rmdir "$tmp"
 }
 
+# Services that aren't up yet: not healthy, or (without a healthcheck) not running. The one-shot
+# migrate job counts as up once it has exited 0.
+services_not_up() {
+  # "|", not spaces: read would collapse the empty Health of a service without a healthcheck.
+  compose ps -a --format '{{.Service}}|{{.State}}|{{.Health}}|{{.ExitCode}}' | while IFS='|' read -r service state health code; do
+    case "$service" in
+      migrate) [ "$state" = exited ] && [ "$code" = 0 ] && continue ;;
+      *)
+        if [ -n "$health" ]; then [ "$health" = healthy ] && continue
+        else [ "$state" = running ] && continue
+        fi
+        ;;
+    esac
+    printf '%s\n' "$service"
+  done
+}
+
 start_stack() {
   info "Starting SIEMple (the first start can take a minute)..."
-  if ! compose up -d --wait --remove-orphans; then
-    warn "SIEMple didn't become healthy. Recent logs:"
-    compose ps -a >&2 || true
-    compose logs --tail 30 migrate api web grafana caddy >&2 2>/dev/null || true
-    die "Start failed. Fix the problem above, then run: $SIEMPLE_DIR/install.sh update"
+  if compose up -d --wait --wait-timeout "${SIEMPLE_START_TIMEOUT:-240}" --remove-orphans; then
+    return 0
   fi
+  # Grafana's first start runs its database migrations, which can outlast the wait on a slow disk.
+  # SIEMple itself works without it, so only Grafana still starting isn't a failed install.
+  local pending
+  pending="$(services_not_up | tr '\n' ' ' | sed 's/ $//')"
+  if [ "$pending" = grafana ]; then
+    if [ "$(compose ps --format '{{.Health}}' grafana)" = starting ]; then
+      warn "Grafana is still finishing its first start (it can take a few minutes); SIEMple itself is up."
+      warn "Check it later with: $SIEMPLE_DIR/install.sh status"
+    else
+      warn "Grafana isn't healthy, but SIEMple itself is up. See: cd $SIEMPLE_DIR && docker compose logs grafana"
+    fi
+    return 0
+  fi
+  warn "SIEMple didn't become healthy${pending:+ (not up: $pending)}. Recent logs:"
+  compose ps -a >&2 || true
+  compose logs --tail 30 migrate api web grafana caddy >&2 2>/dev/null || true
+  die "Start failed. Fix the problem above, then run: $SIEMPLE_DIR/install.sh update"
+}
+
+# Compose doesn't recreate a service when only its inline config changes, so an update recreates
+# the services that have one. Their data lives in volumes.
+recreate_config_services() {
+  local services="loki alloy"
+  case "$(get_env COMPOSE_PROFILES)" in
+    *https*) services="$services caddy" ;;
+  esac
+  # shellcheck disable=SC2086 # a list of service names
+  compose up -d --no-deps --force-recreate $services > /dev/null
 }
 
 show_setup_token() {
@@ -363,12 +405,20 @@ cmd_update() {
 
   cp docker-compose.yml docker-compose.yml.previous
   fetch_release_files "$tag"
+  # The new release's own script finishes the update, so its settings and start logic apply.
+  exec bash "$SIEMPLE_DIR/install.sh" finish-update "$tag"
+}
+
+cmd_finish_update() {
+  local tag="${1:?finish-update needs a release tag}"
+  require_install
   set_env SIEMPLE_VERSION "${tag#v}"
   add_missing_settings
   compose config --quiet || die "The new docker-compose.yml doesn't accept this .env (see above)."
 
   info "Downloading images..."
   compose pull --quiet
+  recreate_config_services
   start_stack
   ok "SIEMple is now on ${tag#v}"
   docker image prune -f > /dev/null 2>&1 || true
@@ -542,6 +592,7 @@ main() {
   case "$cmd" in
     install)   cmd_install "$@" ;;
     update)    cmd_update "$@" ;;
+    finish-update) cmd_finish_update "$@" ;; # internal: the second half of update
     backup)    cmd_backup "$@" ;;
     restore)   cmd_restore "$@" ;;
     status)    cmd_status "$@" ;;
