@@ -25,4 +25,8 @@ export enum SuccessMessage {
   EMAIL_CHANGED = 'Email address changed successfully',
   AUDIT_LOGS_FETCHED = 'Audit log retrieved successfully',
   AUDIT_LOG_FETCHED = 'Audit log entry retrieved successfully',
+  EMAIL_SETTINGS_FETCHED = 'Email settings retrieved successfully',
+  EMAIL_SETTINGS_SAVED = 'Email settings saved',
+  EMAIL_SETTINGS_DISABLED = 'Email turned off',
+  EMAIL_TEST_FINISHED = 'Test email finished',
 }

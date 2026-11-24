@@ -12,6 +12,7 @@ import { accountRoutes } from './presentation/routes/account.routes.ts';
 import { inviteRoutes } from './presentation/routes/invite.routes.ts';
 import { usersRoutes } from './presentation/routes/users.routes.ts';
 import { auditLogsRoutes } from './presentation/routes/audit-logs.routes.ts';
+import { emailSettingsRoutes } from './presentation/routes/email-settings.routes.ts';
 import { setupRoutes } from './presentation/routes/setup.routes.ts';
 import { healthRoutes } from './presentation/routes/health.routes.ts';
 import { auditAccessDenied } from './presentation/middlewares/access-denied-audit.middleware.ts';
@@ -45,6 +46,7 @@ app.use('/api/auth', accountRoutes(di.accountController, di.authMiddleware));
 app.use('/api/auth', inviteRoutes(di.inviteController));
 app.use('/api/users', usersRoutes(di.usersController, di.authMiddleware));
 app.use('/api/audit-logs', auditLogsRoutes(di.auditLogsController, di.authMiddleware));
+app.use('/api/settings/email', emailSettingsRoutes(di.emailSettingsController, di.authMiddleware));
 
 app.use(notFoundHandler);
 app.use(auditAccessDenied(di.auditService));

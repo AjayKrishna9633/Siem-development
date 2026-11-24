@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router';
 import { Check, Copy, MailCheck, MailWarning } from 'lucide-react';
 import { Button } from '../ui/Button.tsx';
 import { LocalTime } from './LocalTime.tsx';
 import type { ILinkDelivery } from '@/types/auth.ts';
+import { can, useAuthStore } from '@/features/auth';
 
 const CopyRow: React.FC<{ label: string; value: string }> = ({ label, value }) => {
   const [copied, setCopied] = useState(false);
@@ -45,6 +47,10 @@ export const LinkDeliveryDetails: React.FC<{
 }> = ({ delivery, email, kind = 'invite' }) => {
   const to = email ? <span className="font-mono text-ink">{email}</span> : 'them';
   const text = copy[kind];
+  const canSetUpEmail = can(
+    useAuthStore((s) => s.user),
+    'settings.manage',
+  );
 
   return (
     <div className="space-y-3">
@@ -65,6 +71,15 @@ export const LinkDeliveryDetails: React.FC<{
         </p>
       )}
       {delivery.link && <CopyRow label={text.label} value={delivery.link} />}
+      {!delivery.delivered && canSetUpEmail && (
+        <p className="text-xs text-muted">
+          Set up email in{' '}
+          <Link to="/settings/email" className="text-accent hover:underline">
+            Settings → Email
+          </Link>{' '}
+          to send {kind === 'invite' ? 'invites' : 'reset links'} automatically.
+        </p>
+      )}
       <p className="font-mono text-[11px] text-muted">
         The link works once and expires <LocalTime value={delivery.expiresAt} />.
       </p>

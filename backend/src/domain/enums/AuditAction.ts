@@ -18,8 +18,8 @@ export enum AuditAction {
   ACCESS_DENIED = 'access.denied',
   USER_UPDATED = 'user.update',
   AUDIT_EXPORTED = 'audit.export',
-  // Reserved for a future settings feature.
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',
+  EMAIL_TEST_SENT = 'system.settings.email_test',
 }
 
 export enum AuditTargetType {

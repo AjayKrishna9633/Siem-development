@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { isEncryptionKey } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
 
 const optionalText = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
@@ -33,8 +34,15 @@ const envSchema = z.object({
   SMTP_USER: optionalText,
   SMTP_PASSWORD: optionalText,
   SMTP_FROM: optionalText,
-  OTP_EMAIL: optionalText,
-  OTP_PASSWORD: optionalText,
+
+  // Optional: without it the email settings page can't store a password, but nothing crashes.
+  SETTINGS_ENCRYPTION_KEY: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .refine(isEncryptionKey, 'must be 32 bytes of base64 (openssl rand -base64 32)')
+      .optional(),
+  ),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -10,6 +10,6 @@ export interface IEmailDelivery {
 }
 
 export interface IEmailService {
-  readonly isConfigured: boolean;
+  isConfigured(): Promise<boolean>;
   send(message: IEmailMessage): Promise<IEmailDelivery>;
 }

@@ -35,6 +35,10 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.EMAIL_NOT_DELIVERED]: HttpStatusCode.SERVICE_UNAVAILABLE,
   [AppErrorCode.CANNOT_CHANGE_OWN_ACCESS]: HttpStatusCode.FORBIDDEN,
   [AppErrorCode.AUDIT_LOG_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.ENCRYPTION_KEY_NOT_CONFIGURED]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.STORED_SECRET_UNREADABLE]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.EMAIL_MANAGED_BY_ENV]: HttpStatusCode.CONFLICT,
+  [AppErrorCode.EMAIL_NOT_CONFIGURED]: HttpStatusCode.CONFLICT,
 };
 
 const PG_INVALID_TEXT_REPRESENTATION = '22P02';
