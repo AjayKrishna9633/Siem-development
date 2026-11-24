@@ -22,15 +22,16 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 
 ## Requirements
 
-| What    | Minimum                                                                                                                         |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                  |
-| Memory  | 2 GB RAM                                                                                                                        |
-| Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                         |
-| Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`) |
-| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS                                                 |
+| What    | Minimum                                                                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                        |
+| Memory  | 2 GB RAM                                                                                                                              |
+| Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                               |
+| Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`)       |
+| Socket  | The Docker socket at `/var/run/docker.sock`, read through a read-only proxy for the health logs (`DOCKER_SOCKET` for rootless Docker) |
+| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS                                                       |
 
-Docker isn't installed for you. On most distributions `curl -fsSL https://get.docker.com | sh` installs both Docker and the Compose plugin.
+Docker isn't installed for you. On most distributions `curl -fsSL https://get.docker.com | sh` installs both Docker and the Compose plugin. Docker Desktop (Windows with WSL 2, or Mac) works too.
 
 ## Install
 
@@ -148,7 +149,7 @@ The server must be allowed to make outgoing connections to that port.
 
 ## SIEMple health (Grafana)
 
-SIEMple collects the logs of its own containers (api, web, postgres, redis, loki, grafana, alloy) with [Alloy](https://grafana.com/oss/alloy/), keeps them in [Loki](https://grafana.com/oss/loki/) and shows them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
+SIEMple collects the logs of its own containers (api, web, postgres, redis, loki, grafana, alloy and the Docker API proxy) with [Alloy](https://grafana.com/oss/alloy/), keeps them in [Loki](https://grafana.com/oss/loki/) and shows them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
 
 ```
 <your SIEMple address>/grafana/
@@ -162,7 +163,9 @@ Grafana has its own sign-in, separate from SIEMple's. The user is `admin` and th
 sudo grep GRAFANA_ADMIN_PASSWORD /opt/siemple/.env
 ```
 
-That value is only used on Grafana's very first start. After that the password lives in Grafana: change it there (your avatar → Profile → Change password), and editing `.env` has no effect. Forgot it? Set a new one with:
+Grafana's first start sets up its own database and can take a few minutes on a slow disk. The installer doesn't wait for it: if Grafana is still starting when everything else is up, it says so and finishes the install. Check it later with `sudo /opt/siemple/install.sh status`.
+
+The password is only used on Grafana's very first start. After that the password lives in Grafana: change it there (your avatar → Profile → Change password), and editing `.env` has no effect. Forgot it? Set a new one with:
 
 ```bash
 cd /opt/siemple && sudo docker compose exec grafana grafana cli admin reset-admin-password '<new password>'
@@ -174,13 +177,15 @@ What's there:
 - **Drilldown → Logs**: point-and-click exploring, no query language needed.
 - **Explore**: write [LogQL](https://grafana.com/docs/loki/latest/query/) queries, for example `{service="api", level="error"}` or `{service="api"} | json | route="/api/users" | status >= 500`.
 
-Every line has three labels: `service` (the container: `api`, `web`, `postgres`, …), `level` (`info`, `warn`, `error`, `fatal`) and `env`. The API's request lines are JSON with `requestId`, `method`, `route` (the route template, like `/api/users/:id`), `status` and `durationMs`. Request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token never reach the logs, and health checks are left out.
+Every line has four labels: `project` (this install's compose project, `siemple` unless you changed it), `service` (the container: `api`, `web`, `postgres`, …), `level` (`info`, `warn`, `error`, `fatal`) and `env`. `{project="siemple"}` shows everything; `{service="api"}` shows the API's request lines. The API's request lines are JSON with `requestId`, `method`, `route` (the route template, like `/api/users/:id`), `status` and `durationMs`. Request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token never reach the logs, and health checks are left out.
 
 The SIEMple dashboard can't be edited in place (an update would overwrite it); use **Save as** to make your own copy. Logs are deleted after 14 days; change that with `LOKI_RETENTION` (see [Settings](#settings)).
 
 Grafana, Loki and Alloy don't contact the internet: usage reporting, update checks and plugin downloads are switched off, so they work on networks without internet access.
 
-**How Alloy reads the logs.** Alloy reads Docker's log files from `/var/lib/docker/containers`, mounted read-only, and drops every line that doesn't belong to this SIEMple install before sending anything. It deliberately doesn't use the Docker socket, which gives full control of Docker and so root on the server. If Docker keeps its data elsewhere (snap Docker, or a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env`.
+**How Alloy reads the logs.** Alloy asks Docker for the logs through the Docker API, so it works wherever Docker keeps its files, Docker Desktop included. It only lists containers labelled with this install's compose project, so nothing from other containers on the server is read.
+
+Alloy never touches the Docker socket itself. A small proxy ([docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)) holds the socket, mounted read-only, and answers only read requests for containers and networks: anything that would change Docker (create, start, stop, exec, delete) is refused. The proxy sits on a private network that only Alloy can reach, and publishes no port. One thing worth knowing: reading containers includes their settings, environment variables among them, so a compromised Alloy could read SIEMple's secrets, but it couldn't take over Docker or the server. Giving Alloy the socket directly, even read-only, would allow exactly that.
 
 ## HTTPS
 
@@ -253,6 +258,8 @@ An update backs up the database first, downloads the new release's compose file,
 
 Each install is pinned to a version (`SIEMPLE_VERSION` in `.env`) and only changes when you run `update`.
 
+From 0.1.1 on, the new release's own installer finishes the update, so its new settings and start-up checks apply straight away. Updating **from 0.1.0** is finished by the 0.1.0 installer, which doesn't know the newer settings yet: run `sudo /opt/siemple/install.sh update` a second time to add them (it changes nothing else). After that update, the old volume `siemple_alloy-data` is no longer used; remove it with `sudo docker volume rm siemple_alloy-data`.
+
 **Going back to the previous version:** the update keeps the old compose file as `docker-compose.yml.previous`. Migrations aren't guaranteed to be reversible, so restore the backup taken before the update as well:
 
 ```bash
@@ -314,7 +321,7 @@ Settings you're most likely to change:
 | `SETTINGS_ENCRYPTION_KEY`                                           | Encrypts the email password saved in Settings → Email. Created by the installer; don't change it (the email password would have to be entered again). |
 | `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                                                              |
 | `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                                                           |
-| `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                                                                 |
+| `DOCKER_SOCKET`                                                     | The Docker socket the read-only proxy uses: `/var/run/docker.sock` by default; for rootless Docker, e.g. `/run/user/1000/docker.sock`                 |
 | `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                                                            |
 | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.                                            |
 | `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                                                                |
@@ -494,12 +501,15 @@ cd /opt/siemple && sudo docker compose ps -a && sudo docker compose logs --tail 
 
 **Grafana says the password is wrong after I changed `GRAFANA_ADMIN_PASSWORD`.** That setting is only read on Grafana's first start. Reset the password with the command under [SIEMple health](#siemple-health-grafana).
 
-**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy` (it should be healthy) and `sudo docker compose logs alloy`. If Docker keeps its data outside `/var/lib/docker` (snap Docker, a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env` and run `sudo docker compose up -d`.
+**The installer says Grafana is still finishing its first start.** SIEMple itself is running; Grafana is setting up its database, which can take a few minutes on a slow disk. Check `sudo /opt/siemple/install.sh status` after a while. If it stays unhealthy, `cd /opt/siemple && sudo docker compose logs grafana` shows why.
+
+**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy docker-socket-proxy` (both should be up) and `sudo docker compose logs alloy`. `403 Forbidden` there means the proxy refused a request Alloy needs. With rootless Docker, set `DOCKER_SOCKET` in `.env` to your socket and run `sudo docker compose up -d`.
 
 ## Security notes
 
 - Only the web port (or ports 80 and 443 with HTTPS) is published. The database, Redis, Loki, Alloy and the API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
-- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port. Alloy reads Docker's log files read-only and has no access to the Docker socket.
+- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port.
+- Alloy reads logs through a read-only Docker API proxy, the only container with the Docker socket. It allows reading containers and networks and nothing else, sits on a private network only Alloy can reach, and publishes no port (see [How Alloy reads the logs](#siemple-health-grafana)).
 - Grafana's image ships with known vulnerabilities in Grafana's own components that only a new Grafana release can fix; SIEMple moves to new Grafana versions as they're published. Keep it behind the sign-in and up to date.
 - `.env` holds every secret and is readable by root only. Don't copy it anywhere it could be read by others.
 - The email password saved in Settings → Email is encrypted (AES-256-GCM) with `SETTINGS_ENCRYPTION_KEY`, decrypted only in memory while sending, and never returned by the API or written to logs or the audit log.
