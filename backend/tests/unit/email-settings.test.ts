@@ -27,7 +27,7 @@ const settings = (overrides: Partial<IEmailSettings> = {}): IEmailSettings => ({
 });
 
 describe('classifySmtpError', () => {
-  it.each<[string, object, string, number | null]>([
+  it.each<[string, unknown, string, number | null]>([
     ['bad login', { code: 'EAUTH', responseCode: 535, command: 'AUTH PLAIN' }, 'auth_failed', 535],
     ['TLS failure', { code: 'ETLS', message: 'TLS negotiation failed' }, 'tls_error', null],
     [
