@@ -52,4 +52,9 @@ export enum ErrorMessage {
   AGENT_NAME_TAKEN = 'An agent with this name is already registered. Choose another name, or remove the old agent in Wazuh first',
   AGENT_MANAGER_UNAVAILABLE = "SIEMple can't reach the Wazuh manager. Check that the wazuh-manager service is running and the WAZUH_API_* settings are correct",
   TOO_MANY_ENROLLMENT_CHECKS = 'Checking too often. Wait a few seconds and try again',
+  ENCRYPTION_KEY_NOT_CONFIGURED = 'SETTINGS_ENCRYPTION_KEY is not set on the server, so secrets cannot be stored. Add it to .env and restart SIEMple',
+  STORED_SECRET_UNREADABLE = 'The stored SMTP password cannot be decrypted with the current SETTINGS_ENCRYPTION_KEY. Enter the password again',
+  EMAIL_MANAGED_BY_ENV = "Email is set by SMTP_HOST in the server's .env, so it can't be changed here. Edit .env and restart SIEMple, or remove SMTP_HOST to manage email in Settings",
+  EMAIL_NOT_CONFIGURED = 'Email is not set up yet. Save the email settings first',
+  TOO_MANY_EMAIL_TESTS = 'Too many test emails. Wait a minute and try again',
 }

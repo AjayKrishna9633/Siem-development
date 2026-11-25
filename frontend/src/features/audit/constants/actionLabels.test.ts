@@ -23,6 +23,7 @@ const BACKEND_ACTIONS = [
   'system.settings.changed',
   'audit.export',
   'agent.enroll_command.generated',
+  'system.settings.email_test',
 ];
 
 describe('actionLabel', () => {
@@ -31,6 +32,16 @@ describe('actionLabel', () => {
     expect(ACTION_LABELS[action]).toBe(label);
     expect(label).not.toMatch(/[._]/);
     expect(label).toMatch(/^[A-Z]/);
+  });
+
+  it('names the settings section that changed', () => {
+    expect(
+      actionLabel('system.settings.changed', { section: 'email', changedFields: ['host'] }),
+    ).toBe('Changed email settings');
+    expect(actionLabel('system.settings.changed', { section: 'other' })).toBe(
+      'Changed system settings',
+    );
+    expect(actionLabel('system.settings.changed')).toBe('Changed system settings');
   });
 
   it('maps the events people look for to plain words', () => {

@@ -7,13 +7,18 @@ import { TypeOrmAuditLogRepository } from '../database/repositories/audit-log.re
 import { TypeOrmSystemSettingsRepository } from '../database/repositories/system-settings.repository.ts';
 import { SystemSettingsMapper } from '../database/mappers/system-settings.mapper.ts';
 import { TypeOrmAuthTokenRepository } from '../database/repositories/auth-token.repository.ts';
+import { TypeOrmEmailSettingsRepository } from '../database/repositories/email-settings.repository.ts';
+import { AesGcmSecretCipher } from '../services/aes-gcm-secret-cipher.service.ts';
 import { AppDataSource } from '../database/data-source.ts';
 
 import { BcryptHashService } from '../services/bcrypt-hash.service.ts';
 import { createRedisClient } from '../redis/redis.client.ts';
 import { logger } from '../logging/logger.ts';
 import { RedisCacheService } from '../redis/redis-cache.service.ts';
-import { createMailTransport } from '../../config/mailer.ts';
+import { MailTransportProvider } from '../services/mail-transport.provider.ts';
+import type { IMailTransportProvider } from '../../application/interfaces/services/mail-transport.provider.interface.ts';
+import type { IEmailSettingsRepository } from '../../application/interfaces/repositories/email-settings.repository.interface.ts';
+import type { ISecretCipher } from '../../application/interfaces/services/secret-cipher.service.interface.ts';
 import { EmailService } from '../services/email.service.ts';
 import { JwtTokenService } from '../services/jwt-token.service.ts';
 import { RefreshSessionService } from '../services/refresh-session.service.ts';
@@ -74,6 +79,13 @@ import { AuditLogsController } from '../../presentation/controllers/audit-logs.c
 import { ListAuditLogsUseCase } from '../../application/use-cases/audit/list-audit-logs.usecase.ts';
 import { GetAuditLogUseCase } from '../../application/use-cases/audit/get-audit-log.usecase.ts';
 import { ExportAuditLogsUseCase } from '../../application/use-cases/audit/export-audit-logs.usecase.ts';
+import { SmtpEmailTester } from '../services/smtp-email-tester.service.ts';
+import { GetEmailSettingsUseCase } from '../../application/use-cases/email-settings/get-email-settings.usecase.ts';
+import { UpdateEmailSettingsUseCase } from '../../application/use-cases/email-settings/update-email-settings.usecase.ts';
+import { TestEmailSettingsUseCase } from '../../application/use-cases/email-settings/test-email-settings.usecase.ts';
+import { DisableEmailSettingsUseCase } from '../../application/use-cases/email-settings/disable-email-settings.usecase.ts';
+import { EmailSettingsController } from '../../presentation/controllers/email-settings.controller.ts';
+import type { IEnvSmtpConfig } from '../../application/types/use-case/email-settings.types.ts';
 import { HealthCheckService } from '../services/health-check.service.ts';
 import { HealthController } from '../../presentation/controllers/health.controller.ts';
 import { env } from '../../config/env.config.ts';
@@ -103,16 +115,34 @@ container.bind(TYPES.HealthCheckService).toConstantValue(
   }),
 );
 
-const mailTransport = createMailTransport();
-container.bind(TYPES.MailTransport).toConstantValue(mailTransport);
-export const emailConfigured = mailTransport !== null;
-
 container.bind(TYPES.UserMapper).to(UserMapper);
 container.bind(TYPES.UserRepository).to(TypeOrmUserRepository);
 container.bind(TYPES.AuditLogRepository).to(TypeOrmAuditLogRepository);
 container.bind(TYPES.SystemSettingsMapper).to(SystemSettingsMapper);
 container.bind(TYPES.SystemSettingsRepository).to(TypeOrmSystemSettingsRepository);
 container.bind(TYPES.AuthTokenRepository).to(TypeOrmAuthTokenRepository);
+container.bind(TYPES.EmailSettingsRepository).to(TypeOrmEmailSettingsRepository);
+container
+  .bind(TYPES.SecretCipher)
+  .toConstantValue(new AesGcmSecretCipher(env.SETTINGS_ENCRYPTION_KEY));
+const envSmtp: IEnvSmtpConfig | null = env.SMTP_HOST
+  ? {
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE,
+      user: env.SMTP_USER,
+      password: env.SMTP_PASSWORD,
+      from: env.SMTP_FROM,
+    }
+  : null;
+container.bind(TYPES.EnvSmtpConfig).toConstantValue(envSmtp);
+export const mailTransports: IMailTransportProvider = new MailTransportProvider(
+  envSmtp,
+  container.get<IEmailSettingsRepository>(TYPES.EmailSettingsRepository),
+  container.get<ISecretCipher>(TYPES.SecretCipher),
+  logger,
+);
+container.bind(TYPES.MailTransportProvider).toConstantValue(mailTransports);
 
 container.bind(TYPES.HashService).to(BcryptHashService);
 container.bind(TYPES.CacheService).to(RedisCacheService);
@@ -157,6 +187,11 @@ container.bind(TYPES.CompleteSetupUseCase).to(CompleteSetupUseCase);
 container.bind(TYPES.ListAuditLogsUseCase).to(ListAuditLogsUseCase);
 container.bind(TYPES.GetAuditLogUseCase).to(GetAuditLogUseCase);
 container.bind(TYPES.ExportAuditLogsUseCase).to(ExportAuditLogsUseCase);
+container.bind(TYPES.EmailTester).to(SmtpEmailTester);
+container.bind(TYPES.GetEmailSettingsUseCase).to(GetEmailSettingsUseCase);
+container.bind(TYPES.UpdateEmailSettingsUseCase).to(UpdateEmailSettingsUseCase);
+container.bind(TYPES.TestEmailSettingsUseCase).to(TestEmailSettingsUseCase);
+container.bind(TYPES.DisableEmailSettingsUseCase).to(DisableEmailSettingsUseCase);
 
 const wazuhApiConfig = {
   baseUrl: env.WAZUH_API_URL,
@@ -200,6 +235,7 @@ container.bind(TYPES.InviteController).to(InviteController);
 container.bind(TYPES.UsersController).to(UsersController);
 container.bind(TYPES.SetupController).to(SetupController);
 container.bind(TYPES.AuditLogsController).to(AuditLogsController);
+container.bind(TYPES.EmailSettingsController).to(EmailSettingsController);
 container.bind(TYPES.HealthController).to(HealthController);
 container.bind(TYPES.AgentsController).to(AgentsController);
 
@@ -211,6 +247,9 @@ export const accountController = container.get<AccountController>(TYPES.AccountC
 export const inviteController = container.get<InviteController>(TYPES.InviteController);
 export const usersController = container.get<UsersController>(TYPES.UsersController);
 export const auditLogsController = container.get<AuditLogsController>(TYPES.AuditLogsController);
+export const emailSettingsController = container.get<EmailSettingsController>(
+  TYPES.EmailSettingsController,
+);
 export const healthController = container.get<HealthController>(TYPES.HealthController);
 export const agentsController = container.get<AgentsController>(TYPES.AgentsController);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
@@ -242,6 +281,7 @@ export const di = {
   inviteController,
   usersController,
   auditLogsController,
+  emailSettingsController,
   healthController,
   agentsController,
   setupController,

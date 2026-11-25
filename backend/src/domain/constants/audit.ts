@@ -26,6 +26,7 @@ export const AUDIT_CATEGORY_BY_ACTION: Readonly<Record<AuditAction, AuditCategor
   [AuditAction.AUDIT_EXPORTED]: AuditCategory.SYSTEM,
   [AuditAction.AGENT_ENROLL_COMMAND_GENERATED]: AuditCategory.AGENT,
   [AuditAction.SYSTEM_SETTINGS_CHANGED]: AuditCategory.SYSTEM,
+  [AuditAction.EMAIL_TEST_SENT]: AuditCategory.SYSTEM,
 };
 
 export const AUDIT_QUERY_LIMITS = {

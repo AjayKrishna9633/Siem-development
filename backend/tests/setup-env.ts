@@ -12,4 +12,4 @@ if (testUrl) {
 }
 process.env.NODE_ENV = 'test';
 
-for (const name of ['SMTP_HOST', 'OTP_EMAIL', 'OTP_PASSWORD']) process.env[name] = '';
+for (const name of ['SMTP_HOST']) process.env[name] = '';

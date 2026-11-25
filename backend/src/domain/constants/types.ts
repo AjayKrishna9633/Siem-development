@@ -37,12 +37,21 @@ const TYPES = {
   AgentManager: Symbol.for('AgentManager'),
   AgentEnrollmentConfig: Symbol.for('AgentEnrollmentConfig'),
   AgentsController: Symbol.for('AgentsController'),
+  GetEmailSettingsUseCase: Symbol.for('GetEmailSettingsUseCase'),
+  UpdateEmailSettingsUseCase: Symbol.for('UpdateEmailSettingsUseCase'),
+  TestEmailSettingsUseCase: Symbol.for('TestEmailSettingsUseCase'),
+  DisableEmailSettingsUseCase: Symbol.for('DisableEmailSettingsUseCase'),
+  EmailSettingsController: Symbol.for('EmailSettingsController'),
+  EnvSmtpConfig: Symbol.for('EnvSmtpConfig'),
+  EmailTester: Symbol.for('EmailTester'),
   UserRepository: Symbol.for('UserRepository'),
   UserMapper: Symbol.for('UserMapper'),
   AuditLogRepository: Symbol.for('AuditLogRepository'),
   SystemSettingsRepository: Symbol.for('SystemSettingsRepository'),
   SystemSettingsMapper: Symbol.for('SystemSettingsMapper'),
   AuthTokenRepository: Symbol.for('AuthTokenRepository'),
+  EmailSettingsRepository: Symbol.for('EmailSettingsRepository'),
+  SecretCipher: Symbol.for('SecretCipher'),
 
   CacheService: Symbol.for('CacheService'),
   EmailService: Symbol.for('EmailService'),
@@ -71,7 +80,7 @@ const TYPES = {
 
   DataSource: Symbol.for('DataSource'),
   RedisClient: Symbol.for('RedisClient'),
-  MailTransport: Symbol.for('MailTransport'),
+  MailTransportProvider: Symbol.for('MailTransportProvider'),
   Logger: Symbol.for('Logger'),
 };
 

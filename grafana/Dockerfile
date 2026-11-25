@@ -10,6 +10,7 @@ ENV GF_SERVER_SERVE_FROM_SUB_PATH=true \
     GF_SECURITY_DISABLE_GRAVATAR=true \
     GF_SECURITY_CONTENT_SECURITY_POLICY=true \
     GF_LOG_LEVEL=warn \
+    GF_DATABASE_WAL=true \
     LOKI_URL=http://loki:3100
 
 # Logs Drilldown is installed at build time so offline servers work.
@@ -24,5 +25,7 @@ ENV GF_PATHS_PLUGINS=/usr/share/grafana/siemple-plugins \
 COPY provisioning /etc/grafana/provisioning
 COPY dashboards /etc/grafana/dashboards
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+# The first start runs Grafana's database migrations, which can take minutes on a slow disk.
+# start-period only covers that window after a start; a later failure is still caught.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=300s --retries=5 \
   CMD ["wget", "-q", "--spider", "http://127.0.0.1:3000/grafana/api/health"]

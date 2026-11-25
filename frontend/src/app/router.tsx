@@ -12,6 +12,7 @@ import {
 } from '@/features/auth';
 import { AuditLogsPage } from '@/features/audit';
 import { AddAgentPage, AgentsPage } from '@/features/agents';
+import { EmailSettingsPage } from '@/features/email-settings';
 import { AppShell } from './layout/AppShell.tsx';
 import { Unauthorized } from '@/pages/Unauthorized.tsx';
 import { UserManagement } from '@/pages/settings/UserManagement.tsx';
@@ -81,6 +82,14 @@ export const AppRoutes: React.FC = () => (
         element={
           <ProtectedRoute permission="agents.manage">
             <AddAgentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/email"
+        element={
+          <ProtectedRoute permission="settings.manage">
+            <EmailSettingsPage />
           </ProtectedRoute>
         }
       />

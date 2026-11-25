@@ -70,7 +70,7 @@ const AuditRow: React.FC<{
   onSelect: (entry: IAuditLog) => void;
   onFilterActor: (entry: IAuditLog) => void;
 }> = ({ entry, selected, onSelect, onFilterActor }) => {
-  const label = actionLabel(entry.action);
+  const label = actionLabel(entry.action, entry.metadata);
   const targetText = entry.target.label ?? entry.target.id;
 
   return (

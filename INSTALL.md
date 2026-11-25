@@ -9,6 +9,7 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 - [Running on your own PC](#running-on-your-own-pc-windows-mac-or-linux)
 - [First-time setup](#first-time-setup)
 - [Adding agents](#adding-agents)
+- [Email](#email)
 - [SIEMple health (Grafana)](#siemple-health-grafana)
 - [HTTPS](#https)
 - [Everyday tasks](#everyday-tasks)
@@ -22,15 +23,16 @@ To use a Windows, Mac or Linux PC as the server instead, built from the source c
 
 ## Requirements
 
-| What    | Minimum                                                                                                                         |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                  |
-| Memory  | 2 GB RAM; 4 GB recommended (the Wazuh manager uses about 300 MB idle, more as agents report)                                    |
-| Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                         |
-| Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`) |
-| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS; TCP 1514 and 1515 for agents                   |
+| What    | Minimum                                                                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Server  | Linux, x86-64 or ARM64 (for example a Raspberry Pi 4/5 or an ARM cloud server)                                                        |
+| Memory  | 2 GB RAM; 4 GB recommended (the Wazuh manager uses about 300 MB idle, more as agents report)                                          |
+| Disk    | 5 GB free, plus room for the database and SIEMple's own logs to grow (logs are kept 14 days by default)                               |
+| Docker  | [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin **2.23.1 or newer** (`docker compose version`)       |
+| Socket  | The Docker socket at `/var/run/docker.sock`, read through a read-only proxy for the health logs (`DOCKER_SOCKET` for rootless Docker) |
+| Network | One free port for the web interface (80 by default); ports 80 and 443 for HTTPS; TCP 1514 and 1515 for agents                         |
 
-Docker isn't installed for you. On most distributions `curl -fsSL https://get.docker.com | sh` installs both Docker and the Compose plugin.
+Docker isn't installed for you. On most distributions `curl -fsSL https://get.docker.com | sh` installs both Docker and the Compose plugin. Docker Desktop (Windows with WSL 2, or Mac) works too.
 
 ## Install
 
@@ -50,7 +52,7 @@ The installer:
 
 1. checks that Docker and Compose are present and recent enough;
 2. downloads the release's `docker-compose.yml` and settings template into `/opt/siemple`;
-3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only), including the agent enrollment password, and sets `WAZUH_PUBLIC_ADDRESS` to this server's IP;
+3. creates `/opt/siemple/.env` with newly generated passwords and secrets (readable by root only), including the agent enrollment password and `SETTINGS_ENCRYPTION_KEY` (which protects the email password you save in SIEMple), and sets `WAZUH_PUBLIC_ADDRESS` to this server's IP;
 4. downloads the images and starts the containers, waiting until every one reports healthy;
 5. prints the address to open, where to find the SIEMple Health dashboard (Grafana), the address agents connect to, and a **setup token**.
 
@@ -66,6 +68,10 @@ curl -fsSL .../install.sh | sudo bash -s -- --port 8080
 | `--url URL`     | The address people will use, if it isn't `http://<server IP>` (for example `http://siem.lan`) |
 | `--domain NAME` | Serve HTTPS at NAME with a free Let's Encrypt certificate (see [HTTPS](#https))               |
 | `--version X`   | Install release X (for example `1.2.0`) instead of the latest                                 |
+| `--smtp-host H` | Send email through mail server H (optional: email can also be set up later in the web UI)     |
+| `--smtp-port N` | The mail server's port (587 by default)                                                       |
+| `--smtp-user U` | The mail account; you're asked for its password (see [Email](#email))                         |
+| `--smtp-from A` | The sender, for example `"SIEMple <siem@example.com>"` (the account address by default)       |
 
 To install somewhere other than `/opt/siemple`, set `SIEMPLE_DIR`, for example `curl ... | SIEMPLE_DIR=$HOME/siemple bash` (without `sudo`, your user must be in the `docker` group).
 
@@ -126,9 +132,68 @@ After two minutes the page lists the usual causes, and keeps waiting:
 - **"An agent with this name is already registered":** another agent uses that name and is connected, or enrolled less than an hour ago. Pick another name, or remove the old agent in Wazuh.
 - **"SIEMple can't reach the Wazuh manager":** check `sudo docker compose ps wazuh-manager` and `sudo docker compose logs --tail 50 wazuh-manager api`. The manager takes about 20 seconds to start.
 
+## Email
+
+SIEMple emails invitations, password-reset links and security notices. Without email it still works: administrators get each link on screen to copy and send themselves.
+
+### Set it up in SIEMple (recommended)
+
+1. Sign in as an administrator and open **Settings → Email**.
+2. Pick a provider (**Gmail**, **Microsoft 365** or **Custom**). The preset fills in the server, port and security; for Custom, enter your mail server's details.
+3. Enter the account's username and password, and the sender name and address, then **Save**. It takes effect straight away; there's nothing to restart.
+4. **Send test email**, to yourself or another address. A failure names the likely cause (see the table below).
+
+The password is stored encrypted with `SETTINGS_ENCRYPTION_KEY` from `.env` and is never shown again: the page only says that one is saved, and **Change** replaces it. Every change is recorded in the audit log (which fields changed, never their values), and so is every test email. **Disable email** turns it off and deletes the saved password.
+
+If the page says **Encryption key not configured**, `.env` has no `SETTINGS_ENCRYPTION_KEY` (an install from before email settings existed that hasn't been updated yet). `sudo /opt/siemple/install.sh update` adds one, or add `SETTINGS_ENCRYPTION_KEY=` with the output of `openssl rand -base64 32` and run `cd /opt/siemple && sudo docker compose up -d`.
+
+### Set it up in .env (automated installs)
+
+Pass the mail server to the installer:
+
+```bash
+curl -fsSL .../install.sh | sudo bash -s -- --smtp-host smtp.example.com --smtp-user siem@example.com --smtp-from "SIEMple <siem@example.com>"
+```
+
+It asks for the password without showing it. There is deliberately no option for the password itself, because options are visible to anyone on the server (`ps`) and stay in your shell history. For a script without a terminal, put the password in `SIEMPLE_SMTP_PASSWORD` and keep it in the environment rather than on the command line, for example `sudo --preserve-env=SIEMPLE_SMTP_PASSWORD bash install.sh --smtp-host ...` with the variable exported from a file only root can read.
+
+The installer writes `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_FROM` to `.env`; you can also edit them there yourself and run `sudo docker compose up -d`. While `SMTP_HOST` is set, **Settings → Email** shows these settings read-only ("Managed by the server's .env") and can still send a test email. Remove `SMTP_HOST` to manage email in the web UI instead.
+
+### Gmail
+
+Gmail doesn't accept your normal password here; it needs an **App Password**:
+
+1. Turn on 2-Step Verification for the Google account.
+2. Open [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), create an App Password named "SIEMple", and copy the 16 characters it shows.
+3. In **Settings → Email**, choose **Gmail**, enter the full Gmail address as the username, paste the App Password, and use the same address as the sender.
+
+Google Workspace accounts may need an administrator to allow App Passwords.
+
+### Ports
+
+| Port | Security | Used by                                                                |
+| ---- | -------- | ---------------------------------------------------------------------- |
+| 587  | STARTTLS | Most providers, including Gmail and Microsoft 365                      |
+| 465  | TLS      | Providers that use implicit TLS                                        |
+| 25   | None     | Only a relay on your own trusted network; often blocked by cloud hosts |
+
+The server must be allowed to make outgoing connections to that port.
+
+### When the test email fails
+
+| What you see                                 | Likely cause                                                           | What to do                                                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Rejected the username or password (SMTP 535) | Wrong password; Gmail without an App Password; SMTP login turned off   | Re-enter the password. For Gmail use an App Password; for Microsoft 365 an administrator must allow "Authenticated SMTP"         |
+| Didn't answer in time                        | The port is blocked, or the host is wrong                              | Check the host, and that the firewall and the hosting provider allow outgoing connections on that port                           |
+| Refused the connection                       | Wrong port, or the server doesn't take mail there                      | Check the port: 587 for STARTTLS, 465 for TLS                                                                                    |
+| The encrypted connection failed              | Security setting and port don't match                                  | TLS goes with 465, STARTTLS with 587                                                                                             |
+| Refused the From address (SMTP 550 or 553)   | The account may not send as that address                               | Use the account's own address, or an alias the provider has verified                                                             |
+| Host name could not be found                 | A typo in the host, or DNS                                             | Check the spelling                                                                                                               |
+| Email stopped after moving to a new server   | `SETTINGS_ENCRYPTION_KEY` changed, so the saved password can't be read | Enter the password again in Settings → Email, or restore with the backup's `-settings.key` (see [Backups](#backups-and-restore)) |
+
 ## SIEMple health (Grafana)
 
-SIEMple collects the logs of its own containers (api, web, postgres, redis, loki, grafana, alloy) with [Alloy](https://grafana.com/oss/alloy/), keeps them in [Loki](https://grafana.com/oss/loki/) and shows them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
+SIEMple collects the logs of its own containers (api, web, postgres, redis, loki, grafana, alloy and the Docker API proxy) with [Alloy](https://grafana.com/oss/alloy/), keeps them in [Loki](https://grafana.com/oss/loki/) and shows them in [Grafana](https://grafana.com/oss/grafana/), which comes with the install at:
 
 ```
 <your SIEMple address>/grafana/
@@ -142,7 +207,9 @@ Grafana has its own sign-in, separate from SIEMple's. The user is `admin` and th
 sudo grep GRAFANA_ADMIN_PASSWORD /opt/siemple/.env
 ```
 
-That value is only used on Grafana's very first start. After that the password lives in Grafana: change it there (your avatar → Profile → Change password), and editing `.env` has no effect. Forgot it? Set a new one with:
+Grafana's first start sets up its own database and can take a few minutes on a slow disk. The installer doesn't wait for it: if Grafana is still starting when everything else is up, it says so and finishes the install. Check it later with `sudo /opt/siemple/install.sh status`.
+
+The password is only used on Grafana's very first start. After that the password lives in Grafana: change it there (your avatar → Profile → Change password), and editing `.env` has no effect. Forgot it? Set a new one with:
 
 ```bash
 cd /opt/siemple && sudo docker compose exec grafana grafana cli admin reset-admin-password '<new password>'
@@ -154,13 +221,15 @@ What's there:
 - **Drilldown → Logs**: point-and-click exploring, no query language needed.
 - **Explore**: write [LogQL](https://grafana.com/docs/loki/latest/query/) queries, for example `{service="api", level="error"}` or `{service="api"} | json | route="/api/users" | status >= 500`.
 
-Every line has three labels: `service` (the container: `api`, `web`, `postgres`, …), `level` (`info`, `warn`, `error`, `fatal`) and `env`. The API's request lines are JSON with `requestId`, `method`, `route` (the route template, like `/api/users/:id`), `status` and `durationMs`. Request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token never reach the logs, and health checks are left out.
+Every line has four labels: `project` (this install's compose project, `siemple` unless you changed it), `service` (the container: `api`, `web`, `postgres`, …), `level` (`info`, `warn`, `error`, `fatal`) and `env`. `{project="siemple"}` shows everything; `{service="api"}` shows the API's request lines. The API's request lines are JSON with `requestId`, `method`, `route` (the route template, like `/api/users/:id`), `status` and `durationMs`. Request bodies, passwords, tokens, cookies, `Authorization` headers and the setup token never reach the logs, and health checks are left out.
 
 The SIEMple dashboard can't be edited in place (an update would overwrite it); use **Save as** to make your own copy. Logs are deleted after 14 days; change that with `LOKI_RETENTION` (see [Settings](#settings)).
 
 Grafana, Loki and Alloy don't contact the internet: usage reporting, update checks and plugin downloads are switched off, so they work on networks without internet access.
 
-**How Alloy reads the logs.** Alloy reads Docker's log files from `/var/lib/docker/containers`, mounted read-only, and drops every line that doesn't belong to this SIEMple install before sending anything. It deliberately doesn't use the Docker socket, which gives full control of Docker and so root on the server. If Docker keeps its data elsewhere (snap Docker, or a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env`.
+**How Alloy reads the logs.** Alloy asks Docker for the logs through the Docker API, so it works wherever Docker keeps its files, Docker Desktop included. It only lists containers labelled with this install's compose project, so nothing from other containers on the server is read.
+
+Alloy never touches the Docker socket itself. A small proxy ([docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)) holds the socket, mounted read-only, and answers only read requests for containers and networks: anything that would change Docker (create, start, stop, exec, delete) is refused. The proxy sits on a private network that only Alloy can reach, and publishes no port. One thing worth knowing: reading containers includes their settings, environment variables among them, so a compromised Alloy could read SIEMple's secrets, but it couldn't take over Docker or the server. Giving Alloy the socket directly, even read-only, would allow exactly that.
 
 ## HTTPS
 
@@ -233,6 +302,8 @@ An update backs up the database first, downloads the new release's compose file,
 
 Each install is pinned to a version (`SIEMPLE_VERSION` in `.env`) and only changes when you run `update`.
 
+From 0.1.1 on, the new release's own installer finishes the update, so its new settings and start-up checks apply straight away. Updating **from 0.1.0** is finished by the 0.1.0 installer, which doesn't know the newer settings yet: run `sudo /opt/siemple/install.sh update` a second time to add them (it changes nothing else). After that update, the old volume `siemple_alloy-data` is no longer used; remove it with `sudo docker volume rm siemple_alloy-data`.
+
 **Going back to the previous version:** the update keeps the old compose file as `docker-compose.yml.previous`. Migrations aren't guaranteed to be reversible, so restore the backup taken before the update as well:
 
 ```bash
@@ -252,6 +323,7 @@ This writes these files to `/opt/siemple/backups/`, all readable by root only:
 
 - `siemple-<date>-<time>.dump`: the whole database, compressed: every account, password hash, setting and audit record.
 - `siemple-<date>-<time>-wazuh.tar.gz`: the Wazuh manager's agent registrations and keys, its API users and its configuration. Without it every agent would have to enroll again. The manager stops for the few seconds the copy takes; agents reconnect by themselves.
+- `siemple-<date>-<time>-settings.key`: `SETTINGS_ENCRYPTION_KEY`, which decrypts the email password saved in Settings → Email. It's a separate file so that the dump on its own can't reveal that password: **store it apart from the dumps**. Losing it only means entering the email password again; nothing else depends on it.
 - `siemple-<date>-<time>-volumes.tar.gz`: the stored logs and Grafana's own data (its users and any dashboards you saved). Loki and Grafana pause for the few seconds the copy takes; Alloy sends the lines from that pause once Loki is back.
 
 `backup --no-logs` skips the logs and Grafana (the database and the Wazuh data are always saved), which is quicker when there are many logs; updates take that kind of backup. Copy backups to another machine regularly: a backup on the same disk doesn't survive that disk failing.
@@ -272,7 +344,7 @@ sudo /opt/siemple/install.sh restore /opt/siemple/backups/siemple-20261117-02000
 
 This **replaces all current data** with the backup, after you confirm by typing `restore` (add `--yes` to skip the question in scripts). It takes a safety backup of the current data first, stops the application during the restore, and restores the database in a single transaction: if anything fails, the current data is left as it was. A backup from an older version is migrated forward when the application starts.
 
-When the matching `-wazuh.tar.gz` sits next to the `.dump`, the Wazuh agents and keys are replaced from it too, and likewise the stored logs and Grafana's data from `-volumes.tar.gz`. Without them, those stay as they are.
+When the matching `-wazuh.tar.gz` sits next to the `.dump`, the Wazuh agents and keys are replaced from it too, and likewise the stored logs and Grafana's data from `-volumes.tar.gz`; without them, those stay as they are. A matching `-settings.key` puts that key back in `.env`, so a restored email password keeps working; without it, enter the email password again in Settings → Email.
 
 **Moving to a new server:** install SIEMple there, copy all the backup files across, and restore. Point `WAZUH_PUBLIC_ADDRESS` at the new server; agents keep their keys, but they connect to the address they were installed with, so give the new server the old one's IP or DNS name. The new install's own passwords and secrets are fine; everyone just signs in again. Grafana's sign-in comes from the backup, so it's the old server's Grafana password.
 
@@ -286,21 +358,22 @@ cd /opt/siemple && sudo docker compose up -d
 
 Settings you're most likely to change:
 
-| Setting                                                             | What it does                                                                                                     |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `APP_URL`                                                           | The address people open. Starting with `https://` makes sign-in cookies Secure.                                  |
-| `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email for invitations and password resets. Without `SMTP_HOST`, administrators get the links to pass on by hand. |
-| `WAZUH_PUBLIC_ADDRESS`                                              | The IP or name agents use to reach this server; it goes into every generated agent command                       |
-| `WAZUH_ENROLLMENT_PASSWORD`                                         | The password agents present when they enroll. Changing it makes older commands stop working.                     |
-| `WAZUH_API_PASSWORD`                                                | SIEMple's password on the Wazuh manager's API (internal only). Applied each time the manager starts.             |
-| `WAZUH_AGENT_VERSION`                                               | Agent version to install only if the manager doesn't report its own: `4.14.10` by default                        |
-| `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                         |
-| `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                      |
-| `DOCKER_CONTAINERS_DIR`                                             | Where Docker keeps container logs, for Alloy: `/var/lib/docker/containers` by default                            |
-| `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                       |
-| `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.       |
-| `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                           |
+| Setting                                                             | What it does                                                                                                                                          |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_URL`                                                           | The address people open. Starting with `https://` makes sign-in cookies Secure.                                                                       |
+| `WEB_PORT`, `WEB_BIND`                                              | The port and network interface SIEMple listens on                                                                                                     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Email from `.env`, shown read-only in Settings → Email. Leave empty to set email up in the web UI (see [Email](#email)).                              |
+| `SETTINGS_ENCRYPTION_KEY`                                           | Encrypts the email password saved in Settings → Email. Created by the installer; don't change it (the email password would have to be entered again). |
+| `WAZUH_PUBLIC_ADDRESS`                                              | The IP or name agents use to reach this server; it goes into every generated agent command                                                            |
+| `WAZUH_ENROLLMENT_PASSWORD`                                         | The password agents present when they enroll. Changing it makes older commands stop working.                                                          |
+| `WAZUH_API_PASSWORD`                                                | SIEMple's password on the Wazuh manager's API (internal only). Applied each time the manager starts.                                                  |
+| `WAZUH_AGENT_VERSION`                                               | Agent version to install only if the manager doesn't report its own: `4.14.10` by default                                                             |
+| `LOG_LEVEL`                                                         | `debug` for more detail, `warn` for less                                                                                                              |
+| `LOKI_RETENTION`                                                    | How long SIEMple's own logs are kept, in hours: `336h` (14 days) by default                                                                           |
+| `DOCKER_SOCKET`                                                     | The Docker socket the read-only proxy uses: `/var/run/docker.sock` by default; for rootless Docker, e.g. `/run/user/1000/docker.sock`                 |
+| `SIEMPLE_ENV`                                                       | The `env` label on every log line: `production` by default                                                                                            |
+| `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                      | Grafana's first sign-in. Only read on its very first start; afterwards change the password inside Grafana.                                            |
+| `GRAFANA_COOKIE_SECURE`                                             | `true` with HTTPS, so Grafana's sign-in cookie is only sent over HTTPS                                                                                |
 
 Don't change `POSTGRES_PASSWORD`, `POSTGRES_USER` or `POSTGRES_DB` after the first start: the database was created with them. Changing `JWT_SECRET` signs everyone out.
 
@@ -359,6 +432,7 @@ GRAFANA_ADMIN_PASSWORD=<random letters and digits>
 WAZUH_API_PASSWORD=<see below>
 WAZUH_ENROLLMENT_PASSWORD=<see below>
 WAZUH_PUBLIC_ADDRESS=192.168.1.20
+SETTINGS_ENCRYPTION_KEY=<see below>
 APP_URL=http://192.168.1.20
 ```
 
@@ -371,6 +445,11 @@ The two Wazuh passwords need an uppercase letter, a lowercase letter, a digit an
 
 - **Windows (PowerShell):** `'Aa1-' + -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 28 | % { [char]$_ })`
 - **Linux or Mac:** `printf 'Aa1-%s\n' "$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 28)"`
+
+`SETTINGS_ENCRYPTION_KEY` is base64 instead:
+
+- **Windows (PowerShell):** `[Convert]::ToBase64String((1..32 | % { [byte](Get-Random -Max 256) }))`
+- **Linux or Mac:** `openssl rand -base64 32`
 
 If port 80 is already taken on this PC (by IIS or another web server, for example), also set `WEB_PORT=8080` and add `:8080` to `APP_URL`.
 
@@ -463,6 +542,8 @@ sudo /opt/siemple/install.sh uninstall --purge   # also delete the database, log
 
 **`port is already allocated` while starting.** Something else uses port 80 (often another web server). Pick another port: set `WEB_PORT=8080` in `.env` and run `docker compose up -d`, or reinstall with `--port 8080`.
 
+**Emails aren't sent.** Open Settings → Email and send a test email; the result names the cause. See [When the test email fails](#when-the-test-email-fails).
+
 **The installer says SIEMple didn't become healthy.** It shows the recent logs of the services that failed. The application log usually names the problem:
 
 ```bash
@@ -481,15 +562,24 @@ cd /opt/siemple && sudo docker compose ps -a && sudo docker compose logs --tail 
 
 **An agent doesn't show up.** See [If the agent doesn't connect](#if-the-agent-doesnt-connect).
 
-**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy` (it should be healthy) and `sudo docker compose logs alloy`. If Docker keeps its data outside `/var/lib/docker` (snap Docker, a custom `data-root`), set `DOCKER_CONTAINERS_DIR` in `.env` and run `sudo docker compose up -d`.
+**The installer says Grafana is still finishing its first start.** SIEMple itself is running; Grafana is setting up its database, which can take a few minutes on a slow disk. Check `sudo /opt/siemple/install.sh status` after a while. If it stays unhealthy, `cd /opt/siemple && sudo docker compose logs grafana` shows why.
+
+**Grafana shows no logs.** Loki needs about 20 seconds after starting before it answers; Alloy keeps the lines until then. Check the time range at the top right, then `sudo docker compose ps alloy docker-socket-proxy` (both should be up) and `sudo docker compose logs alloy`. `403 Forbidden` there means the proxy refused a request Alloy needs. With rootless Docker, set `DOCKER_SOCKET` in `.env` to your socket and run `sudo docker compose up -d`.
+
+## Security notes
+
+- Only the web port (or ports 80 and 443 with HTTPS) is published. The database, Redis, Loki, Alloy and the API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
+- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port.
 
 ## Security notes
 
 - Only the web port (or ports 80 and 443 with HTTPS) and the agent ports 1514 and 1515 are published. The database, Redis, Loki, Alloy, the API and the Wazuh manager's API are reachable only from inside Docker's private network; Grafana only through `/grafana/`, behind its own sign-in.
 - Agents can only enroll with the enrollment password, which is part of every generated command: treat those commands as secrets. SIEMple checks the Wazuh API's certificate against a private certificate authority the manager creates on its first start.
-- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port. Alloy reads Docker's log files read-only and has no access to the Docker socket.
+- Nothing outside SIEMple can send logs in: there is no ingest API or syslog port.
+- Alloy reads logs through a read-only Docker API proxy, the only container with the Docker socket. It allows reading containers and networks and nothing else, sits on a private network only Alloy can reach, and publishes no port (see [How Alloy reads the logs](#siemple-health-grafana)).
 - Grafana's image ships with known vulnerabilities in Grafana's own components that only a new Grafana release can fix; SIEMple moves to new Grafana versions as they're published. Keep it behind the sign-in and up to date.
 - `.env` holds every secret and is readable by root only. Don't copy it anywhere it could be read by others.
+- The email password saved in Settings → Email is encrypted (AES-256-GCM) with `SETTINGS_ENCRYPTION_KEY`, decrypted only in memory while sending, and never returned by the API or written to logs or the audit log.
 - Backups contain everything SIEMple stores. Keep them as protected as the server.
 - The containers run with reduced privileges: the API runs as an unprivileged user on a read-only filesystem.
 - Install updates when they're released: `sudo /opt/siemple/install.sh update`.

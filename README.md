@@ -11,12 +11,12 @@ SIEMple is a self-hosted SIEM (Security Information and Event Management) consol
 
 SIEMple moves logs in exactly two ways, and keeps them apart on purpose:
 
-| Flow               | Path                                                                | What it carries                                                                                                        | Status                                               |
-| ------------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| 1. Security events | Wazuh agents ──► SIEMple pipeline ──► database ──► rules ──► alerts | Events from the machines you protect                                                                                   | Agents enroll (Agents → Add agent); pipeline planned |
-| 2. SIEMple health  | SIEMple's own containers ──► Alloy ──► Loki ──► Grafana             | HTTP access logs, app logs and container logs of SIEMple's own stack (api, web, postgres, redis, loki, grafana, alloy) | Built in                                             |
+| Flow               | Path                                                                | What it carries                                                                                                               | Status                                               |
+| ------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 1. Security events | Wazuh agents ──► SIEMple pipeline ──► database ──► rules ──► alerts | Events from the machines you protect                                                                                          | Agents enroll (Agents → Add agent); pipeline planned |
+| 2. SIEMple health  | SIEMple's own containers ──► Alloy ──► Loki ──► Grafana             | HTTP access logs, app logs and container logs of SIEMple's own stack (api, web, postgres, redis, loki, grafana, alloy, proxy) | Built in                                             |
 
-Flow 2 answers one question: **is SIEMple itself healthy?** Grafana opens on the **SIEMple Health** dashboard: request rate, 5xx error rate, p95 latency by route, log volume by service and recent errors. The API writes structured JSON to stdout; Alloy reads the log files of this compose project's containers only (read-only, without the Docker socket) and labels each line with just `service`, `level` and `env`. Loki keeps them for 14 days.
+Flow 2 answers one question: **is SIEMple itself healthy?** Grafana opens on the **SIEMple Health** dashboard: request rate, 5xx error rate, p95 latency by route, log volume by service and recent errors. The API writes structured JSON to stdout; Alloy reads the logs of this compose project's containers only, through a read-only Docker API proxy (Alloy never holds the Docker socket), and labels each line with just `project`, `service`, `level` and `env`. Loki keeps them for 14 days.
 
 What Grafana deliberately does **not** do:
 

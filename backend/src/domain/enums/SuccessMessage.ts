@@ -29,4 +29,8 @@ export enum SuccessMessage {
   AGENT_GROUPS_FETCHED = 'Agent groups retrieved successfully',
   ENROLL_COMMAND_GENERATED = 'Enrollment command generated',
   ENROLLMENT_CHECKED = 'Enrollment status checked',
+  EMAIL_SETTINGS_FETCHED = 'Email settings retrieved successfully',
+  EMAIL_SETTINGS_SAVED = 'Email settings saved',
+  EMAIL_SETTINGS_DISABLED = 'Email turned off',
+  EMAIL_TEST_FINISHED = 'Test email finished',
 }

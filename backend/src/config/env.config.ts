@@ -6,6 +6,7 @@ import {
   normalizeVersion,
 } from '../domain/policies/agent-identifier.policy.ts';
 import { DEFAULT_WAZUH_AGENT_VERSION } from '../domain/constants/wazuh-packages.ts';
+import { isEncryptionKey } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
 
 const optionalText = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
@@ -39,8 +40,6 @@ const envSchema = z.object({
   SMTP_USER: optionalText,
   SMTP_PASSWORD: optionalText,
   SMTP_FROM: optionalText,
-  OTP_EMAIL: optionalText,
-  OTP_PASSWORD: optionalText,
 
   WAZUH_API_URL: z.string().url().default('https://wazuh-manager:55000'),
   WAZUH_API_USER: optionalText,
@@ -61,6 +60,15 @@ const envSchema = z.object({
   WAZUH_AGENT_VERSION: z.preprocess(
     (v) => (v === '' || v === undefined ? DEFAULT_WAZUH_AGENT_VERSION : v),
     z.string().refine((v) => normalizeVersion(v) !== null, 'must look like 4.14.10'),
+  ),
+
+  // Optional: without it the email settings page can't store a password, but nothing crashes.
+  SETTINGS_ENCRYPTION_KEY: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .refine(isEncryptionKey, 'must be 32 bytes of base64 (openssl rand -base64 32)')
+      .optional(),
   ),
 });
 

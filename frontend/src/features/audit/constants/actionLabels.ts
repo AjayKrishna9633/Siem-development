@@ -20,6 +20,7 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   'user.invite.accept': 'Accepted an invitation',
   'system.setup.completed': 'Completed initial setup',
   'system.settings.changed': 'Changed system settings',
+  'system.settings.email_test': 'Sent a test email',
   'audit.export': 'Exported the audit log',
   'agent.enroll_command.generated': 'Generated an agent enroll command',
 };
@@ -29,7 +30,19 @@ const sentenceCase = (text: string): string => text.charAt(0).toUpperCase() + te
 export const humanize = (value: string): string =>
   sentenceCase(value.replace(/[._]+/g, ' ').trim());
 
-export const actionLabel = (action: string): string => ACTION_LABELS[action] ?? humanize(action);
+const SETTINGS_SECTION_LABELS: Readonly<Record<string, string>> = {
+  email: 'Changed email settings',
+};
+
+export const actionLabel = (action: string, metadata?: unknown): string => {
+  if (action === 'system.settings.changed' && metadata && typeof metadata === 'object') {
+    const section = (metadata as { section?: unknown }).section;
+    if (typeof section === 'string' && SETTINGS_SECTION_LABELS[section]) {
+      return SETTINGS_SECTION_LABELS[section];
+    }
+  }
+  return ACTION_LABELS[action] ?? humanize(action);
+};
 
 export const CHANGED_FIELD_BY_ACTION: Readonly<Record<string, string>> = {
   'user.role.change': 'Role',

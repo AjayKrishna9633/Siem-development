@@ -2,7 +2,7 @@ import app from './app.ts';
 import { appOrigin, env } from './config/env.config.ts';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { connectWithRetry } from './infrastructure/database/connect-with-retry.ts';
-import { emailConfigured, issueSetupToken, redisClient } from './infrastructure/di/index.ts';
+import { issueSetupToken, mailTransports, redisClient } from './infrastructure/di/index.ts';
 import { logger } from './infrastructure/logging/logger.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
 
@@ -16,12 +16,11 @@ for (const migration of applied) logger.info('Migration applied', { migration: m
 const setup = await issueSetupToken.execute({ replaceExisting: true });
 if (setup.status === 'issued') printSetupTokenBanner(setup.token, setup.expiresAt, appOrigin);
 
-if (emailConfigured) {
-  logger.info('Email is configured');
+const emailSource = await mailTransports.source().catch(() => 'none' as const);
+if (emailSource === 'none') {
+  logger.info('Email is not configured: invite and reset links will be shown to admins to pass on');
 } else {
-  logger.info(
-    'Email is not configured (SMTP_HOST): invite and reset links will be shown to admins to pass on',
-  );
+  logger.info('Email is configured', { source: emailSource });
 }
 
 redisClient.connect().catch(() => {});

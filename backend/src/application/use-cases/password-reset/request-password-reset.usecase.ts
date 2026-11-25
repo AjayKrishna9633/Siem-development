@@ -27,7 +27,7 @@ export class RequestPasswordResetUseCase implements IRequestPasswordResetUseCase
   ) {}
 
   async execute(input: IRequestPasswordResetInput): Promise<void> {
-    if (!this._email.isConfigured) return;
+    if (!(await this._email.isConfigured())) return;
 
     const user = await this._users.findByEmail(input.email);
     if (!user || user.status !== UserStatus.ACTIVE) return;
