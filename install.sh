@@ -311,6 +311,11 @@ add_missing_settings() {
     set_env WAZUH_ENROLLMENT_PASSWORD "$(random_password 32)"
     ok "Generated the agent enrollment password (WAZUH_ENROLLMENT_PASSWORD in $SIEMPLE_DIR/.env)"
   fi
+  # Hex, so it is safe inside the enrollment service's database URL.
+  if [ -z "$(get_env ENROLL_DB_PASSWORD)" ]; then
+    set_env ENROLL_DB_PASSWORD "$(random_secret 24)"
+    ok "Generated the enrollment service's database password (ENROLL_DB_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
   case "$(get_env COMPOSE_PROFILES)" in
     *https*) [ -n "$(get_env GRAFANA_COOKIE_SECURE)" ] || set_env GRAFANA_COOKIE_SECURE true ;;
   esac

@@ -31,6 +31,8 @@ x-api-env: &api-env
   WAZUH_ENROLLMENT_PASSWORD: ${WAZUH_ENROLLMENT_PASSWORD:?Set WAZUH_ENROLLMENT_PASSWORD in .env}
   WAZUH_AGENT_VERSION: ${WAZUH_AGENT_VERSION:-}
   SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
+  # Applied to the siemple_enroll database role after migrations.
+  ENROLL_DB_PASSWORD: ${ENROLL_DB_PASSWORD:?Set ENROLL_DB_PASSWORD in .env}
 
 services:
   postgres:
@@ -95,6 +97,33 @@ services:
     init: true
     read_only: true
     security_opt: ['no-new-privileges:true']
+    stop_grace_period: 15s
+    logging: *logging
+
+  # Hands agents their keys through one-time links. Its own image and process, connected as the
+  # siemple_enroll role (read-only apart from marking a link used) and with none of the API's
+  # secrets. It will publish its own port (8443) later; it never goes through the web proxy.
+  enroll:
+    image: ${SIEMPLE_ENROLL_IMAGE:-ghcr.io/ajaykrishna9633/siemple-enroll}:${SIEMPLE_VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.enroll
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ENROLL_PORT: '8443'
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      # Must be URL-safe, like DATABASE_URL.
+      ENROLL_DATABASE_URL: postgres://siemple_enroll:${ENROLL_DB_PASSWORD:?Set ENROLL_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-siemple}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    init: true
+    read_only: true
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
     stop_grace_period: 15s
     logging: *logging
 

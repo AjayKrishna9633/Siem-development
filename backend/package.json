@@ -9,6 +9,8 @@
     "dev": "tsx watch --include .env src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "dev:enroll": "tsx watch --include .env src/enroll/server.ts",
+    "start:enroll": "node dist/enroll/server.js",
     "migrate": "node dist/cli/migrate.js",
     "test": "vitest",
     "typecheck:tests": "tsc -p tsconfig.test.json",

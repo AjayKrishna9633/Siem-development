@@ -45,7 +45,7 @@ jobs:
                  -e 's/^JWT_SECRET=$/JWT_SECRET=ci-secret-that-is-at-least-32-characters/' \
                  -e 's/^GRAFANA_ADMIN_PASSWORD=$/GRAFANA_ADMIN_PASSWORD=ci/' \
                  -e 's/^WAZUH_API_PASSWORD=$/WAZUH_API_PASSWORD=Ci-api-pass.1/' \
-                 -e 's/^WAZUH_ENROLLMENT_PASSWORD=$/WAZUH_ENROLLMENT_PASSWORD=ci-enrollment-password-20/' .env
+                 -e 's/^WAZUH_ENROLLMENT_PASSWORD=$/WAZUH_ENROLLMENT_PASSWORD=ci-enrollment-password-20/'                  -e 's/^ENROLL_DB_PASSWORD=$/ENROLL_DB_PASSWORD=ci-enroll-db-password-0000/' .env
           docker compose config --quiet
           COMPOSE_PROFILES=https DOMAIN=siem.example.com docker compose config --quiet
           docker compose -f docker-compose.dev.yml config --quiet
@@ -76,6 +76,10 @@ jobs:
           - name: grafana
             context: grafana
             title: SIEMple Grafana
+          - name: enroll
+            context: backend
+            dockerfile: Dockerfile.enroll
+            title: SIEMple enrollment service
     env:
       PUBLISH: ${{ github.event_name == 'push' }}
     steps:
@@ -117,6 +121,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile || 'Dockerfile' }}
           platforms: linux/amd64
           load: true
           push: false
@@ -147,6 +152,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile || 'Dockerfile' }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
