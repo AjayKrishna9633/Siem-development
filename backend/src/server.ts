@@ -5,6 +5,7 @@ import { connectWithRetry } from './infrastructure/database/connect-with-retry.t
 import { issueSetupToken, mailTransports, redisClient } from './infrastructure/di/index.ts';
 import { logger } from './infrastructure/logging/logger.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
+import { syncEnrollRolePassword } from './infrastructure/database/enroll-role.ts';
 
 await connectWithRetry(() => AppDataSource.initialize(), logger);
 const [row] = await AppDataSource.query<{ now: Date }[]>('SELECT now()');
@@ -12,6 +13,7 @@ logger.info('Database connected', { databaseTime: row?.now.toISOString() });
 
 const applied = await AppDataSource.runMigrations({ transaction: 'each' });
 for (const migration of applied) logger.info('Migration applied', { migration: migration.name });
+await syncEnrollRolePassword(AppDataSource, env.ENROLL_DB_PASSWORD, logger);
 
 const setup = await issueSetupToken.execute({ replaceExisting: true });
 if (setup.status === 'issued') printSetupTokenBanner(setup.token, setup.expiresAt, appOrigin);

@@ -7,6 +7,7 @@ import {
 } from '../domain/policies/agent-identifier.policy.ts';
 import { DEFAULT_WAZUH_AGENT_VERSION } from '../domain/constants/wazuh-packages.ts';
 import { isEncryptionKey } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
+import { ENROLL_DB_PASSWORD_PATTERN } from '../infrastructure/database/enroll-role.ts';
 
 const optionalText = z.preprocess((v) => (v === '' ? undefined : v), z.string().optional());
 
@@ -68,6 +69,15 @@ const envSchema = z.object({
     z
       .string()
       .refine(isEncryptionKey, 'must be 32 bytes of base64 (openssl rand -base64 32)')
+      .optional(),
+  ),
+  // Password of the siemple_enroll database role, applied after migrations. Without it the role
+  // can't log in, so the enrollment service can't start. URL-safe, as it goes into a connection URL.
+  ENROLL_DB_PASSWORD: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .regex(ENROLL_DB_PASSWORD_PATTERN, '24-128 letters, digits, - or _ (openssl rand -hex 24)')
       .optional(),
   ),
 });
