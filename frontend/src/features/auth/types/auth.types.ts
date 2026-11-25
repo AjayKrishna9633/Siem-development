@@ -10,7 +10,9 @@ export type Permission =
   | 'rules.edit'
   | 'users.manage'
   | 'settings.manage'
-  | 'audit.view';
+  | 'audit.view'
+  | 'agents.view'
+  | 'agents.manage';
 
 export interface IUser {
   id: string;

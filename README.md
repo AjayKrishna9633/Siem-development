@@ -11,10 +11,10 @@ SIEMple is a self-hosted SIEM (Security Information and Event Management) consol
 
 SIEMple moves logs in exactly two ways, and keeps them apart on purpose:
 
-| Flow               | Path                                                                | What it carries                                                                                                               | Status   |
-| ------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 1. Security events | Wazuh agents ──► SIEMple pipeline ──► database ──► rules ──► alerts | Events from the machines you protect                                                                                          | Planned  |
-| 2. SIEMple health  | SIEMple's own containers ──► Alloy ──► Loki ──► Grafana             | HTTP access logs, app logs and container logs of SIEMple's own stack (api, web, postgres, redis, loki, grafana, alloy, proxy) | Built in |
+| Flow               | Path                                                                | What it carries                                                                                                               | Status                                               |
+| ------------------ | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 1. Security events | Wazuh agents ──► SIEMple pipeline ──► database ──► rules ──► alerts | Events from the machines you protect                                                                                          | Agents enroll (Agents → Add agent); pipeline planned |
+| 2. SIEMple health  | SIEMple's own containers ──► Alloy ──► Loki ──► Grafana             | HTTP access logs, app logs and container logs of SIEMple's own stack (api, web, postgres, redis, loki, grafana, alloy, proxy) | Built in                                             |
 
 Flow 2 answers one question: **is SIEMple itself healthy?** Grafana opens on the **SIEMple Health** dashboard: request rate, 5xx error rate, p95 latency by route, log volume by service and recent errors. The API writes structured JSON to stdout; Alloy reads the logs of this compose project's containers only, through a read-only Docker API proxy (Alloy never holds the Docker socket), and labels each line with just `project`, `service`, `level` and `env`. Loki keeps them for 14 days.
 
@@ -58,8 +58,9 @@ The setup token is printed in the backend's output on start. `npm run db:down` s
 
 To run the whole stack in containers the way an install does, built from this checkout: copy [.env.example](.env.example) to `.env` in the repository root, fill in its four secrets, then `npm run stack:up` (open http://localhost, and http://localhost/grafana/ for the SIEMple Health dashboard) and `npm run stack:down`.
 
-| Read                                           | For                                                                  |
-| ---------------------------------------------- | -------------------------------------------------------------------- |
-| [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) | How the code is organized, the security model, the API and the tests |
-| [CONTRIBUTING.md](CONTRIBUTING.md)             | Commit message rules (enforced by a commit hook)                     |
-| [INSTALL.md](INSTALL.md)                       | Running SIEMple on a server                                          |
+| Read                                                         | For                                                                  |
+| ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md)               | How the code is organized, the security model, the API and the tests |
+| [docs/AGENTS_LAB_CHECKLIST.md](docs/AGENTS_LAB_CHECKLIST.md) | A manual end-to-end test of adding a Windows agent                   |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                           | Commit message rules (enforced by a commit hook)                     |
+| [INSTALL.md](INSTALL.md)                                     | Running SIEMple on a server                                          |

@@ -7,4 +7,6 @@ export enum Permission {
   USERS_MANAGE = 'users.manage',
   SETTINGS_MANAGE = 'settings.manage',
   AUDIT_VIEW = 'audit.view',
+  AGENTS_VIEW = 'agents.view',
+  AGENTS_MANAGE = 'agents.manage',
 }

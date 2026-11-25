@@ -41,13 +41,13 @@ Commands:
   update            Back up the database, then upgrade to the latest (or --version X) release
       --version X      Release to move to
       --no-backup      Skip the backup taken before updating
-  backup             Save a backup to $SIEMPLE_DIR/backups: the database and the settings
-                     encryption key (a separate .key file), plus the stored logs and Grafana's
-                     data (Loki and Grafana pause for the copy)
-      --no-logs        Database only (quick; this is what update takes)
+  backup             Save a backup to $SIEMPLE_DIR/backups: the database, the settings encryption
+                     key (a separate .key file) and the Wazuh manager's agents and keys, plus the
+                     stored logs and Grafana's data (each service pauses for its copy)
+      --no-logs        Skip the logs and Grafana (quick; this is what update takes)
   restore FILE.dump  Replace ALL current data with a backup (takes a safety backup first). The
-                     encryption key, logs and Grafana are restored too when the matching
-                     -settings.key and -volumes.tar.gz files are next to it
+                     encryption key, Wazuh agents, logs and Grafana are restored too when their
+                     matching -settings.key, -wazuh.tar.gz and -volumes.tar.gz files are next to it
       --yes            Don't ask for confirmation
   status             Show the containers, their health and the running version
   token              Issue a new setup token (only before setup is completed)
@@ -134,6 +134,14 @@ random_secret() {
   else
     head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'
   fi
+}
+
+# Letters, digits and _ . : @ + = ! # , - only: no quote, $, backtick, backslash or space, so it is
+# safe in the agent commands. The Aa1- prefix meets the Wazuh API password policy.
+random_password() {
+  local pool
+  pool="$(head -c 2048 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9_.:@+=!#,-')"
+  printf 'Aa1-%s' "${pool:0:$(($1 - 4))}"
 }
 
 # 32 random bytes in base64, as SETTINGS_ENCRYPTION_KEY expects.
@@ -265,7 +273,7 @@ start_stack() {
 # Compose doesn't recreate a service when only its inline config changes, so an update recreates
 # the services that have one. Their data lives in volumes.
 recreate_config_services() {
-  local services="loki alloy"
+  local services="loki alloy wazuh-manager"
   case "$(get_env COMPOSE_PROFILES)" in
     *https*) services="$services caddy" ;;
   esac
@@ -295,6 +303,14 @@ add_missing_settings() {
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
     ok "Generated a Grafana admin password (GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
   fi
+  if [ -z "$(get_env WAZUH_API_PASSWORD)" ]; then
+    set_env WAZUH_API_PASSWORD "$(random_password 32)"
+    ok "Generated the Wazuh API password (WAZUH_API_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
+  if [ -z "$(get_env WAZUH_ENROLLMENT_PASSWORD)" ]; then
+    set_env WAZUH_ENROLLMENT_PASSWORD "$(random_password 32)"
+    ok "Generated the agent enrollment password (WAZUH_ENROLLMENT_PASSWORD in $SIEMPLE_DIR/.env)"
+  fi
   case "$(get_env COMPOSE_PROFILES)" in
     *https*) [ -n "$(get_env GRAFANA_COOKIE_SECURE)" ] || set_env GRAFANA_COOKIE_SECURE true ;;
   esac
@@ -304,6 +320,16 @@ show_grafana_login() {
   local user
   user="$(get_env GRAFANA_ADMIN_USER)"
   echo "Health (Grafana): $(get_env APP_URL)/grafana/  (user ${user:-admin}; password: GRAFANA_ADMIN_PASSWORD in $SIEMPLE_DIR/.env)"
+}
+
+show_agent_address() {
+  local address
+  address="$(get_env WAZUH_PUBLIC_ADDRESS)"
+  if [ -n "$address" ]; then
+    echo "Agents: connect to $address on TCP 1514 and 1515 (WAZUH_PUBLIC_ADDRESS in $SIEMPLE_DIR/.env)"
+  else
+    warn "Set WAZUH_PUBLIC_ADDRESS in $SIEMPLE_DIR/.env to the address agents use to reach this server."
+  fi
 }
 
 with_data_volumes() {
@@ -356,6 +382,7 @@ cmd_install() {
     set_env REDIS_PASSWORD "$(random_secret 24)"
     set_env JWT_SECRET "$(random_secret 32)"
     set_env GRAFANA_ADMIN_PASSWORD "$(random_secret 24)"
+    set_env WAZUH_PUBLIC_ADDRESS "$(detect_ip)"
     if [ -n "$domain" ]; then
       set_env COMPOSE_PROFILES https
       set_env GRAFANA_COOKIE_SECURE true
@@ -382,6 +409,7 @@ cmd_install() {
   start_stack
   ok "SIEMple ${tag} is running at $(get_env APP_URL)"
   show_grafana_login
+  show_agent_address
   show_setup_token
 }
 
@@ -424,6 +452,18 @@ cmd_finish_update() {
   docker image prune -f > /dev/null 2>&1 || true
 }
 
+# Agent registrations and keys (etc, queue), the API users and certificates, and agent groups.
+WAZUH_STATE="var/ossec/etc var/ossec/queue var/ossec/api/configuration var/ossec/var/multigroups"
+
+with_wazuh_volumes() {
+  local manager image
+  manager="$(compose ps -aq wazuh-manager)"
+  [ -n "$manager" ] || die "The Wazuh manager isn't installed; start SIEMple first."
+  image="$(docker inspect -f '{{.Config.Image}}' "$manager")"
+  docker run --rm --user 0 --entrypoint sh --volumes-from "$manager" \
+    -v "$SIEMPLE_DIR/backups:/backup" "$image" -c "$1"
+}
+
 cmd_backup() {
   local logs=1
   while [ $# -gt 0 ]; do
@@ -455,6 +495,18 @@ cmd_backup() {
     ok "Settings encryption key saved to backups/siemple-$stamp-settings.key (keep it apart from the dump)"
   fi
 
+  # Always: without it every agent has to enroll again. Agents reconnect after the short stop.
+  local wazuh="siemple-$stamp-wazuh.tar.gz"
+  info "Backing up the Wazuh manager's agents and keys to $SIEMPLE_DIR/backups/$wazuh"
+  compose stop wazuh-manager > /dev/null
+  if ! with_wazuh_volumes "umask 077 && tar czf '/backup/$wazuh' --numeric-owner --exclude='var/ossec/queue/sockets/*' -C / $WAZUH_STATE"; then
+    rm -f "backups/$wazuh"
+    compose start wazuh-manager > /dev/null
+    die "Copying the Wazuh data failed (the database backup above is fine)."
+  fi
+  compose start wazuh-manager > /dev/null
+  ok "Wazuh agents and keys saved ($(du -h "backups/$wazuh" | cut -f1))"
+
   if [ "$logs" = 1 ]; then
     local volumes="siemple-$stamp-volumes.tar.gz"
     info "Backing up the stored logs and Grafana to $SIEMPLE_DIR/backups/$volumes"
@@ -485,11 +537,18 @@ cmd_restore() {
   require_install
   local volumes="${file%.dump}-volumes.tar.gz"
   [ -f "$volumes" ] || volumes=''
+  local wazuh="${file%.dump}-wazuh.tar.gz"
+  [ -f "$wazuh" ] || wazuh=''
   local key_file="${file%.dump}-settings.key"
   [ -f "$key_file" ] || key_file=''
 
   if [ "$yes" = 0 ]; then
     warn "This replaces ALL current SIEMple data with the contents of $file."
+    if [ -n "$wazuh" ]; then
+      warn "Wazuh agent registrations and keys are replaced from $wazuh."
+    else
+      warn "No matching -wazuh.tar.gz: the Wazuh manager keeps its current agents."
+    fi
     if [ -n "$volumes" ]; then
       warn "Stored logs and Grafana's data are replaced from $volumes."
     else
@@ -511,6 +570,20 @@ cmd_restore() {
     warn "Restore failed; the database was left as it was. Restarting the app..."
     start_stack
     die "Restore failed (see the error above)."
+  fi
+  if [ -n "$wazuh" ]; then
+    info "Restoring the Wazuh manager's agents and keys from $wazuh"
+    compose stop wazuh-manager > /dev/null
+    local wazuh_name dir wipe=''
+    wazuh_name="$(basename "$wazuh")"
+    if [ "$(dirname "$wazuh")" != "$SIEMPLE_DIR/backups" ]; then
+      wazuh_name="restore-wazuh.tar.gz"
+      cp "$wazuh" "backups/$wazuh_name"
+    fi
+    for dir in $WAZUH_STATE; do wipe="$wipe /$dir/*"; done
+    with_wazuh_volumes "rm -rf $wipe && tar xzf '/backup/$wazuh_name' --numeric-owner -C /" \
+      || warn "Restoring the Wazuh data failed; the database was restored. See the error above."
+    rm -f "backups/restore-wazuh.tar.gz"
   fi
   if [ -n "$volumes" ]; then
     info "Restoring the stored logs and Grafana from $volumes"
