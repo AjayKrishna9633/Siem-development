@@ -18,9 +18,26 @@ import { StepIndicator } from '../components/StepIndicator.tsx';
 import { OsPicker } from '../components/OsPicker.tsx';
 import { CommandBlock } from '../components/CommandBlock.tsx';
 import { EnrollmentWaiter } from '../components/EnrollmentWaiter.tsx';
+import { SendLinkPanel } from '../components/SendLinkPanel.tsx';
+import { cn } from '@/lib/cn.ts';
 import type { AgentArch, AgentOs, IEnrollCommand } from '../types/agent.types.ts';
 
 const STEPS = ['Operating system', 'Group and name', 'Run the command', 'Connect'] as const;
+
+type Mode = 'command' | 'link';
+
+const MODES: readonly { value: Mode; label: string; detail: string }[] = [
+  {
+    value: 'command',
+    label: 'Copy install command',
+    detail: 'You run one command on the machine yourself.',
+  },
+  {
+    value: 'link',
+    label: 'Send a link',
+    detail: 'Someone else opens a one-time link on the machine and runs the script.',
+  },
+];
 
 const nameError = (name: string): string | null =>
   name === '' || AGENT_IDENTIFIER_PATTERN.test(name) ? null : AGENT_NAME_RULE;
@@ -28,6 +45,7 @@ const nameError = (name: string): string | null =>
 // The generated command holds the enrollment secret: it lives only in this page's state, is masked
 // until revealed, and is gone when the page is left.
 export const AddAgentPage: React.FC = () => {
+  const [mode, setMode] = useState<Mode>('command');
   const [step, setStep] = useState(0);
   const [os, setOs] = useState<AgentOs>('windows');
   const [arch, setArch] = useState<AgentArch>('x86_64');
@@ -75,13 +93,39 @@ export const AddAgentPage: React.FC = () => {
     <Page className="max-w-5xl">
       <PageHeader
         title="Add agent"
-        description="Generate a command, run it on the machine, and SIEMple shows the agent once it connects."
+        description="Run a command on the machine yourself, or send a one-time link to whoever installs it."
         crumbs={[{ label: 'Agents', to: '/agents' }, { label: 'Add agent' }]}
         icon={<Server className="size-5" />}
       />
-      <StepIndicator steps={STEPS} current={step} />
+      <div
+        role="radiogroup"
+        aria-label="How to add the agent"
+        className="grid gap-3 sm:grid-cols-2"
+      >
+        {MODES.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={option.value === mode}
+            onClick={() => setMode(option.value)}
+            className={cn(
+              'rounded border px-4 py-3 text-left transition-colors',
+              option.value === mode
+                ? 'border-accent/60 bg-accent/5'
+                : 'border-line-strong bg-canvas hover:border-accent/40',
+            )}
+          >
+            <span className="block text-sm font-medium text-ink">{option.label}</span>
+            <span className="mt-0.5 block text-xs text-muted">{option.detail}</span>
+          </button>
+        ))}
+      </div>
 
-      {step === 0 && (
+      {mode === 'link' && <SendLinkPanel />}
+      {mode === 'command' && <StepIndicator steps={STEPS} current={step} />}
+
+      {mode === 'command' && step === 0 && (
         <Panel className="space-y-5 p-5">
           <OsPicker os={os} arch={arch} onOsChange={setOs} onArchChange={setArch} />
           <div className="flex justify-end">
@@ -92,7 +136,7 @@ export const AddAgentPage: React.FC = () => {
         </Panel>
       )}
 
-      {step === 1 && (
+      {mode === 'command' && step === 1 && (
         <Panel className="space-y-5 p-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
@@ -155,7 +199,7 @@ export const AddAgentPage: React.FC = () => {
         </Panel>
       )}
 
-      {step === 2 && result && (
+      {mode === 'command' && step === 2 && result && (
         <div className="space-y-5">
           <Panel className="space-y-4 p-5">
             <p className="text-sm text-muted">
@@ -204,7 +248,7 @@ export const AddAgentPage: React.FC = () => {
         </div>
       )}
 
-      {step === 3 && result && (
+      {mode === 'command' && step === 3 && result && (
         <div className="space-y-5">
           <EnrollmentWaiter
             key={result.generatedAt}

@@ -42,3 +42,36 @@ export interface IEnrollmentCheck {
   found: boolean;
   agent: IAgent | null;
 }
+
+export interface IEnrollmentLinkRequest {
+  os: AgentOs;
+  arch?: AgentArch;
+  group: string;
+  agentName: string;
+}
+
+// Returned once, when a link is created or reissued: the URL is the only copy of its token.
+export interface ICreatedEnrollmentLink {
+  id: string;
+  url: string;
+  expiresAt: string;
+  name: string;
+  group: string;
+  os: AgentOs;
+  arch: AgentArch | null;
+  wazuhAgentId: string;
+  agentVersion: string;
+}
+
+export interface IEnrollmentLink {
+  id: string;
+  name: string;
+  group: string;
+  os: AgentOs;
+  arch: AgentArch | null;
+  wazuhAgentId: string;
+  status: 'pending' | 'connected' | 'expired';
+  createdAt: string;
+  expiresAt: string;
+  scriptDownloadedAt: string | null;
+}

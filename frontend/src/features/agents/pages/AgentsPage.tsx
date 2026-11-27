@@ -9,6 +9,7 @@ import { useRemote } from '@/hooks/useRemote.ts';
 import { can, useAuthStore } from '@/features/auth';
 import { agentsService } from '../api/agentsApi.ts';
 import { AgentTable } from '../components/AgentTable.tsx';
+import { PendingLinksPanel } from '../components/PendingLinksPanel.tsx';
 
 // TODO: read from the agents table once a sync job keeps it current; this asks Wazuh live.
 export const AgentsPage: React.FC = () => {
@@ -71,6 +72,9 @@ export const AgentsPage: React.FC = () => {
           <AgentTable agents={agents} loading={loading} highlightId={params.get('agent')} />
         </Panel>
       )}
+
+      {/* Only admins: links grant enrollment. Analysts never load or see them. */}
+      {canManage && <PendingLinksPanel />}
     </Page>
   );
 };

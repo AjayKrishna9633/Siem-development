@@ -1,6 +1,9 @@
 import { api, INLINE_ERRORS } from '@/services/api.ts';
 import type { IApiResponse } from '@/types/auth.ts';
 import type {
+  ICreatedEnrollmentLink,
+  IEnrollmentLink,
+  IEnrollmentLinkRequest,
   IAgent,
   IEnrollCommand,
   IEnrollCommandRequest,
@@ -32,6 +35,36 @@ export const agentsService = {
       ...INLINE_ERRORS,
       params,
     });
+    return res.data.data;
+  },
+
+  async createLink(body: IEnrollmentLinkRequest): Promise<ICreatedEnrollmentLink> {
+    const res = await api.post<IApiResponse<ICreatedEnrollmentLink>>(
+      '/agents/enrollment-links',
+      body,
+      INLINE_ERRORS,
+    );
+    return res.data.data;
+  },
+
+  async listLinks(): Promise<IEnrollmentLink[]> {
+    const res = await api.get<IApiResponse<IEnrollmentLink[]>>(
+      '/agents/enrollment-links',
+      INLINE_ERRORS,
+    );
+    return res.data.data;
+  },
+
+  async revokeLink(id: string): Promise<void> {
+    await api.delete(`/agents/enrollment-links/${encodeURIComponent(id)}`, INLINE_ERRORS);
+  },
+
+  async reissueLink(id: string): Promise<ICreatedEnrollmentLink> {
+    const res = await api.post<IApiResponse<ICreatedEnrollmentLink>>(
+      `/agents/enrollment-links/${encodeURIComponent(id)}/reissue`,
+      undefined,
+      INLINE_ERRORS,
+    );
     return res.data.data;
   },
 };

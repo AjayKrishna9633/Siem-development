@@ -52,3 +52,6 @@ export const TROUBLESHOOTING: readonly { title: string; detail: string }[] = [
       'The command connects to the address in WAZUH_PUBLIC_ADDRESS. If the agent machine reaches this server by another IP or name, change that setting and generate a new command.',
   },
 ];
+
+// How often the pending links list refreshes while the page is visible.
+export const PENDING_LINKS_REFRESH_MS = 15_000;
