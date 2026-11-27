@@ -102,6 +102,9 @@ import { CreateEnrollmentLinkUseCase } from '../../application/use-cases/agents/
 import { ListEnrollmentLinksUseCase } from '../../application/use-cases/agents/list-enrollment-links.usecase.ts';
 import { RevokeEnrollmentLinkUseCase } from '../../application/use-cases/agents/revoke-enrollment-link.usecase.ts';
 import { TypeOrmPendingAgentRepository } from '../database/repositories/pending-agent.repository.ts';
+import { SyncPendingAgentsUseCase } from '../../application/use-cases/agents/sync-pending-agents.usecase.ts';
+import { PendingAgentSyncJob } from '../jobs/pending-agent-sync.job.ts';
+import { SystemClock } from '../services/system-clock.ts';
 import { defaultEnrollPublicUrl } from '../../domain/policies/enrollment-link.policy.ts';
 import type { IEnrollmentLinkConfig } from '../../application/types/use-case/agent.types.ts';
 import { AgentsController } from '../../presentation/controllers/agents.controller.ts';
@@ -249,6 +252,10 @@ container.bind(TYPES.PendingAgentRepository).to(TypeOrmPendingAgentRepository);
 container.bind(TYPES.CreateEnrollmentLinkUseCase).to(CreateEnrollmentLinkUseCase);
 container.bind(TYPES.ListEnrollmentLinksUseCase).to(ListEnrollmentLinksUseCase);
 container.bind(TYPES.RevokeEnrollmentLinkUseCase).to(RevokeEnrollmentLinkUseCase);
+// Tests bind a clock they can move before importing the app.
+if (!container.isBound(TYPES.Clock)) container.bind(TYPES.Clock).to(SystemClock);
+container.bind(TYPES.SyncPendingAgentsUseCase).to(SyncPendingAgentsUseCase);
+container.bind(TYPES.PendingAgentSyncJob).to(PendingAgentSyncJob).inSingletonScope();
 
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);
@@ -274,6 +281,7 @@ export const emailSettingsController = container.get<EmailSettingsController>(
 );
 export const healthController = container.get<HealthController>(TYPES.HealthController);
 export const agentsController = container.get<AgentsController>(TYPES.AgentsController);
+export const pendingAgentSyncJob = container.get<PendingAgentSyncJob>(TYPES.PendingAgentSyncJob);
 export const tokenService = container.get<ITokenService>(TYPES.TokenService);
 export const auditService = container.get<IAuditService>(TYPES.AuditService);
 export const requestContextProvider = container.get<IRequestContextProvider>(

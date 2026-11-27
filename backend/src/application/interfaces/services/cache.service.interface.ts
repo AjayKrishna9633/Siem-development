@@ -9,4 +9,5 @@ export type CacheKey =
   | `refresh-used:${string}`
   | `refresh-family:${string}`
   | `verify:${string}:${string}`
-  | 'wazuh:api-token';
+  | 'wazuh:api-token'
+  | `lock:${string}`;

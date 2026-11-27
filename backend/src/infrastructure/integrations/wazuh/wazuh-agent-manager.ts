@@ -50,6 +50,9 @@ interface IWazuhBulk extends IWazuhError {
   };
 }
 
+// Keeps the agents_list query string short; Wazuh's own page limit is 500.
+const AGENTS_PER_CALL = 500;
+
 const WAZUH_AGENT_ID = /^\d{3,}$/;
 
 const MANAGER_AGENT_ID = '000';
@@ -160,6 +163,25 @@ export class WazuhAgentManager implements IAgentManager {
         wazuhId,
       });
     }
+  }
+
+  // Wazuh answers 200 even when some ids are unknown: those come back as failed_items (1701) and
+  // are simply missing from the result. Only well-formed ids are sent.
+  async getAgentsById(wazuhIds: string[]): Promise<IAgent[]> {
+    const ids = [...new Set(wazuhIds)].filter((id) => WAZUH_AGENT_ID.test(id));
+    const agents: IAgent[] = [];
+    for (let i = 0; i < ids.length; i += AGENTS_PER_CALL) {
+      const res = await this._api.get<IWazuhList<IWazuhAgent>>('/agents', {
+        agents_list: ids.slice(i, i + AGENTS_PER_CALL).join(','),
+        select: AGENT_FIELDS,
+        limit: String(AGENTS_PER_CALL),
+      });
+      for (const raw of res.data?.affected_items ?? []) {
+        const agent = toAgent(raw);
+        if (agent) agents.push(agent);
+      }
+    }
+    return agents;
   }
 
   async removeAgent(wazuhId: string): Promise<void> {

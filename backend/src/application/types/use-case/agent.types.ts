@@ -47,3 +47,16 @@ export interface ICreatedEnrollmentLink {
   wazuhAgentId: string;
   agentVersion: string;
 }
+
+export interface ISyncResult {
+  checked: number;
+  connected: number;
+  expired: number;
+  // Expired, but Wazuh wouldn't remove it: left pending for the next tick.
+  removalFailed: number;
+  // Expired, but over this tick's removal limit: handled on a later tick.
+  deferred: number;
+  // Locked by a revoke, or changed by another tick in the meantime.
+  skipped: number;
+  managerUnavailable: boolean;
+}

@@ -25,4 +25,6 @@ export interface IAgentManager {
   assignGroup(wazuhId: string, group: string): Promise<void>;
   // Succeeds when the agent is already gone, so it is safe to retry.
   removeAgent(wazuhId: string): Promise<void>;
+  // The given agents in as few calls as possible; ids Wazuh doesn't know are simply left out.
+  getAgentsById(wazuhIds: string[]): Promise<IAgent[]>;
 }

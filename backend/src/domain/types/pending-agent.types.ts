@@ -23,6 +23,16 @@ export interface IEnrollmentToken {
   expiresAt: Date;
 }
 
+// What the sync job needs to decide about one pending agent.
+export interface ISyncCandidate {
+  id: string;
+  name: string;
+  groupName: string;
+  os: AgentOs;
+  wazuhAgentId: string;
+  expiresAt: Date;
+}
+
 // What the dashboard lists: never the key, the token or its hash.
 export interface IEnrollmentLinkSummary {
   id: string;

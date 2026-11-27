@@ -10,6 +10,7 @@ import type {
 import type { IAgent } from '../../../domain/types/agent.types.ts';
 import type { IEnrollmentLinkSummary } from '../../../domain/types/pending-agent.types.ts';
 import type {
+  ISyncResult,
   ICreatedEnrollmentLink,
   IEnrollCommandResult,
   IEnrollmentCheckResult,
@@ -41,4 +42,8 @@ export interface IListEnrollmentLinksUseCase {
 
 export interface IRevokeEnrollmentLinkUseCase {
   execute(input: IRevokeEnrollmentLinkInput): Promise<void>;
+}
+
+export interface ISyncPendingAgentsUseCase {
+  execute(): Promise<ISyncResult>;
 }

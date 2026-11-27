@@ -4,9 +4,11 @@ import TYPES from '../../../domain/constants/types.ts';
 import type {
   IPendingAgentRepository,
   RevokeOutcome,
+  SyncOutcome,
 } from '../../../application/interfaces/repositories/pending-agent.repository.interface.ts';
 import type { IAuditRecord } from '../../../application/interfaces/repositories/audit-log.repository.interface.ts';
 import type {
+  ISyncCandidate,
   IEnrollmentLinkSummary,
   IEnrollmentToken,
   IPendingAgent,
@@ -140,6 +142,76 @@ export class TypeOrmPendingAgentRepository implements IPendingAgentRepository {
       await manager.getRepository(PendingAgentModel).delete({ id });
       await insertAuditRecord(manager, audit(agent));
       return 'revoked';
+    });
+  }
+
+  async listSyncCandidates(): Promise<ISyncCandidate[]> {
+    const rows = await this._db.query<
+      {
+        id: string;
+        name: string;
+        group_name: string;
+        os: ISyncCandidate['os'];
+        wazuh_agent_id: string;
+        expires_at: Date;
+      }[]
+    >(
+      `SELECT a.id, a.name, a.group_name, a.os, a.wazuh_agent_id, t.expires_at
+         FROM pending_agents a
+         JOIN enrollment_tokens t ON t.pending_agent_id = a.id
+        WHERE a.status = $1
+        ORDER BY a.created_at`,
+      [PendingAgentStatus.PENDING],
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      groupName: row.group_name,
+      os: row.os,
+      wazuhAgentId: row.wazuh_agent_id,
+      expiresAt: row.expires_at,
+    }));
+  }
+
+  async markConnected(id: string, connectedAt: Date, audit: IAuditRecord): Promise<SyncOutcome> {
+    return this._db.transaction(async (manager) => {
+      const [row] = await manager.query<{ id: string }[]>(
+        `SELECT id FROM pending_agents WHERE id = $1 AND status = $2 FOR UPDATE SKIP LOCKED`,
+        [id, PendingAgentStatus.PENDING],
+      );
+      if (!row) return 'skipped';
+      await manager.query(
+        `UPDATE pending_agents SET status = $2, connected_at = $3, updated_at = now() WHERE id = $1`,
+        [id, PendingAgentStatus.CONNECTED, connectedAt],
+      );
+      await insertAuditRecord(manager, audit);
+      return 'applied';
+    });
+  }
+
+  async markExpired(
+    id: string,
+    now: Date,
+    removeFromManager: () => Promise<void>,
+    audit: IAuditRecord,
+  ): Promise<SyncOutcome> {
+    return this._db.transaction(async (manager) => {
+      const [row] = await manager.query<{ id: string }[]>(
+        `SELECT a.id FROM pending_agents a
+           JOIN enrollment_tokens t ON t.pending_agent_id = a.id
+          WHERE a.id = $1 AND a.status = $2 AND t.expires_at <= $3
+          FOR UPDATE OF a SKIP LOCKED`,
+        [id, PendingAgentStatus.PENDING, now],
+      );
+      if (!row) return 'skipped';
+      // Out of Wazuh first: only then may the agent be marked expired. A throw rolls back.
+      await removeFromManager();
+      await manager.query(
+        `UPDATE pending_agents SET status = $2, updated_at = now() WHERE id = $1`,
+        [id, PendingAgentStatus.EXPIRED],
+      );
+      await insertAuditRecord(manager, audit);
+      return 'applied';
     });
   }
 }

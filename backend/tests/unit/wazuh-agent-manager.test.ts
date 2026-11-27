@@ -190,3 +190,56 @@ describe('WazuhAgentManager.removeAgent', () => {
     });
   });
 });
+
+describe('WazuhAgentManager.getAgentsById', () => {
+  // Recorded from a real 4.14.10 manager: 999 doesn't exist, so the reply is partial but still 200.
+  const PARTIAL = {
+    data: {
+      affected_items: [
+        {
+          id: '001',
+          name: 'keys-deb',
+          status: 'active',
+          dateAdd: '2026-11-27T07:00:56+00:00',
+          lastKeepAlive: '2026-11-27T07:02:07+00:00',
+        },
+        {
+          id: '002',
+          name: 'keys-rpm',
+          status: 'never_connected',
+          dateAdd: '2026-11-27T07:00:56+00:00',
+        },
+      ],
+      total_affected_items: 2,
+      total_failed_items: 1,
+      failed_items: [{ error: { code: 1701, message: 'Agent does not exist' }, id: ['999'] }],
+    },
+    message: 'Some agents information was not returned',
+    error: 2,
+  };
+
+  it('asks for all ids in one call and returns the ones Wazuh knows', async () => {
+    const { manager, calls } = managerWith({ status: 200, body: PARTIAL });
+    const agents = await manager.getAgentsById(['001', '002', '999', '001']);
+
+    expect(calls()).toHaveLength(1);
+    expect(calls()[0]?.url.searchParams.get('agents_list')).toBe('001,002,999');
+    expect(agents.map((a) => [a.wazuhId, a.status, a.lastKeepAliveAt !== null])).toEqual([
+      ['001', 'active', true],
+      ['002', 'never_connected', false],
+    ]);
+  });
+
+  it('never sends a malformed id, and makes no call when none is left', async () => {
+    const { manager, calls } = managerWith({ status: 200, body: PARTIAL });
+    await expect(manager.getAgentsById(['../1', '1,2', ''])).resolves.toEqual([]);
+    expect(calls()).toHaveLength(0);
+  });
+
+  it('treats a failed call as the manager being unavailable', async () => {
+    const { manager } = managerWith({ status: 500, body: { title: 'Internal Server Error' } });
+    await expect(manager.getAgentsById(['001'])).rejects.toMatchObject({
+      code: AppErrorCode.AGENT_MANAGER_UNAVAILABLE,
+    });
+  });
+});

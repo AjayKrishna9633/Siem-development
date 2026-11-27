@@ -2,7 +2,12 @@ import app from './app.ts';
 import { appOrigin, env } from './config/env.config.ts';
 import { AppDataSource } from './infrastructure/database/data-source.ts';
 import { connectWithRetry } from './infrastructure/database/connect-with-retry.ts';
-import { issueSetupToken, mailTransports, redisClient } from './infrastructure/di/index.ts';
+import {
+  issueSetupToken,
+  mailTransports,
+  pendingAgentSyncJob,
+  redisClient,
+} from './infrastructure/di/index.ts';
 import { logger } from './infrastructure/logging/logger.ts';
 import { printSetupTokenBanner } from './cli/setup-banner.ts';
 import { syncEnrollRolePassword } from './infrastructure/database/enroll-role.ts';
@@ -33,6 +38,8 @@ const server = app.listen(env.PORT, (err?: Error) => {
     process.exit(1);
   }
   logger.info('Server listening', { port: env.PORT });
+  // Marks pre-registered agents connected, and expires (and removes from Wazuh) unused ones.
+  pendingAgentSyncJob.start();
 });
 
 let shuttingDown = false;
@@ -48,6 +55,7 @@ const shutdown = async (signal: NodeJS.Signals) => {
   }, 10_000);
   forceExit.unref();
 
+  pendingAgentSyncJob.stop();
   try {
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));

@@ -56,7 +56,7 @@ export enum ErrorMessage {
   ENROLL_KEY_SECRET_MISSING = 'Set ENROLL_KEY_SECRET in .env (openssl rand -base64 32), then restart SIEMple',
   ENROLL_PUBLIC_URL_MISSING = 'Set WAZUH_PUBLIC_ADDRESS (or ENROLL_PUBLIC_URL) in .env, then restart SIEMple',
   ENROLLMENT_LINK_NOT_FOUND = 'This enrollment link no longer exists',
-  ENROLLMENT_LINK_NOT_PENDING = 'This agent has already connected, so its link can no longer be revoked',
+  ENROLLMENT_LINK_NOT_PENDING = 'This link is no longer pending (the agent has connected, or the link expired), so it can no longer be revoked',
   TOO_MANY_ENROLLMENT_LINKS = 'Too many enrollment links. Wait a minute and try again',
   ENCRYPTION_KEY_NOT_CONFIGURED = 'SETTINGS_ENCRYPTION_KEY is not set on the server, so secrets cannot be stored. Add it to .env and restart SIEMple',
   STORED_SECRET_UNREADABLE = 'The stored SMTP password cannot be decrypted with the current SETTINGS_ENCRYPTION_KEY. Enter the password again',

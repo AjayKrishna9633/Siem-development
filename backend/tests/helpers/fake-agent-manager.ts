@@ -32,12 +32,20 @@ export class FakeAgentManager implements IAgentManager {
   agents: IAgent[] = [];
   version: string | null = 'v4.14.10';
   down = false;
-  calls: { method: string; query?: IAgentQuery; wazuhId?: string; name?: string }[] = [];
+  calls: {
+    method: string;
+    query?: IAgentQuery;
+    wazuhId?: string;
+    wazuhIds?: string[];
+    name?: string;
+  }[] = [];
   // Pre-registered agents still in the fake Wazuh, by id.
   registered = new Map<string, { name: string; key: string; group: string | null }>();
   nextId = 1;
   failAssign = false;
   failRemove = false;
+  // Lets a test hold a removal half-way, e.g. a revoke that has the row locked.
+  beforeRemove: (() => Promise<void>) | null = null;
 
   reset(): void {
     this.groups = ['default', 'windows-servers'];
@@ -49,6 +57,7 @@ export class FakeAgentManager implements IAgentManager {
     this.nextId = 1;
     this.failAssign = false;
     this.failRemove = false;
+    this.beforeRemove = null;
   }
 
   // Like Wazuh, an existing agent with the name blocks it, connected or not.
@@ -81,8 +90,15 @@ export class FakeAgentManager implements IAgentManager {
     agent.group = group;
   }
 
+  async getAgentsById(wazuhIds: string[]): Promise<IAgent[]> {
+    this.calls.push({ method: 'getAgentsById', wazuhIds: [...wazuhIds] });
+    this.failIfDown();
+    return this.agents.filter((agent) => wazuhIds.includes(agent.wazuhId));
+  }
+
   async removeAgent(wazuhId: string): Promise<void> {
     this.calls.push({ method: 'removeAgent', wazuhId });
+    if (this.beforeRemove) await this.beforeRemove();
     this.failIfDown();
     if (this.failRemove) {
       throw new AppError(
