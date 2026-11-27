@@ -16,7 +16,7 @@ import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { WAZUH_AGENT_PORTS } from '../../../domain/constants/wazuh-packages.ts';
+import { WAZUH_AGENT_PORTS } from '../../../shared/agent-install/wazuh-packages.ts';
 import {
   isAgentIdentifier,
   resolveAgentVersion,
@@ -25,7 +25,7 @@ import {
   buildConnectivityCheck,
   buildEnrollCommand,
   enrollRequirements,
-} from '../../../domain/policies/enroll-command.policy.ts';
+} from '../../../shared/agent-install/enroll-command.ts';
 import { assertPermission } from '../shared/access.ts';
 
 // Wazuh's authd replaces an agent that has been disconnected for more than an hour.

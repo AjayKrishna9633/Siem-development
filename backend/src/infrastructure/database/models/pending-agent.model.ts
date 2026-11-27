@@ -32,6 +32,10 @@ export class PendingAgentModel {
   @Column({ type: 'enum', enum: AgentArch, nullable: true })
   arch!: AgentArch | null;
 
+  // Resolved from the manager when the link is made; the install script installs this version.
+  @Column({ type: 'varchar', length: 32, name: 'agent_version' })
+  agentVersion!: string;
+
   @Index('IDX_pending_agents_wazuh_agent_id', { unique: true })
   @Column({ type: 'varchar', length: 16, name: 'wazuh_agent_id' })
   wazuhAgentId!: string;

@@ -1,4 +1,4 @@
-import { AgentArch, AgentOs } from '../enums/AgentOs.ts';
+import { AgentArch, AgentOs } from '../../domain/enums/AgentOs.ts';
 
 // Verified against documentation.wazuh.com (packages list and agent install pages, 4.14.10).
 const PACKAGES_BASE_URL = 'https://packages.wazuh.com';
@@ -16,6 +16,9 @@ const RPM_ARCH: Readonly<Record<AgentArch, string>> = {
 export const DEFAULT_WAZUH_AGENT_VERSION = '4.14.10';
 
 export const WAZUH_AGENT_PORTS = [1514, 1515] as const;
+
+// An agent with an imported key only ever talks to the manager on this port; 1515 is enrollment.
+export const WAZUH_EVENTS_PORT = 1514;
 
 export const WAZUH_WINDOWS_SERVICE = 'WazuhSvc';
 export const WAZUH_WINDOWS_INSTALL_DIR = 'C:\\Program Files (x86)\\ossec-agent';

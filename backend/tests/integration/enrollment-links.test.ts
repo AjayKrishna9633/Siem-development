@@ -32,7 +32,11 @@ class SwitchableCipher implements ISecretCipher {
 // Bound before the app is imported, so DI keeps these instead of the real ones.
 const manager = new FakeAgentManager();
 const cipher = new SwitchableCipher();
-const linkConfig: IEnrollmentLinkConfig = { publicUrl: 'https://192.168.1.20:8443' };
+const linkConfig: IEnrollmentLinkConfig = {
+  publicUrl: 'https://192.168.1.20:8443',
+  managerAddress: '192.168.1.20',
+  fallbackAgentVersion: '4.14.10',
+};
 container.bind(TYPES.AgentManager).toConstantValue(manager);
 container.bind(TYPES.EnrollKeyCipher).toConstantValue(cipher);
 container.bind(TYPES.EnrollmentLinkConfig).toConstantValue(linkConfig);
@@ -101,6 +105,7 @@ describe('enrollment links API', () => {
     manager.reset();
     cipher.enabled = true;
     linkConfig.publicUrl = 'https://192.168.1.20:8443';
+    linkConfig.managerAddress = '192.168.1.20';
     await AppDataSource.query('DELETE FROM pending_agents');
   });
 
@@ -244,15 +249,32 @@ describe('enrollment links API', () => {
     it('removes the agent from Wazuh again when saving fails', async () => {
       // A leftover row already holds Wazuh id 001, so the insert hits the unique index.
       await AppDataSource.query(
-        `INSERT INTO pending_agents (name, group_name, os, wazuh_agent_id, agent_key_ciphertext,
-           agent_key_iv, agent_key_auth_tag, key_version, status)
-         VALUES ('old', 'default', 'windows', '001', 'a', 'b', 'c', 1, 'connected')`,
+        `INSERT INTO pending_agents (name, group_name, os, wazuh_agent_id, agent_version,
+           agent_key_ciphertext, agent_key_iv, agent_key_auth_tag, key_version, status)
+         VALUES ('old', 'default', 'windows', '001', '4.14.10', 'a', 'b', 'c', 1, 'connected')`,
       );
       // The error handler answers a unique violation with 409; what matters is the rollback.
       await create(admin2, linux).expect(409);
       expect(manager.calls.map((c) => c.method)).toContain('removeAgent');
       expect(manager.registered.size).toBe(0);
       expect(await tokenRows()).toHaveLength(0);
+    });
+
+    it('stores the agent version the manager reports, for the enrollment service', async () => {
+      manager.version = 'v4.14.9';
+      const res = await create(lister, { ...linux, agentName: 'ver-01' }).expect(201);
+      expect(res.body.data.agentVersion).toBe('4.14.9');
+      const [row] = await AppDataSource.query<{ agent_version: string }[]>(
+        'SELECT agent_version FROM pending_agents',
+      );
+      expect(row?.agent_version).toBe('4.14.9');
+    });
+
+    it('needs WAZUH_PUBLIC_ADDRESS, which the install script connects to', async () => {
+      linkConfig.managerAddress = undefined;
+      const res = await create(admin2, linux).expect(409);
+      expect(res.body.message).toMatch(/WAZUH_PUBLIC_ADDRESS/);
+      expect(manager.calls).toHaveLength(0);
     });
 
     it('says what is missing when there is no address for the link', async () => {

@@ -30,6 +30,9 @@ export interface IEnrollmentCheckResult {
 export interface IEnrollmentLinkConfig {
   // Where agents reach the enrollment service, e.g. https://192.168.1.20:8443.
   publicUrl: string | undefined;
+  // Where the installed agent reaches the manager (WAZUH_PUBLIC_ADDRESS).
+  managerAddress: string | undefined;
+  fallbackAgentVersion: string;
 }
 
 // Returned once, when the link is made: the URL holds the only copy of the token.
@@ -42,4 +45,5 @@ export interface ICreatedEnrollmentLink {
   os: AgentOs;
   arch: AgentArch | null;
   wazuhAgentId: string;
+  agentVersion: string;
 }

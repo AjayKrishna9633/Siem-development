@@ -1,7 +1,7 @@
-import { AppError } from '../errors/AppError.ts';
-import { AppErrorCode } from '../enums/AppErrorCode.ts';
-import { ErrorMessage } from '../enums/ErrorMessage.ts';
-import { AgentArch, AgentOs } from '../enums/AgentOs.ts';
+import { AppError } from '../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../domain/enums/ErrorMessage.ts';
+import { AgentArch, AgentOs } from '../../domain/enums/AgentOs.ts';
 import {
   WAZUH_AGENT_PORTS,
   WAZUH_LINUX_INSTALL_DIR,
@@ -10,13 +10,14 @@ import {
   WAZUH_WINDOWS_SERVICE,
   wazuhPackageFileName,
   wazuhPackageUrl,
-} from '../constants/wazuh-packages.ts';
+} from './wazuh-packages.ts';
 import {
   isAgentIdentifier,
   isEnrollmentPassword,
   isHostAddress,
   normalizeVersion,
-} from './agent-identifier.policy.ts';
+} from '../../domain/policies/agent-identifier.policy.ts';
+import { quoteBash, quotePowerShell } from './shell-quote.ts';
 
 export interface IEnrollCommandInput {
   managerAddress: string;
@@ -44,9 +45,7 @@ export const ENROLLMENT_SECRET_MASK = '********';
 
 const INSTALLED_MESSAGE = 'Wazuh agent installed and started';
 
-export const quotePowerShell = (value: string): string => `'${value.replaceAll("'", "''")}'`;
-
-export const quoteBash = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
+export { quoteBash, quotePowerShell };
 
 const invalid = (message: ErrorMessage): AppError =>
   new AppError(AppErrorCode.VALIDATION_ERROR, message);

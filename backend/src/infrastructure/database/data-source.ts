@@ -20,6 +20,7 @@ import { DropIngestKeys1794096000000 } from './migrations/1794096000000-DropInge
 import { CreateAgents1794182400000 } from './migrations/1794182400000-CreateAgents.ts';
 import { CreateEmailSettings1794268800000 } from './migrations/1794268800000-CreateEmailSettings.ts';
 import { CreateEnrollmentLinks1794355200000 } from './migrations/1794355200000-CreateEnrollmentLinks.ts';
+import { AddPendingAgentVersion1794441600000 } from './migrations/1794441600000-AddPendingAgentVersion.ts';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -49,5 +50,6 @@ export const AppDataSource = new DataSource({
     CreateAgents1794182400000,
     CreateEmailSettings1794268800000,
     CreateEnrollmentLinks1794355200000,
+    AddPendingAgentVersion1794441600000,
   ],
 });

@@ -10,9 +10,9 @@ import {
   quoteBash,
   quotePowerShell,
   type IEnrollCommandInput,
-} from '../../src/domain/policies/enroll-command.policy.ts';
+} from '../../src/shared/agent-install/enroll-command.ts';
 import { AgentArch, AgentOs } from '../../src/domain/enums/AgentOs.ts';
-import { wazuhPackageUrl } from '../../src/domain/constants/wazuh-packages.ts';
+import { wazuhPackageUrl } from '../../src/shared/agent-install/wazuh-packages.ts';
 import { AppError } from '../../src/domain/errors/AppError.ts';
 import { AppErrorCode } from '../../src/domain/enums/AppErrorCode.ts';
 

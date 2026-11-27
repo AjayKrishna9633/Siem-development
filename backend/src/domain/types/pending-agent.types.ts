@@ -11,6 +11,7 @@ export interface IPendingAgent {
   os: AgentOs;
   arch: AgentArch | null;
   wazuhAgentId: string;
+  agentVersion: string;
   agentKey: IEncryptedSecret;
   status: PendingAgentStatus;
   connectedAt: Date | null;

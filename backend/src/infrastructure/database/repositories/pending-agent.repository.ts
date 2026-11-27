@@ -23,6 +23,7 @@ const toPendingAgent = (row: PendingAgentModel): IPendingAgent => ({
   os: row.os,
   arch: row.arch,
   wazuhAgentId: row.wazuhAgentId,
+  agentVersion: row.agentVersion,
   agentKey: {
     ciphertext: row.agentKeyCiphertext,
     iv: row.agentKeyIv,
@@ -57,6 +58,7 @@ export class TypeOrmPendingAgentRepository implements IPendingAgentRepository {
         os: agent.os,
         arch: agent.arch,
         wazuhAgentId: agent.wazuhAgentId,
+        agentVersion: agent.agentVersion,
         agentKeyCiphertext: agent.agentKey.ciphertext,
         agentKeyIv: agent.agentKey.iv,
         agentKeyAuthTag: agent.agentKey.authTag,

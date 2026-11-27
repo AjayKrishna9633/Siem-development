@@ -21,7 +21,10 @@ import { AuditAction, AuditTargetType } from '../../../domain/enums/AuditAction.
 import { AppError } from '../../../domain/errors/AppError.ts';
 import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
 import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
-import { isAgentIdentifier } from '../../../domain/policies/agent-identifier.policy.ts';
+import {
+  isAgentIdentifier,
+  resolveAgentVersion,
+} from '../../../domain/policies/agent-identifier.policy.ts';
 import {
   agentKeyAad,
   enrollmentLinkExpiry,
@@ -48,7 +51,14 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
   async execute(input: ICreateEnrollmentLinkInput): Promise<ICreatedEnrollmentLink> {
     assertPermission(input.actor, Permission.AGENTS_MANAGE);
 
-    const { publicUrl } = this._config;
+    const { publicUrl, managerAddress } = this._config;
+    // The install script needs the address the agent will connect to.
+    if (!managerAddress) {
+      throw new AppError(
+        AppErrorCode.AGENT_ENROLLMENT_NOT_CONFIGURED,
+        ErrorMessage.WAZUH_PUBLIC_ADDRESS_MISSING,
+      );
+    }
     if (!publicUrl) {
       throw new AppError(
         AppErrorCode.AGENT_ENROLLMENT_NOT_CONFIGURED,
@@ -68,7 +78,12 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
       throw new AppError(AppErrorCode.VALIDATION_ERROR, ErrorMessage.AGENT_NAME_INVALID);
     }
 
-    const groups = await this._manager.listGroups();
+    const [groups, managerVersion] = await Promise.all([
+      this._manager.listGroups(),
+      this._manager.getManagerVersion(),
+    ]);
+    // Resolved now, so the enrollment service never has to ask Wazuh.
+    const agentVersion = resolveAgentVersion(managerVersion, this._config.fallbackAgentVersion);
     if (!groups.includes(input.group)) {
       throw new AppError(AppErrorCode.AGENT_GROUP_NOT_FOUND, ErrorMessage.AGENT_GROUP_NOT_FOUND);
     }
@@ -93,6 +108,7 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
         os: input.os,
         arch,
         wazuhAgentId: registered.wazuhId,
+        agentVersion,
         agentKey: this._cipher.encrypt(registered.key, agentKeyAad(id)),
         status: PendingAgentStatus.PENDING,
         connectedAt: null,
@@ -112,6 +128,7 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
             arch,
             group: input.group,
             wazuhAgentId: registered.wazuhId,
+            agentVersion,
             expiresAt: expiresAt.toISOString(),
           },
         }),
@@ -126,6 +143,7 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
         os: input.os,
         arch,
         wazuhAgentId: registered.wazuhId,
+        agentVersion,
       };
     } catch (err) {
       await this.rollBack(registered.wazuhId);

@@ -5,7 +5,7 @@ import {
   isHostAddress,
   normalizeVersion,
 } from '../domain/policies/agent-identifier.policy.ts';
-import { DEFAULT_WAZUH_AGENT_VERSION } from '../domain/constants/wazuh-packages.ts';
+import { DEFAULT_WAZUH_AGENT_VERSION } from '../shared/agent-install/wazuh-packages.ts';
 import { isEncryptionKey } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
 import { ENROLL_DB_PASSWORD_PATTERN } from '../infrastructure/database/enroll-role.ts';
 

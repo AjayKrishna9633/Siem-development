@@ -5,6 +5,7 @@ import { createEnrollDataSource } from './data-source.ts';
 import { createEnrollApp } from './app.ts';
 import { connectWithRetry } from '../infrastructure/database/connect-with-retry.ts';
 import { createRootLogger, PinoLogger } from '../infrastructure/logging/pino-logger.ts';
+import { AesGcmSecretCipher } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
 
 const result = parseEnrollConfig(process.env);
 if (!result.ok) {
@@ -24,11 +25,22 @@ const logger = new PinoLogger(
   }),
 );
 
+if (!config.WAZUH_PUBLIC_ADDRESS) {
+  logger.warn('WAZUH_PUBLIC_ADDRESS is not set: install scripts cannot be built until it is');
+}
+
 const db = createEnrollDataSource(config.ENROLL_DATABASE_URL);
 await connectWithRetry(() => db.initialize(), logger);
 logger.info('Database connected');
 
-const server = createEnrollApp(db, logger).listen(config.ENROLL_PORT, (err?: Error) => {
+const app = createEnrollApp({
+  db,
+  logger,
+  cipher: new AesGcmSecretCipher(config.ENROLL_KEY_SECRET, 'ENROLL_KEY_SECRET'),
+  managerAddress: config.WAZUH_PUBLIC_ADDRESS,
+});
+
+const server = app.listen(config.ENROLL_PORT, (err?: Error) => {
   if (err) {
     logger.error('Enrollment service failed to start', { port: config.ENROLL_PORT, err });
     process.exit(1);

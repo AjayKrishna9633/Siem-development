@@ -119,6 +119,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-}
       # Must be URL-safe, like DATABASE_URL.
       ENROLL_DATABASE_URL: postgres://siemple_enroll:${ENROLL_DB_PASSWORD:?Set ENROLL_DB_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-siemple}
+      # Decrypts the pre-registered agent keys (shared with api only).
+      ENROLL_KEY_SECRET: ${ENROLL_KEY_SECRET:?Set ENROLL_KEY_SECRET in .env}
+      # Not a secret: where installed agents connect.
+      WAZUH_PUBLIC_ADDRESS: ${WAZUH_PUBLIC_ADDRESS:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

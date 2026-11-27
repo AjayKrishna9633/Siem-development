@@ -241,6 +241,8 @@ if (!container.isBound(TYPES.EnrollKeyCipher)) {
 if (!container.isBound(TYPES.EnrollmentLinkConfig)) {
   container.bind<IEnrollmentLinkConfig>(TYPES.EnrollmentLinkConfig).toConstantValue({
     publicUrl: env.ENROLL_PUBLIC_URL ?? defaultEnrollPublicUrl(env.WAZUH_PUBLIC_ADDRESS),
+    managerAddress: env.WAZUH_PUBLIC_ADDRESS,
+    fallbackAgentVersion: env.WAZUH_AGENT_VERSION,
   });
 }
 container.bind(TYPES.PendingAgentRepository).to(TypeOrmPendingAgentRepository);

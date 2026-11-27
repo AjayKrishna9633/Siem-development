@@ -8,6 +8,7 @@ import { createEnrollDataSource } from '../../src/enroll/data-source.ts';
 import { createEnrollApp } from '../../src/enroll/app.ts';
 import { PinoLogger, createRootLogger } from '../../src/infrastructure/logging/pino-logger.ts';
 import { closeDatabase, recreateDatabase } from '../helpers/database.ts';
+import { AesGcmSecretCipher } from '../../src/infrastructure/services/aes-gcm-secret-cipher.service.ts';
 
 const PASSWORD = 'test-enroll-password-0123456789';
 const silent = new PinoLogger(
@@ -30,6 +31,13 @@ const connectAsEnroll = async (password?: string): Promise<pg.Client> => {
 
 const PERMISSION_DENIED = '42501';
 
+const deps = (db: DataSource) => ({
+  db,
+  logger: silent,
+  cipher: new AesGcmSecretCipher(Buffer.alloc(32, 7).toString('base64'), 'ENROLL_KEY_SECRET'),
+  managerAddress: '192.168.1.20',
+});
+
 describe('the siemple_enroll role', () => {
   let client: pg.Client;
   let tokenId: string;
@@ -39,9 +47,10 @@ describe('the siemple_enroll role', () => {
     await syncEnrollRolePassword(AppDataSource, PASSWORD, silent);
     const [agent] = await AppDataSource.query<{ id: string }[]>(
       `INSERT INTO pending_agents
-         (name, group_name, os, arch, wazuh_agent_id, agent_key_ciphertext, agent_key_iv,
-          agent_key_auth_tag, key_version)
-       VALUES ('web-01', 'default', 'linux-deb', 'x86_64', '007', 'Y2lwaGVy', 'aXY=', 'dGFn', 1)
+         (name, group_name, os, arch, wazuh_agent_id, agent_version, agent_key_ciphertext,
+          agent_key_iv, agent_key_auth_tag, key_version)
+       VALUES ('web-01', 'default', 'linux-deb', 'x86_64', '007', '4.14.10', 'Y2lwaGVy', 'aXY=',
+               'dGFn', 1)
        RETURNING id`,
     );
     const [token] = await AppDataSource.query<{ id: string }[]>(
@@ -65,6 +74,23 @@ describe('the siemple_enroll role', () => {
     expect(tokens.rows).toEqual([{ id: tokenId, used_at: null }]);
   });
 
+  it('reads exactly the pending-agent columns the service needs', async () => {
+    const res = await client.query(
+      `SELECT id, name, os, arch, agent_version, agent_key_ciphertext, agent_key_iv,
+              agent_key_auth_tag, key_version, status FROM pending_agents`,
+    );
+    expect(res.rows[0]).toMatchObject({ name: 'web-01', agent_version: '4.14.10' });
+  });
+
+  it.each(['group_name', 'wazuh_agent_id', 'connected_at', 'created_at', 'updated_at', '*'])(
+    'cannot read pending_agents.%s',
+    async (column) => {
+      await expect(client.query(`SELECT ${column} FROM pending_agents`)).rejects.toMatchObject({
+        code: PERMISSION_DENIED,
+      });
+    },
+  );
+
   it('marks a link used', async () => {
     const result = await client.query(
       'UPDATE enrollment_tokens SET used_at = now() WHERE id = $1 AND used_at IS NULL',
@@ -79,9 +105,9 @@ describe('the siemple_enroll role', () => {
     ['read email settings', 'SELECT * FROM email_settings'],
     [
       'create a pending agent',
-      `INSERT INTO pending_agents (name, group_name, os, wazuh_agent_id, agent_key_ciphertext,
-         agent_key_iv, agent_key_auth_tag, key_version)
-       VALUES ('x', 'default', 'windows', '008', 'a', 'b', 'c', 1)`,
+      `INSERT INTO pending_agents (name, group_name, os, wazuh_agent_id, agent_version,
+         agent_key_ciphertext, agent_key_iv, agent_key_auth_tag, key_version)
+       VALUES ('x', 'default', 'windows', '008', '4.14.10', 'a', 'b', 'c', 1)`,
     ],
     [
       'create a link',
@@ -89,6 +115,8 @@ describe('the siemple_enroll role', () => {
        SELECT id, repeat('b', 64), now() FROM pending_agents`,
     ],
     ['change an agent status', `UPDATE pending_agents SET status = 'connected'`],
+    ['change the agent key', `UPDATE pending_agents SET agent_key_ciphertext = 'x'`],
+    ['rewrite a link', "UPDATE enrollment_tokens SET token_hash = repeat('c', 64)"],
     ['extend a link', `UPDATE enrollment_tokens SET expires_at = now() + interval '1 year'`],
     ['delete a link', 'DELETE FROM enrollment_tokens'],
     ['delete a pending agent', 'DELETE FROM pending_agents'],
@@ -142,13 +170,13 @@ describe('the enrollment service', () => {
   });
 
   it('reports healthy when its database answers', async () => {
-    const res = await request(createEnrollApp(db, silent)).get('/enroll/health');
+    const res = await request(createEnrollApp(deps(db))).get('/enroll/health');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok' });
   });
 
   it('reports unavailable when its database does not answer', async () => {
-    const app = createEnrollApp(db, silent);
+    const app = createEnrollApp(deps(db));
     await db.destroy();
     const res = await request(app).get('/enroll/health');
     expect(res.status).toBe(503);
@@ -161,9 +189,9 @@ describe('the enrollment service', () => {
     expect(row).toEqual({ user: 'siemple_enroll', app: 'siemple-enroll' });
   });
 
-  it('answers 404 with JSON on anything else', async () => {
-    const res = await request(createEnrollApp(db, silent)).get('/api/auth/me');
+  it('answers anything else with the same generic 404 as a bad link', async () => {
+    const res = await request(createEnrollApp(deps(db))).get('/api/auth/me');
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ message: 'Not found' });
+    expect(res.body).toEqual({ message: 'This link is not valid.' });
   });
 });
