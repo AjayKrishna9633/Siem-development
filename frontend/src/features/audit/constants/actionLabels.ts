@@ -23,6 +23,11 @@ export const ACTION_LABELS: Readonly<Record<string, string>> = {
   'system.settings.email_test': 'Sent a test email',
   'audit.export': 'Exported the audit log',
   'agent.enroll_command.generated': 'Generated an agent enroll command',
+  'agent.enrollment_link.created': 'Created an agent enrollment link',
+  'agent.enrollment_link.revoked': 'Revoked an agent enrollment link',
+  'agent.enrollment_link.reissued': 'Reissued an agent enrollment link',
+  'agent.enrollment_link.connected': 'Agent connected through its enrollment link',
+  'agent.enrollment_link.expired': 'Agent enrollment link expired',
 };
 
 const sentenceCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);

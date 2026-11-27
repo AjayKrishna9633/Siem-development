@@ -23,6 +23,11 @@ const BACKEND_ACTIONS = [
   'system.settings.changed',
   'audit.export',
   'agent.enroll_command.generated',
+  'agent.enrollment_link.created',
+  'agent.enrollment_link.revoked',
+  'agent.enrollment_link.reissued',
+  'agent.enrollment_link.connected',
+  'agent.enrollment_link.expired',
   'system.settings.email_test',
 ];
 
