@@ -21,3 +21,15 @@ export const enrollmentCheckQuerySchema = z.object({
     .datetime({ offset: true, error: 'since must be an ISO 8601 date and time' })
     .transform((value) => new Date(value)),
 });
+
+// A pre-registered agent needs its name up front: Wazuh assigns the key to that name.
+export const enrollmentLinkBodySchema = z.object({
+  os: z.enum(AgentOs, 'Choose windows, linux-deb or linux-rpm'),
+  arch: optional(z.enum(AgentArch, 'Choose x86_64 or arm64')),
+  group: z.string().regex(AGENT_IDENTIFIER_PATTERN, ErrorMessage.AGENT_GROUP_INVALID),
+  agentName,
+});
+
+export const enrollmentLinkParamsSchema = z.object({
+  id: z.uuid({ error: 'Not a valid enrollment link id' }),
+});

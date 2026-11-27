@@ -9,17 +9,24 @@ import { actorFrom } from '../http/actor.ts';
 import {
   enrollCommandBodySchema,
   enrollmentCheckQuerySchema,
+  enrollmentLinkBodySchema,
+  enrollmentLinkParamsSchema,
 } from '../validators/agents.schema.ts';
 import {
   toAgentDto,
+  toCreatedEnrollmentLinkDto,
   toEnrollCommandDto,
   toEnrollmentCheckDto,
+  toEnrollmentLinkDto,
 } from '../../application/dtos/agent/response/agent-response.dto.ts';
 import type {
   ICheckEnrollmentUseCase,
+  ICreateEnrollmentLinkUseCase,
   IGenerateEnrollCommandUseCase,
   IListAgentGroupsUseCase,
   IListAgentsUseCase,
+  IListEnrollmentLinksUseCase,
+  IRevokeEnrollmentLinkUseCase,
 } from '../../application/interfaces/use-cases/agents.interface.ts';
 
 @injectable()
@@ -31,6 +38,12 @@ export class AgentsController {
     private readonly _enrollCommand: IGenerateEnrollCommandUseCase,
     @inject(TYPES.CheckEnrollmentUseCase)
     private readonly _checkEnrollment: ICheckEnrollmentUseCase,
+    @inject(TYPES.CreateEnrollmentLinkUseCase)
+    private readonly _createLink: ICreateEnrollmentLinkUseCase,
+    @inject(TYPES.ListEnrollmentLinksUseCase)
+    private readonly _listLinks: IListEnrollmentLinksUseCase,
+    @inject(TYPES.RevokeEnrollmentLinkUseCase)
+    private readonly _revokeLink: IRevokeEnrollmentLinkUseCase,
   ) {}
 
   list = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -88,5 +101,49 @@ export class AgentsController {
           SuccessMessage.ENROLLMENT_CHECKED,
         ),
       );
+  });
+
+  createEnrollmentLink = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const { os, arch, group, agentName } = enrollmentLinkBodySchema.parse(req.body);
+    const link = await this._createLink.execute({
+      actor: actorFrom(req),
+      os,
+      group,
+      agentName,
+      ...(arch !== undefined && { arch }),
+    });
+    // The URL is the only copy of the token: no browser or proxy may keep it.
+    res
+      .set('Cache-Control', 'no-store')
+      .status(HttpStatusCode.CREATED)
+      .json(
+        new ApiResponse(
+          HttpStatusCode.CREATED,
+          toCreatedEnrollmentLinkDto(link),
+          SuccessMessage.ENROLLMENT_LINK_CREATED,
+        ),
+      );
+  });
+
+  listEnrollmentLinks = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const links = await this._listLinks.execute({ actor: actorFrom(req) });
+    res
+      .set('Cache-Control', 'no-store')
+      .status(HttpStatusCode.OK)
+      .json(
+        new ApiResponse(
+          HttpStatusCode.OK,
+          links.map(toEnrollmentLinkDto),
+          SuccessMessage.ENROLLMENT_LINKS_FETCHED,
+        ),
+      );
+  });
+
+  revokeEnrollmentLink = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const { id } = enrollmentLinkParamsSchema.parse(req.params);
+    await this._revokeLink.execute({ actor: actorFrom(req), id });
+    res
+      .status(HttpStatusCode.OK)
+      .json(new ApiResponse(HttpStatusCode.OK, null, SuccessMessage.ENROLLMENT_LINK_REVOKED));
   });
 }

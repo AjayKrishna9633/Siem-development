@@ -19,6 +19,8 @@ export enum AuditAction {
   USER_UPDATED = 'user.update',
   AUDIT_EXPORTED = 'audit.export',
   AGENT_ENROLL_COMMAND_GENERATED = 'agent.enroll_command.generated',
+  AGENT_ENROLLMENT_LINK_CREATED = 'agent.enrollment_link.created',
+  AGENT_ENROLLMENT_LINK_REVOKED = 'agent.enrollment_link.revoked',
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',
   EMAIL_TEST_SENT = 'system.settings.email_test',
 }

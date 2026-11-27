@@ -1,9 +1,13 @@
 import type {
   IAgentManager,
   IAgentQuery,
+  IRegisteredAgent,
 } from '../../../application/interfaces/services/agent-manager.interface.ts';
 import type { IAgent } from '../../../domain/types/agent.types.ts';
 import { AgentStatus } from '../../../domain/enums/AgentStatus.ts';
+import { AppError } from '../../../domain/errors/AppError.ts';
+import { AppErrorCode } from '../../../domain/enums/AppErrorCode.ts';
+import { ErrorMessage } from '../../../domain/enums/ErrorMessage.ts';
 import type { WazuhApiClient } from './wazuh-api.client.ts';
 
 interface IWazuhList<T> {
@@ -25,6 +29,28 @@ interface IWazuhAgent {
 interface IWazuhInfo {
   data?: { api_version?: string };
 }
+
+// Wazuh's own error numbers, from its replies (checked against a real 4.14 manager).
+const WAZUH_NAME_TAKEN = 1705;
+const WAZUH_GROUP_NOT_FOUND = 1710;
+const WAZUH_AGENT_NOT_FOUND = 1701;
+
+interface IWazuhError {
+  error?: number;
+}
+
+interface IWazuhRegistered extends IWazuhError {
+  data?: { id?: unknown; key?: unknown };
+}
+
+interface IWazuhBulk extends IWazuhError {
+  data?: {
+    affected_items?: unknown[];
+    failed_items?: { error?: { code?: number }; id?: unknown[] }[];
+  };
+}
+
+const WAZUH_AGENT_ID = /^\d{3,}$/;
 
 const MANAGER_AGENT_ID = '000';
 const AGENT_FIELDS =
@@ -95,5 +121,65 @@ export class WazuhAgentManager implements IAgentManager {
   async getManagerVersion(): Promise<string | null> {
     const res = await this._api.get<IWazuhInfo>('/');
     return res.data?.api_version ?? null;
+  }
+
+  async registerAgent(name: string): Promise<IRegisteredAgent> {
+    const res = await this._api.request<IWazuhRegistered>('POST', '/agents', {
+      body: { name, ip: 'any' },
+    });
+    if (res.status === 400 && res.body.error === WAZUH_NAME_TAKEN) {
+      throw new AppError(AppErrorCode.AGENT_NAME_TAKEN, ErrorMessage.AGENT_NAME_TAKEN);
+    }
+    const id = res.body.data?.id;
+    const key = res.body.data?.key;
+    if (res.status !== 200 || typeof id !== 'string' || !WAZUH_AGENT_ID.test(id)) {
+      throw this._api.unavailable('Registering an agent failed', {
+        status: res.status,
+        error: res.body.error ?? null,
+      });
+    }
+    if (typeof key !== 'string' || key === '') {
+      throw this._api.unavailable('Registering an agent returned no key', { wazuhId: id });
+    }
+    return { wazuhId: id, key };
+  }
+
+  async assignGroup(wazuhId: string, group: string): Promise<void> {
+    const res = await this._api.request<IWazuhBulk>(
+      'PUT',
+      `/agents/${encodeURIComponent(wazuhId)}/group/${encodeURIComponent(group)}`,
+      { query: { force_single_group: 'true' } },
+    );
+    if (res.status === 404 && res.body.error === WAZUH_GROUP_NOT_FOUND) {
+      throw new AppError(AppErrorCode.AGENT_GROUP_NOT_FOUND, ErrorMessage.AGENT_GROUP_NOT_FOUND);
+    }
+    if (res.status !== 200 || !res.body.data?.affected_items?.includes(wazuhId)) {
+      throw this._api.unavailable('Assigning a group failed', {
+        status: res.status,
+        error: res.body.error ?? null,
+        wazuhId,
+      });
+    }
+  }
+
+  async removeAgent(wazuhId: string): Promise<void> {
+    // Wazuh answers 200 even when nothing was deleted, with the reason in failed_items.
+    const res = await this._api.request<IWazuhBulk>('DELETE', '/agents', {
+      query: { agents_list: wazuhId, status: 'all', older_than: '0s' },
+    });
+    const data = res.body.data;
+    const removed = res.status === 200 && data?.affected_items?.includes(wazuhId) === true;
+    const alreadyGone =
+      res.status === 200 &&
+      data?.failed_items?.some(
+        (item) => item.error?.code === WAZUH_AGENT_NOT_FOUND && item.id?.includes(wazuhId),
+      ) === true;
+    if (!removed && !alreadyGone) {
+      throw this._api.unavailable('Removing an agent failed', {
+        status: res.status,
+        error: res.body.error ?? null,
+        wazuhId,
+      });
+    }
   }
 }

@@ -26,3 +26,20 @@ export interface IEnrollmentCheckResult {
   found: boolean;
   agent?: IAgent;
 }
+
+export interface IEnrollmentLinkConfig {
+  // Where agents reach the enrollment service, e.g. https://192.168.1.20:8443.
+  publicUrl: string | undefined;
+}
+
+// Returned once, when the link is made: the URL holds the only copy of the token.
+export interface ICreatedEnrollmentLink {
+  id: string;
+  url: string;
+  expiresAt: Date;
+  name: string;
+  group: string;
+  os: AgentOs;
+  arch: AgentArch | null;
+  wazuhAgentId: string;
+}

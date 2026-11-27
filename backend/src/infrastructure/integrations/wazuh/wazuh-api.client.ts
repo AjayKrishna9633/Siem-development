@@ -16,10 +16,18 @@ export interface IWazuhApiConfig {
   timeoutMs?: number;
 }
 
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
 export interface IHttpRequest {
-  method: 'GET' | 'POST';
+  method: HttpMethod;
   url: URL;
   headers: Record<string, string>;
+  body?: string;
+}
+
+export interface IWazuhResponse<T> {
+  status: number;
+  body: T;
 }
 
 export interface IHttpResponse {
@@ -87,7 +95,7 @@ export const createHttpTransport = (config: IWazuhApiConfig, logger: ILogger): H
       );
       req.on('timeout', () => req.destroy(new Error(`Timed out after ${timeout} ms`)));
       req.on('error', reject);
-      req.end();
+      req.end(request.body);
     });
 };
 
@@ -103,25 +111,51 @@ export class WazuhApiClient {
     this._logger = logger.child({ module: 'wazuh-api' });
   }
 
-  // Authenticated GET. A 401 means the cached token expired or was revoked: log in again once.
+  // Authenticated GET that expects 200.
   async get<T>(path: string, query: Record<string, string> = {}): Promise<T> {
+    const res = await this.request<T>('GET', path, { query });
+    if (res.status !== 200)
+      throw this.unavailable('Unexpected status', { path, status: res.status });
+    return res.body;
+  }
+
+  // Any authenticated call; the caller decides what each status means, because Wazuh reports
+  // some failures as 4xx and others inside a 200. A 401 means the cached token expired or was
+  // revoked: log in again once.
+  async request<T>(
+    method: HttpMethod,
+    path: string,
+    { query = {}, body }: { query?: Record<string, string>; body?: unknown } = {},
+  ): Promise<IWazuhResponse<T>> {
     const url = new URL(path, this._config.baseUrl);
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    const headers = (token: string): Record<string, string> => ({
+      Authorization: `Bearer ${token}`,
+      ...(payload !== undefined && {
+        'Content-Type': 'application/json',
+        'Content-Length': String(Buffer.byteLength(payload)),
+      }),
+    });
 
     let token = await this.token();
     let res = await this.send({
-      method: 'GET',
+      method,
       url,
-      headers: { Authorization: `Bearer ${token}` },
+      headers: headers(token),
+      ...(payload !== undefined && { body: payload }),
     });
     if (res.status === 401) {
       await this._cache.delete(TOKEN_CACHE_KEY);
       token = await this.token();
-      res = await this.send({ method: 'GET', url, headers: { Authorization: `Bearer ${token}` } });
+      res = await this.send({
+        method,
+        url,
+        headers: headers(token),
+        ...(payload !== undefined && { body: payload }),
+      });
     }
-    if (res.status !== 200)
-      throw this.unavailable('Unexpected status', { path, status: res.status });
-    return this.parse<T>(res.body, path);
+    return { status: res.status, body: this.parse<T>(res.body, url.pathname) };
   }
 
   private async token(): Promise<string> {
@@ -166,7 +200,8 @@ export class WazuhApiClient {
     }
   }
 
-  private unavailable(reason: string, fields: Record<string, unknown> = {}): AppError {
+  // Logs why and returns the error to throw, so a caller never shows Wazuh's reply to users.
+  unavailable(reason: string, fields: Record<string, unknown> = {}): AppError {
     this._logger.warn(`Wazuh API: ${reason}`, fields);
     return new AppError(
       AppErrorCode.AGENT_MANAGER_UNAVAILABLE,

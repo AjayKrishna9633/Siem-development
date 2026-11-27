@@ -71,6 +71,20 @@ const envSchema = z.object({
       .refine(isEncryptionKey, 'must be 32 bytes of base64 (openssl rand -base64 32)')
       .optional(),
   ),
+  // Encrypts the Wazuh keys of pre-registered agents. Shared only with the enrollment service,
+  // which decrypts a key when its script is downloaded. Without it, links can't be made.
+  ENROLL_KEY_SECRET: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z
+      .string()
+      .refine(isEncryptionKey, 'must be 32 bytes of base64 (openssl rand -base64 32)')
+      .optional(),
+  ),
+  // Where agents reach the enrollment service. Default: https://<WAZUH_PUBLIC_ADDRESS>:8443
+  ENROLL_PUBLIC_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.url({ protocol: /^https$/, error: 'must be an https:// address' }).optional(),
+  ),
   // Password of the siemple_enroll database role, applied after migrations. Without it the role
   // can't log in, so the enrollment service can't start. URL-safe, as it goes into a connection URL.
   ENROLL_DB_PASSWORD: z.preprocess(

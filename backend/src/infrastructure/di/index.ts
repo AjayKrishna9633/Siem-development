@@ -98,6 +98,12 @@ import { ListAgentsUseCase } from '../../application/use-cases/agents/list-agent
 import { ListAgentGroupsUseCase } from '../../application/use-cases/agents/list-agent-groups.usecase.ts';
 import { GenerateEnrollCommandUseCase } from '../../application/use-cases/agents/generate-enroll-command.usecase.ts';
 import { CheckEnrollmentUseCase } from '../../application/use-cases/agents/check-enrollment.usecase.ts';
+import { CreateEnrollmentLinkUseCase } from '../../application/use-cases/agents/create-enrollment-link.usecase.ts';
+import { ListEnrollmentLinksUseCase } from '../../application/use-cases/agents/list-enrollment-links.usecase.ts';
+import { RevokeEnrollmentLinkUseCase } from '../../application/use-cases/agents/revoke-enrollment-link.usecase.ts';
+import { TypeOrmPendingAgentRepository } from '../database/repositories/pending-agent.repository.ts';
+import { defaultEnrollPublicUrl } from '../../domain/policies/enrollment-link.policy.ts';
+import type { IEnrollmentLinkConfig } from '../../application/types/use-case/agent.types.ts';
 import { AgentsController } from '../../presentation/controllers/agents.controller.ts';
 
 container.bind(TYPES.DataSource).toConstantValue(AppDataSource);
@@ -227,6 +233,20 @@ container.bind(TYPES.ListAgentsUseCase).to(ListAgentsUseCase);
 container.bind(TYPES.ListAgentGroupsUseCase).to(ListAgentGroupsUseCase);
 container.bind(TYPES.GenerateEnrollCommandUseCase).to(GenerateEnrollCommandUseCase);
 container.bind(TYPES.CheckEnrollmentUseCase).to(CheckEnrollmentUseCase);
+if (!container.isBound(TYPES.EnrollKeyCipher)) {
+  container
+    .bind(TYPES.EnrollKeyCipher)
+    .toConstantValue(new AesGcmSecretCipher(env.ENROLL_KEY_SECRET, 'ENROLL_KEY_SECRET'));
+}
+if (!container.isBound(TYPES.EnrollmentLinkConfig)) {
+  container.bind<IEnrollmentLinkConfig>(TYPES.EnrollmentLinkConfig).toConstantValue({
+    publicUrl: env.ENROLL_PUBLIC_URL ?? defaultEnrollPublicUrl(env.WAZUH_PUBLIC_ADDRESS),
+  });
+}
+container.bind(TYPES.PendingAgentRepository).to(TypeOrmPendingAgentRepository);
+container.bind(TYPES.CreateEnrollmentLinkUseCase).to(CreateEnrollmentLinkUseCase);
+container.bind(TYPES.ListEnrollmentLinksUseCase).to(ListEnrollmentLinksUseCase);
+container.bind(TYPES.RevokeEnrollmentLinkUseCase).to(RevokeEnrollmentLinkUseCase);
 
 container.bind(TYPES.SessionController).to(SessionController);
 container.bind(TYPES.PasswordResetController).to(PasswordResetController);

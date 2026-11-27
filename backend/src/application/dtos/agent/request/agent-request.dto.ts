@@ -22,3 +22,20 @@ export interface ICheckEnrollmentInput {
   agentName?: string;
   since: Date;
 }
+
+export interface ICreateEnrollmentLinkInput {
+  actor: IActor;
+  os: AgentOs;
+  arch?: AgentArch;
+  group: string;
+  agentName: string;
+}
+
+export interface IListEnrollmentLinksInput {
+  actor: IActor;
+}
+
+export interface IRevokeEnrollmentLinkInput {
+  actor: IActor;
+  id: string;
+}

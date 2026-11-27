@@ -311,6 +311,11 @@ add_missing_settings() {
     set_env WAZUH_ENROLLMENT_PASSWORD "$(random_password 32)"
     ok "Generated the agent enrollment password (WAZUH_ENROLLMENT_PASSWORD in $SIEMPLE_DIR/.env)"
   fi
+  # Never replaced once set: it decrypts the keys of agents waiting on an enrollment link.
+  if [ -z "$(get_env ENROLL_KEY_SECRET)" ]; then
+    set_env ENROLL_KEY_SECRET "$(random_key)"
+    ok "Generated the agent key encryption secret (ENROLL_KEY_SECRET in $SIEMPLE_DIR/.env)"
+  fi
   # Hex, so it is safe inside the enrollment service's database URL.
   if [ -z "$(get_env ENROLL_DB_PASSWORD)" ]; then
     set_env ENROLL_DB_PASSWORD "$(random_secret 24)"

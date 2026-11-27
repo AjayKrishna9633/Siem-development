@@ -1,6 +1,7 @@
 import type {
   IAgentManager,
   IAgentQuery,
+  IRegisteredAgent,
 } from '../../src/application/interfaces/services/agent-manager.interface.ts';
 import type { IAgent } from '../../src/domain/types/agent.types.ts';
 import { AgentStatus } from '../../src/domain/enums/AgentStatus.ts';
@@ -31,7 +32,12 @@ export class FakeAgentManager implements IAgentManager {
   agents: IAgent[] = [];
   version: string | null = 'v4.14.10';
   down = false;
-  calls: { method: string; query?: IAgentQuery }[] = [];
+  calls: { method: string; query?: IAgentQuery; wazuhId?: string; name?: string }[] = [];
+  // Pre-registered agents still in the fake Wazuh, by id.
+  registered = new Map<string, { name: string; key: string; group: string | null }>();
+  nextId = 1;
+  failAssign = false;
+  failRemove = false;
 
   reset(): void {
     this.groups = ['default', 'windows-servers'];
@@ -39,6 +45,52 @@ export class FakeAgentManager implements IAgentManager {
     this.version = 'v4.14.10';
     this.down = false;
     this.calls = [];
+    this.registered.clear();
+    this.nextId = 1;
+    this.failAssign = false;
+    this.failRemove = false;
+  }
+
+  // Like Wazuh, an existing agent with the name blocks it, connected or not.
+  async registerAgent(name: string): Promise<IRegisteredAgent> {
+    this.calls.push({ method: 'registerAgent', name });
+    this.failIfDown();
+    const taken =
+      this.agents.some((a) => a.name === name) ||
+      [...this.registered.values()].some((a) => a.name === name);
+    if (taken) throw new AppError(AppErrorCode.AGENT_NAME_TAKEN, ErrorMessage.AGENT_NAME_TAKEN);
+    const wazuhId = String(this.nextId++).padStart(3, '0');
+    const key = Buffer.from(`${wazuhId} ${name} any fake-key-${wazuhId}`).toString('base64');
+    this.registered.set(wazuhId, { name, key, group: null });
+    return { wazuhId, key };
+  }
+
+  async assignGroup(wazuhId: string, group: string): Promise<void> {
+    this.calls.push({ method: 'assignGroup', wazuhId });
+    this.failIfDown();
+    if (this.failAssign) {
+      throw new AppError(
+        AppErrorCode.AGENT_MANAGER_UNAVAILABLE,
+        ErrorMessage.AGENT_MANAGER_UNAVAILABLE,
+      );
+    }
+    const agent = this.registered.get(wazuhId);
+    if (!this.groups.includes(group) || !agent) {
+      throw new AppError(AppErrorCode.AGENT_GROUP_NOT_FOUND, ErrorMessage.AGENT_GROUP_NOT_FOUND);
+    }
+    agent.group = group;
+  }
+
+  async removeAgent(wazuhId: string): Promise<void> {
+    this.calls.push({ method: 'removeAgent', wazuhId });
+    this.failIfDown();
+    if (this.failRemove) {
+      throw new AppError(
+        AppErrorCode.AGENT_MANAGER_UNAVAILABLE,
+        ErrorMessage.AGENT_MANAGER_UNAVAILABLE,
+      );
+    }
+    this.registered.delete(wazuhId);
   }
 
   async listGroups(): Promise<string[]> {

@@ -21,11 +21,10 @@ export const isEncryptionKey = (value: string): boolean =>
 export class AesGcmSecretCipher implements ISecretCipher {
   private readonly _key: Buffer | null;
 
-  constructor(keyBase64: string | undefined) {
+  // `keyName` is the setting the key comes from, for the error message.
+  constructor(keyBase64: string | undefined, keyName = 'SETTINGS_ENCRYPTION_KEY') {
     if (keyBase64 !== undefined && !isEncryptionKey(keyBase64)) {
-      throw new Error(
-        'SETTINGS_ENCRYPTION_KEY must be 32 bytes of base64 (openssl rand -base64 32)',
-      );
+      throw new Error(`${keyName} must be 32 bytes of base64 (openssl rand -base64 32)`);
     }
     this._key = keyBase64 ? Buffer.from(keyBase64, 'base64') : null;
   }

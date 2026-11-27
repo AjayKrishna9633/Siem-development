@@ -84,7 +84,11 @@ services:
     image: ${SIEMPLE_API_IMAGE:-ghcr.io/ajaykrishna9633/siemple-api}:${SIEMPLE_VERSION:-latest}
     build: ./backend
     restart: unless-stopped
-    environment: *api-env
+    environment:
+      <<: *api-env
+      # Only api and enroll get this key (not migrate): it decrypts pre-registered agents' keys.
+      ENROLL_KEY_SECRET: ${ENROLL_KEY_SECRET:?Set ENROLL_KEY_SECRET in .env}
+      ENROLL_PUBLIC_URL: ${ENROLL_PUBLIC_URL:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

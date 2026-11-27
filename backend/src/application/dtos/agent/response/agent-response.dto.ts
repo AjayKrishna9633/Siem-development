@@ -1,5 +1,7 @@
 import type { IAgent } from '../../../../domain/types/agent.types.ts';
+import type { IEnrollmentLinkSummary } from '../../../../domain/types/pending-agent.types.ts';
 import type {
+  ICreatedEnrollmentLink,
   IEnrollCommandResult,
   IEnrollmentCheckResult,
 } from '../../../types/use-case/agent.types.ts';
@@ -46,4 +48,38 @@ export const toEnrollCommandDto = (result: IEnrollCommandResult): IEnrollCommand
 export const toEnrollmentCheckDto = (result: IEnrollmentCheckResult): IEnrollmentCheckDto => ({
   found: result.found,
   agent: result.agent ? toAgentDto(result.agent) : null,
+});
+
+export interface ICreatedEnrollmentLinkDto extends Omit<ICreatedEnrollmentLink, 'expiresAt'> {
+  expiresAt: string;
+}
+
+export const toCreatedEnrollmentLinkDto = (
+  link: ICreatedEnrollmentLink,
+): ICreatedEnrollmentLinkDto => ({ ...link, expiresAt: iso(link.expiresAt) });
+
+export interface IEnrollmentLinkDto {
+  id: string;
+  name: string;
+  group: string;
+  os: string;
+  arch: string | null;
+  wazuhAgentId: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+  scriptDownloadedAt: string | null;
+}
+
+export const toEnrollmentLinkDto = (link: IEnrollmentLinkSummary): IEnrollmentLinkDto => ({
+  id: link.id,
+  name: link.name,
+  group: link.groupName,
+  os: link.os,
+  arch: link.arch,
+  wazuhAgentId: link.wazuhAgentId,
+  status: link.status,
+  createdAt: iso(link.createdAt),
+  expiresAt: iso(link.expiresAt),
+  scriptDownloadedAt: isoOrNull(link.scriptDownloadedAt),
 });

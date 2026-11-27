@@ -39,6 +39,8 @@ const statusByCode: Record<AppErrorCode, number> = {
   [AppErrorCode.AGENT_GROUP_NOT_FOUND]: HttpStatusCode.BAD_REQUEST,
   [AppErrorCode.AGENT_NAME_TAKEN]: HttpStatusCode.CONFLICT,
   [AppErrorCode.AGENT_MANAGER_UNAVAILABLE]: HttpStatusCode.SERVICE_UNAVAILABLE,
+  [AppErrorCode.ENROLLMENT_LINK_NOT_FOUND]: HttpStatusCode.NOT_FOUND,
+  [AppErrorCode.ENROLLMENT_LINK_NOT_PENDING]: HttpStatusCode.CONFLICT,
   [AppErrorCode.ENCRYPTION_KEY_NOT_CONFIGURED]: HttpStatusCode.CONFLICT,
   [AppErrorCode.STORED_SECRET_UNREADABLE]: HttpStatusCode.CONFLICT,
   [AppErrorCode.EMAIL_MANAGED_BY_ENV]: HttpStatusCode.CONFLICT,

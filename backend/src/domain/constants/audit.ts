@@ -25,6 +25,8 @@ export const AUDIT_CATEGORY_BY_ACTION: Readonly<Record<AuditAction, AuditCategor
   [AuditAction.USER_UPDATED]: AuditCategory.USER,
   [AuditAction.AUDIT_EXPORTED]: AuditCategory.SYSTEM,
   [AuditAction.AGENT_ENROLL_COMMAND_GENERATED]: AuditCategory.AGENT,
+  [AuditAction.AGENT_ENROLLMENT_LINK_CREATED]: AuditCategory.AGENT,
+  [AuditAction.AGENT_ENROLLMENT_LINK_REVOKED]: AuditCategory.AGENT,
   [AuditAction.SYSTEM_SETTINGS_CHANGED]: AuditCategory.SYSTEM,
   [AuditAction.EMAIL_TEST_SENT]: AuditCategory.SYSTEM,
 };
