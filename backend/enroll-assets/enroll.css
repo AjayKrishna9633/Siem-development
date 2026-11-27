@@ -1,0 +1,233 @@
+/* SIEMple enrollment page. System fonts only: nothing is loaded from anywhere else. */
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6fa;
+  --card: #ffffff;
+  --text: #16202e;
+  --muted: #5b6676;
+  --border: #d9dfe8;
+  --accent: #2457d6;
+  --accent-text: #ffffff;
+  --code-bg: #eef1f6;
+  --ok: #157347;
+  --warn: #9a5b00;
+  --bad: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1420;
+    --card: #162032;
+    --text: #e6ebf3;
+    --muted: #9aa6b8;
+    --border: #2a3850;
+    --accent: #6f98ff;
+    --accent-text: #0d1420;
+    --code-bg: #0f1829;
+    --ok: #4cc38a;
+    --warn: #f0b45a;
+    --bad: #ff8a80;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+}
+
+.card {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+h2 {
+  margin: 24px 0 12px;
+  font-size: 1.15rem;
+}
+
+.agent {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.agent strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.status {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.status-fresh,
+.status-used {
+  color: var(--warn);
+}
+
+.status-connected {
+  color: var(--ok);
+}
+
+.status-expired {
+  color: var(--bad);
+}
+
+.os-switch,
+.arch-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.os-switch button,
+.arch-switch button,
+button.copy {
+  font: inherit;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.os-switch button[aria-pressed='true'],
+.arch-switch button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.button {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.steps {
+  padding-left: 1.25rem;
+}
+
+.steps li {
+  margin: 8px 0;
+}
+
+.hint,
+.once,
+.label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.command {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+}
+
+pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+code {
+  font:
+    0.9rem/1.45 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+}
+
+pre code {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+details.fallback {
+  margin-top: 12px;
+}
+
+details.fallback summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .button {
+    display: block;
+    text-align: center;
+  }
+}

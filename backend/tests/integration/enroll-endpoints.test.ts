@@ -128,7 +128,13 @@ describe('enrollment service endpoints', () => {
 
   beforeEach(() => {
     logger = new RecordingLogger();
-    app = createEnrollApp({ db, logger, cipher, managerAddress: '192.168.1.20' });
+    app = createEnrollApp({
+      db,
+      logger,
+      cipher,
+      managerAddress: '192.168.1.20',
+      publicUrl: 'https://192.168.1.20:8443',
+    });
   });
 
   afterAll(async () => {
@@ -189,9 +195,7 @@ describe('enrollment service endpoints', () => {
       const res = await request(app).get(`/e/${link.token}/script?os=linux-deb`).expect(200);
 
       expect(res.headers['cache-control']).toBe('no-store');
-      expect(res.headers['content-disposition']).toBe(
-        'attachment; filename="siemple-agent-web-01.sh"',
-      );
+      expect(res.headers['content-disposition']).toBe('attachment; filename="siemple-agent.sh"');
       expect(res.headers['content-type']).toMatch(/^text\/x-shellscript/);
       expect(res.text).toContain(`CLIENT_KEY='${link.clientKey}'`);
       expect(res.text).not.toContain('manage_agents');
@@ -213,7 +217,7 @@ describe('enrollment service endpoints', () => {
     it('builds the Windows script on request, with no architecture', async () => {
       const link = await seedLink({ name: 'desk-01', arch: null });
       const res = await request(app).get(`/e/${link.token}/script?os=windows`).expect(200);
-      expect(res.headers['content-disposition']).toContain('siemple-agent-desk-01.ps1');
+      expect(res.headers['content-disposition']).toContain('siemple-agent.ps1');
       expect(res.text).toContain(`$ClientKey = '${link.clientKey}'`);
       expect(res.text).toContain('wazuh-agent-4.14.10-1.msi');
     });
@@ -267,7 +271,13 @@ describe('enrollment service endpoints', () => {
 
     it('answers 503 without using up the link when WAZUH_PUBLIC_ADDRESS is missing', async () => {
       const link = await seedLink();
-      const noAddress = createEnrollApp({ db, logger, cipher, managerAddress: undefined });
+      const noAddress = createEnrollApp({
+        db,
+        logger,
+        cipher,
+        managerAddress: undefined,
+        publicUrl: undefined,
+      });
       await request(noAddress).get(`/e/${link.token}/script?os=linux-deb`).expect(503);
       expect(await usedAt(link.pendingAgentId)).toBeNull();
     });
@@ -302,7 +312,7 @@ describe('enrollment service endpoints', () => {
       await request(app).get(`/e/${link.token}/script?os=linux-deb`).expect(200);
 
       const after = await request(app).get(`/e/${link.token}`).expect(200);
-      expect(after.text).toContain('Script downloaded, waiting for agent');
+      expect(after.text).toContain('Script downloaded, waiting for the agent to connect.');
       expect(after.text).not.toContain('/script?os=');
     });
   });

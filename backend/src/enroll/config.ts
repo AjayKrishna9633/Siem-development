@@ -20,6 +20,12 @@ const enrollConfigSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.string().refine(isHostAddress, 'must be an IPv4/IPv6 address or a hostname').optional(),
   ),
+  // Not a secret: this service's own address, shown in the page's copyable commands. Default:
+  // https://<WAZUH_PUBLIC_ADDRESS>:8443, the same default the API uses for the links.
+  ENROLL_PUBLIC_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.url({ protocol: /^https$/, error: 'must be an https:// address' }).optional(),
+  ),
   LOG_LEVEL: z.preprocess(
     (v) => (v === '' ? undefined : v),
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),

@@ -29,6 +29,8 @@ RUN apk upgrade --no-cache \
       /usr/local/bin/yarn /usr/local/bin/yarnpkg
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# The enrollment page's stylesheet and script (tsc only copies .ts output).
+COPY enroll-assets/enroll.css enroll-assets/enroll.js ./enroll-assets/
 COPY package.json ./
 USER node
 EXPOSE 8443

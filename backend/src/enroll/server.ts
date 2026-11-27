@@ -6,6 +6,7 @@ import { createEnrollApp } from './app.ts';
 import { connectWithRetry } from '../infrastructure/database/connect-with-retry.ts';
 import { createRootLogger, PinoLogger } from '../infrastructure/logging/pino-logger.ts';
 import { AesGcmSecretCipher } from '../infrastructure/services/aes-gcm-secret-cipher.service.ts';
+import { defaultEnrollPublicUrl } from '../domain/policies/enrollment-link.policy.ts';
 
 const result = parseEnrollConfig(process.env);
 if (!result.ok) {
@@ -38,6 +39,7 @@ const app = createEnrollApp({
   logger,
   cipher: new AesGcmSecretCipher(config.ENROLL_KEY_SECRET, 'ENROLL_KEY_SECRET'),
   managerAddress: config.WAZUH_PUBLIC_ADDRESS,
+  publicUrl: config.ENROLL_PUBLIC_URL ?? defaultEnrollPublicUrl(config.WAZUH_PUBLIC_ADDRESS),
 });
 
 const server = app.listen(config.ENROLL_PORT, (err?: Error) => {

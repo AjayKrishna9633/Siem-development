@@ -36,6 +36,7 @@ const deps = (db: DataSource) => ({
   logger: silent,
   cipher: new AesGcmSecretCipher(Buffer.alloc(32, 7).toString('base64'), 'ENROLL_KEY_SECRET'),
   managerAddress: '192.168.1.20',
+  publicUrl: 'https://192.168.1.20:8443',
 });
 
 describe('the siemple_enroll role', () => {

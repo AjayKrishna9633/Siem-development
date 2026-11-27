@@ -84,19 +84,19 @@ describe('install script for a pre-registered agent', () => {
     expect(body).toContain('#Requires -RunAsAdministrator');
   });
 
-  it('names the files after the agent, with CRLF line ends for PowerShell', () => {
+  it('uses one fixed file name per OS, with CRLF line ends for PowerShell', () => {
     expect(script(AgentOs.LINUX_RPM)).toMatchObject({
-      fileName: 'siemple-agent-web-01.sh',
+      fileName: 'siemple-agent.sh',
       contentType: 'text/x-shellscript; charset=utf-8',
     });
     const windows = script(AgentOs.WINDOWS);
-    expect(windows.fileName).toBe('siemple-agent-web-01.ps1');
+    expect(windows.fileName).toBe('siemple-agent.ps1');
     expect(windows.body).toContain('\r\n');
   });
 
   it('only deletes itself, never whatever $0 is under curl | sh', () => {
     expect(script(AgentOs.LINUX_DEB).body).toContain(
-      'case "$0" in *siemple-agent-web-01.sh) rm -f -- "$0" ;; esac',
+      'case "$0" in *siemple-agent*.sh) rm -f -- "$0" ;; esac',
     );
   });
 

@@ -123,6 +123,8 @@ services:
       ENROLL_KEY_SECRET: ${ENROLL_KEY_SECRET:?Set ENROLL_KEY_SECRET in .env}
       # Not a secret: where installed agents connect.
       WAZUH_PUBLIC_ADDRESS: ${WAZUH_PUBLIC_ADDRESS:-}
+      # Not a secret: this service's own address, for the page's copyable commands.
+      ENROLL_PUBLIC_URL: ${ENROLL_PUBLIC_URL:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

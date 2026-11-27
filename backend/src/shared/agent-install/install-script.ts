@@ -90,7 +90,7 @@ const renderLinux = (
   const keys = `${WAZUH_LINUX_INSTALL_DIR}/etc/client.keys`;
   return [
     '#!/bin/sh',
-    ...header('#', v, `Run it as root: sudo sh ./${fileName}`),
+    ...header('#', v, `Run it as root: sudo bash ${fileName}`),
     'set -eu',
     '',
     `MANAGER=${quoteBash(v.managerAddress)}`,
@@ -98,7 +98,7 @@ const renderLinux = (
     `PACKAGE_URL=${quoteBash(wazuhPackageUrl(os, v.agentVersion, v.arch))}`,
     '',
     'if [ "$(id -u)" -ne 0 ]; then',
-    `  echo "Run this script as root: sudo sh ./${fileName}" >&2`,
+    `  echo "Run this script as root: sudo bash ${fileName}" >&2`,
     '  exit 1',
     'fi',
     `if [ -e ${quoteBash(WAZUH_LINUX_INSTALL_DIR)} ]; then`,
@@ -133,8 +133,9 @@ const renderLinux = (
     `systemctl enable ${WAZUH_LINUX_SERVICE}`,
     `systemctl restart ${WAZUH_LINUX_SERVICE}`,
     '',
-    '# Only delete this file itself, never whatever $0 happens to be under curl | sh.',
-    `case "$0" in *${fileName}) rm -f -- "$0" ;; esac`,
+    '# Only delete this file itself (also a browser-renamed copy such as "siemple-agent (1).sh"),',
+    '# never whatever $0 happens to be under curl | sh.',
+    'case "$0" in *siemple-agent*.sh) rm -f -- "$0" ;; esac',
     `echo "${INSTALLED} It connects to $MANAGER on port ${WAZUH_EVENTS_PORT}."`,
     '',
   ].join('\n');
@@ -199,12 +200,13 @@ const renderWindows = (v: Valid, fileName: string): string => {
   ].join('\r\n');
 };
 
-export const installScriptFileName = (os: AgentOs, agentName: string): string =>
-  `siemple-agent-${agentName}.${os === AgentOs.WINDOWS ? 'ps1' : 'sh'}`;
+// The same name for every agent, so the run steps on the enrollment page can be exact.
+export const installScriptFileName = (os: AgentOs): string =>
+  `siemple-agent.${os === AgentOs.WINDOWS ? 'ps1' : 'sh'}`;
 
 export const buildInstallScript = (input: IInstallScriptInput): IInstallScript => {
   const v = validate(input);
-  const fileName = installScriptFileName(v.os, v.agentName);
+  const fileName = installScriptFileName(v.os);
   if (v.os === AgentOs.WINDOWS) {
     return { fileName, contentType: 'text/plain; charset=utf-8', body: renderWindows(v, fileName) };
   }

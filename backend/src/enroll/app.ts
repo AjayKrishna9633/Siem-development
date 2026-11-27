@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import type { DataSource } from 'typeorm';
@@ -6,7 +8,8 @@ import type { ISecretCipher } from '../application/interfaces/services/secret-ci
 import { AgentArch, AgentOs } from '../domain/enums/AgentOs.ts';
 import { agentKeyAad } from '../domain/policies/enrollment-link.policy.ts';
 import { buildInstallScript } from '../shared/agent-install/install-script.ts';
-import { EnrollmentStore, type IEnrollmentLinkView } from './enrollment-store.ts';
+import { EnrollmentStore } from './enrollment-store.ts';
+import { renderEnrollPage, type PageState } from './page.ts';
 
 export interface IEnrollAppDeps {
   db: DataSource;
@@ -14,7 +17,18 @@ export interface IEnrollAppDeps {
   cipher: ISecretCipher;
   // Where the installed agent connects: WAZUH_PUBLIC_ADDRESS.
   managerAddress: string | undefined;
+  // This service's own https:// address, for the copyable commands on the page.
+  publicUrl: string | undefined;
 }
+
+// The page's stylesheet and script: real files next to the build (backend/enroll-assets), read
+// once at start-up and served from memory.
+const ASSETS_DIR = join(import.meta.dirname, '..', '..', 'enroll-assets');
+const loadAsset = (name: string): string => readFileSync(join(ASSETS_DIR, name), 'utf8');
+
+// Only this service's own files, never a frame, never a <base> or form posting elsewhere.
+export const ENROLL_CSP =
+  "default-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 // One response for every link that can't be used, whatever the reason (unknown, expired, revoked,
 // script already downloaded) and for every unknown route, so none of them can be told apart.
@@ -26,42 +40,26 @@ const sendNotFound = (res: Response): void => {
 const OS_VALUES = new Set<string>(Object.values(AgentOs));
 const ARCH_VALUES = new Set<string>(Object.values(AgentArch));
 
-const escapeHtml = (value: string): string =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-
-// A placeholder until the real page (step 6). Relative links keep the token in the path only.
-const renderPage = (link: IEnrollmentLinkView, token: string): string => {
-  const name = escapeHtml(link.agentName);
-  const base = `/e/${encodeURIComponent(token)}`;
-  const body = link.scriptDownloaded
-    ? `<p>Script downloaded, waiting for agent <strong>${name}</strong> to connect.</p>`
-    : [
-        `<p>Install the SIEMple agent <strong>${name}</strong>. The script can be downloaded once.</p>`,
-        '<ul>',
-        `<li><a href="${base}/script?os=windows">Windows (PowerShell, run as administrator)</a></li>`,
-        `<li><a href="${base}/script?os=linux-deb">Debian or Ubuntu (run with sudo)</a></li>`,
-        `<li><a href="${base}/script?os=linux-rpm">RHEL, Rocky, Alma or Fedora (run with sudo)</a></li>`,
-        '</ul>',
-      ].join('');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SIEMple agent</title></head><body><h1>SIEMple agent</h1>${body}<p>Status: ${link.status}</p></body></html>`;
-};
-
 export const createEnrollApp = ({
   db,
   logger,
   cipher,
   managerAddress,
+  publicUrl,
 }: IEnrollAppDeps): Express => {
   const app = express();
   const store = new EnrollmentStore(db);
+  const css = loadAsset('enroll.css');
+  const js = loadAsset('enroll.js');
   app.disable('x-powered-by');
   app.disable('etag');
-  app.use(helmet());
+  // Helmet's defaults, with the CSP replaced by the exact policy above. It already sends
+  // Referrer-Policy: no-referrer and X-Content-Type-Options: nosniff.
+  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.set('Content-Security-Policy', ENROLL_CSP);
+    next();
+  });
   app.use(express.json({ limit: '4kb' }));
   // Nothing here may be cached: every response is about a secret link.
   app.use((_req: Request, res: Response, next: NextFunction) => {
@@ -78,11 +76,32 @@ export const createEnrollApp = ({
     }
   });
 
+  app.get('/e/assets/enroll.css', (_req: Request, res: Response) => {
+    res.status(200).type('text/css; charset=utf-8').send(css);
+  });
+  app.get('/e/assets/enroll.js', (_req: Request, res: Response) => {
+    res.status(200).type('text/javascript; charset=utf-8').send(js);
+  });
+
   app.get('/e/:token', async (req: Request<{ token: string }>, res: Response) => {
     const token = req.params.token;
     const link = await store.findLink(store.hashToken(token));
     if (!link) return sendNotFound(res);
-    res.status(200).type('html').send(renderPage(link, token));
+    const state: PageState =
+      link.status === 'connected' ? 'connected' : link.scriptDownloaded ? 'used' : 'fresh';
+    res
+      .status(200)
+      .type('html')
+      .send(
+        renderEnrollPage({
+          token,
+          agentName: link.agentName,
+          state,
+          os: link.os,
+          arch: link.arch,
+          publicUrl: publicUrl ?? null,
+        }),
+      );
   });
 
   app.get('/e/:token/status', async (req: Request<{ token: string }>, res: Response) => {
