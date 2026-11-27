@@ -1,13 +1,15 @@
 import { injectable, inject } from 'inversify';
-import type { DataSource } from 'typeorm';
+import type { DataSource, EntityManager } from 'typeorm';
 import TYPES from '../../../domain/constants/types.ts';
 import type {
   IPendingAgentRepository,
+  IReissueTransaction,
   RevokeOutcome,
   SyncOutcome,
 } from '../../../application/interfaces/repositories/pending-agent.repository.interface.ts';
 import type { IAuditRecord } from '../../../application/interfaces/repositories/audit-log.repository.interface.ts';
 import type {
+  ILockedPendingAgent,
   ISyncCandidate,
   IEnrollmentLinkSummary,
   IEnrollmentToken,
@@ -37,6 +39,32 @@ const toPendingAgent = (row: PendingAgentModel): IPendingAgent => ({
   createdAt: row.createdAt,
 });
 
+const insertAgentWithLink = async (
+  manager: EntityManager,
+  agent: IPendingAgent,
+  token: IEnrollmentToken,
+): Promise<void> => {
+  await manager.getRepository(PendingAgentModel).insert({
+    id: agent.id,
+    name: agent.name,
+    groupName: agent.groupName,
+    os: agent.os,
+    arch: agent.arch,
+    wazuhAgentId: agent.wazuhAgentId,
+    agentVersion: agent.agentVersion,
+    agentKeyCiphertext: agent.agentKey.ciphertext,
+    agentKeyIv: agent.agentKey.iv,
+    agentKeyAuthTag: agent.agentKey.authTag,
+    keyVersion: agent.agentKey.keyVersion,
+    status: agent.status,
+  });
+  await manager.getRepository(EnrollmentTokenModel).insert({
+    pendingAgentId: agent.id,
+    tokenHash: token.tokenHash,
+    expiresAt: token.expiresAt,
+  });
+};
+
 @injectable()
 export class TypeOrmPendingAgentRepository implements IPendingAgentRepository {
   constructor(@inject(TYPES.DataSource) private readonly _db: DataSource) {}
@@ -53,26 +81,46 @@ export class TypeOrmPendingAgentRepository implements IPendingAgentRepository {
     audit: IAuditRecord,
   ): Promise<void> {
     await this._db.transaction(async (manager) => {
-      await manager.getRepository(PendingAgentModel).insert({
-        id: agent.id,
-        name: agent.name,
-        groupName: agent.groupName,
-        os: agent.os,
-        arch: agent.arch,
-        wazuhAgentId: agent.wazuhAgentId,
-        agentVersion: agent.agentVersion,
-        agentKeyCiphertext: agent.agentKey.ciphertext,
-        agentKeyIv: agent.agentKey.iv,
-        agentKeyAuthTag: agent.agentKey.authTag,
-        keyVersion: agent.agentKey.keyVersion,
-        status: agent.status,
-      });
-      await manager.getRepository(EnrollmentTokenModel).insert({
-        pendingAgentId: agent.id,
-        tokenHash: token.tokenHash,
-        expiresAt: token.expiresAt,
-      });
+      await insertAgentWithLink(manager, agent, token);
       await insertAuditRecord(manager, audit);
+    });
+  }
+
+  async lockForReissue<T>(
+    id: string,
+    work: (agent: ILockedPendingAgent, tx: IReissueTransaction) => Promise<T>,
+  ): Promise<T | null> {
+    return this._db.transaction(async (manager) => {
+      const row = await manager
+        .getRepository(PendingAgentModel)
+        .createQueryBuilder('agent')
+        .setLock('pessimistic_write')
+        .where('agent.id = :id', { id })
+        .getOne();
+      if (!row) return null;
+      const [token] = await manager.query<{ used_at: Date | null }[]>(
+        'SELECT used_at FROM enrollment_tokens WHERE pending_agent_id = $1 FOR UPDATE',
+        [id],
+      );
+      const agent: ILockedPendingAgent = {
+        ...toPendingAgent(row),
+        scriptDownloadedAt: token?.used_at ?? null,
+      };
+      return work(agent, {
+        rotateLink: async (next) => {
+          await manager.query(
+            `UPDATE enrollment_tokens SET token_hash = $2, expires_at = $3, used_at = NULL
+              WHERE pending_agent_id = $1`,
+            [id, next.tokenHash, next.expiresAt],
+          );
+        },
+        // The link goes with it (ON DELETE CASCADE).
+        remove: async () => {
+          await manager.getRepository(PendingAgentModel).delete({ id });
+        },
+        insertWithLink: (next, nextToken) => insertAgentWithLink(manager, next, nextToken),
+        audit: (record) => insertAuditRecord(manager, record),
+      });
     });
   }
 

@@ -26,6 +26,12 @@ export function agentsRoutes(controller: AgentsController, authMiddleware: Reque
   router.post('/enrollment-links', canManage, linkLimiter, controller.createEnrollmentLink);
   router.get('/enrollment-links', canManage, controller.listEnrollmentLinks);
   router.delete('/enrollment-links/:id', canManage, controller.revokeEnrollmentLink);
+  router.post(
+    '/enrollment-links/:id/reissue',
+    canManage,
+    linkLimiter,
+    controller.reissueEnrollmentLink,
+  );
 
   return router;
 }

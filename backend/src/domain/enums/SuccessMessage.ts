@@ -32,6 +32,7 @@ export enum SuccessMessage {
   ENROLLMENT_LINK_CREATED = 'Enrollment link created',
   ENROLLMENT_LINKS_FETCHED = 'Enrollment links retrieved successfully',
   ENROLLMENT_LINK_REVOKED = 'Enrollment link revoked',
+  ENROLLMENT_LINK_REISSUED = 'Enrollment link reissued',
   EMAIL_SETTINGS_FETCHED = 'Email settings retrieved successfully',
   EMAIL_SETTINGS_SAVED = 'Email settings saved',
   EMAIL_SETTINGS_DISABLED = 'Email turned off',

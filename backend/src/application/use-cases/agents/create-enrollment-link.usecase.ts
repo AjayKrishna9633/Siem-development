@@ -31,6 +31,7 @@ import {
   enrollmentLinkUrl,
 } from '../../../domain/policies/enrollment-link.policy.ts';
 import { assertPermission } from '../shared/access.ts';
+import { assertEnrollmentLinksConfigured } from './enrollment-link.support.ts';
 
 @injectable()
 export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase {
@@ -51,26 +52,7 @@ export class CreateEnrollmentLinkUseCase implements ICreateEnrollmentLinkUseCase
   async execute(input: ICreateEnrollmentLinkInput): Promise<ICreatedEnrollmentLink> {
     assertPermission(input.actor, Permission.AGENTS_MANAGE);
 
-    const { publicUrl, managerAddress } = this._config;
-    // The install script needs the address the agent will connect to.
-    if (!managerAddress) {
-      throw new AppError(
-        AppErrorCode.AGENT_ENROLLMENT_NOT_CONFIGURED,
-        ErrorMessage.WAZUH_PUBLIC_ADDRESS_MISSING,
-      );
-    }
-    if (!publicUrl) {
-      throw new AppError(
-        AppErrorCode.AGENT_ENROLLMENT_NOT_CONFIGURED,
-        ErrorMessage.ENROLL_PUBLIC_URL_MISSING,
-      );
-    }
-    if (!this._cipher.available) {
-      throw new AppError(
-        AppErrorCode.AGENT_ENROLLMENT_NOT_CONFIGURED,
-        ErrorMessage.ENROLL_KEY_SECRET_MISSING,
-      );
-    }
+    const { publicUrl } = assertEnrollmentLinksConfigured(this._config, this._cipher);
     if (!isAgentIdentifier(input.group)) {
       throw new AppError(AppErrorCode.VALIDATION_ERROR, ErrorMessage.AGENT_GROUP_INVALID);
     }

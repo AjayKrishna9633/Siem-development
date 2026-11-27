@@ -21,6 +21,7 @@ export enum AuditAction {
   AGENT_ENROLL_COMMAND_GENERATED = 'agent.enroll_command.generated',
   AGENT_ENROLLMENT_LINK_CREATED = 'agent.enrollment_link.created',
   AGENT_ENROLLMENT_LINK_REVOKED = 'agent.enrollment_link.revoked',
+  AGENT_ENROLLMENT_LINK_REISSUED = 'agent.enrollment_link.reissued',
   AGENT_ENROLLMENT_LINK_CONNECTED = 'agent.enrollment_link.connected',
   AGENT_ENROLLMENT_LINK_EXPIRED = 'agent.enrollment_link.expired',
   SYSTEM_SETTINGS_CHANGED = 'system.settings.changed',

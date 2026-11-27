@@ -47,3 +47,7 @@ export interface IRevokeEnrollmentLinkUseCase {
 export interface ISyncPendingAgentsUseCase {
   execute(): Promise<ISyncResult>;
 }
+
+export interface IReissueEnrollmentLinkUseCase {
+  execute(input: IRevokeEnrollmentLinkInput): Promise<ICreatedEnrollmentLink>;
+}

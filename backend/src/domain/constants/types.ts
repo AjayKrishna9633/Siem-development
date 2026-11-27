@@ -44,6 +44,7 @@ const TYPES = {
   EnrollKeyCipher: Symbol.for('EnrollKeyCipher'),
   EnrollmentLinkConfig: Symbol.for('EnrollmentLinkConfig'),
   SyncPendingAgentsUseCase: Symbol.for('SyncPendingAgentsUseCase'),
+  ReissueEnrollmentLinkUseCase: Symbol.for('ReissueEnrollmentLinkUseCase'),
   PendingAgentSyncJob: Symbol.for('PendingAgentSyncJob'),
   Clock: Symbol.for('Clock'),
   GetEmailSettingsUseCase: Symbol.for('GetEmailSettingsUseCase'),

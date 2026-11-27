@@ -26,6 +26,7 @@ import type {
   IListAgentGroupsUseCase,
   IListAgentsUseCase,
   IListEnrollmentLinksUseCase,
+  IReissueEnrollmentLinkUseCase,
   IRevokeEnrollmentLinkUseCase,
 } from '../../application/interfaces/use-cases/agents.interface.ts';
 
@@ -44,6 +45,8 @@ export class AgentsController {
     private readonly _listLinks: IListEnrollmentLinksUseCase,
     @inject(TYPES.RevokeEnrollmentLinkUseCase)
     private readonly _revokeLink: IRevokeEnrollmentLinkUseCase,
+    @inject(TYPES.ReissueEnrollmentLinkUseCase)
+    private readonly _reissueLink: IReissueEnrollmentLinkUseCase,
   ) {}
 
   list = catchAsync(async (req: Request, res: Response): Promise<void> => {
@@ -135,6 +138,22 @@ export class AgentsController {
           HttpStatusCode.OK,
           links.map(toEnrollmentLinkDto),
           SuccessMessage.ENROLLMENT_LINKS_FETCHED,
+        ),
+      );
+  });
+
+  reissueEnrollmentLink = catchAsync(async (req: Request, res: Response): Promise<void> => {
+    const { id } = enrollmentLinkParamsSchema.parse(req.params);
+    const link = await this._reissueLink.execute({ actor: actorFrom(req), id });
+    // The new URL is the only copy of the new token.
+    res
+      .set('Cache-Control', 'no-store')
+      .status(HttpStatusCode.CREATED)
+      .json(
+        new ApiResponse(
+          HttpStatusCode.CREATED,
+          toCreatedEnrollmentLinkDto(link),
+          SuccessMessage.ENROLLMENT_LINK_REISSUED,
         ),
       );
   });

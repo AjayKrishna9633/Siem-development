@@ -18,6 +18,11 @@ export interface IPendingAgent {
   createdAt: Date;
 }
 
+// A pending agent as reissue sees it, with whether its script was already taken.
+export interface ILockedPendingAgent extends IPendingAgent {
+  scriptDownloadedAt: Date | null;
+}
+
 export interface IEnrollmentToken {
   tokenHash: string;
   expiresAt: Date;

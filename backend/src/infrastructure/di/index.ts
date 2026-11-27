@@ -103,6 +103,7 @@ import { ListEnrollmentLinksUseCase } from '../../application/use-cases/agents/l
 import { RevokeEnrollmentLinkUseCase } from '../../application/use-cases/agents/revoke-enrollment-link.usecase.ts';
 import { TypeOrmPendingAgentRepository } from '../database/repositories/pending-agent.repository.ts';
 import { SyncPendingAgentsUseCase } from '../../application/use-cases/agents/sync-pending-agents.usecase.ts';
+import { ReissueEnrollmentLinkUseCase } from '../../application/use-cases/agents/reissue-enrollment-link.usecase.ts';
 import { PendingAgentSyncJob } from '../jobs/pending-agent-sync.job.ts';
 import { SystemClock } from '../services/system-clock.ts';
 import { defaultEnrollPublicUrl } from '../../domain/policies/enrollment-link.policy.ts';
@@ -255,6 +256,7 @@ container.bind(TYPES.RevokeEnrollmentLinkUseCase).to(RevokeEnrollmentLinkUseCase
 // Tests bind a clock they can move before importing the app.
 if (!container.isBound(TYPES.Clock)) container.bind(TYPES.Clock).to(SystemClock);
 container.bind(TYPES.SyncPendingAgentsUseCase).to(SyncPendingAgentsUseCase);
+container.bind(TYPES.ReissueEnrollmentLinkUseCase).to(ReissueEnrollmentLinkUseCase);
 container.bind(TYPES.PendingAgentSyncJob).to(PendingAgentSyncJob).inSingletonScope();
 
 container.bind(TYPES.SessionController).to(SessionController);
